@@ -49,6 +49,63 @@ html,body{height:100%;background:var(--bg);color:#fff;font-family:'Space Mono',m
 #weather-badge.show{display:block;animation:fadeIn 1s ease;}
 @media(max-width:500px){#weather-badge{top:auto;bottom:70px;right:12px;font-size:0.45rem;padding:4px 10px;}}
 
+/* SPACE GALLERY */
+#screen-space{padding:0;}
+.space-gallery-container{display:grid;grid-template-rows:auto 1fr;grid-template-columns:1fr 280px;
+  height:100vh;width:100vw;gap:0;}
+@media(max-width:900px){.space-gallery-container{grid-template-columns:1fr;grid-template-rows:auto 1fr auto;}}
+.space-header{grid-column:1/-1;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--s2);
+  padding:16px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.space-title{font-family:'Orbitron',sans-serif;font-size:clamp(1rem,3vw,1.3rem);font-weight:700;
+  letter-spacing:0.2em;margin:0;flex:1;min-width:200px;}
+.space-tabs{display:flex;gap:8px;flex-wrap:wrap;}
+.space-tab{font-family:'Space Mono',monospace;font-size:clamp(0.55rem,2vw,0.6rem);letter-spacing:0.1em;
+  text-transform:uppercase;padding:8px 16px;border-radius:20px;border:1px solid var(--s2);
+  background:transparent;color:#666;cursor:pointer;transition:all 0.2s;-webkit-tap-highlight-color:transparent;}
+.space-tab.active{color:#fff;background:var(--s1);border-color:rgba(77,255,219,0.3);}
+.space-tab:hover:not(.active){color:#aaa;background:rgba(255,255,255,0.02);}
+.space-canvas-wrap{position:relative;overflow:hidden;background:radial-gradient(ellipse at center,rgba(20,25,40,1),rgba(5,6,14,1));}
+#space-canvas{width:100%;height:100%;display:block;cursor:grab;}
+#space-canvas:active{cursor:grabbing;}
+.space-info{position:absolute;top:20px;left:20px;background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:12px 18px;
+  font-size:0.7rem;opacity:0;pointer-events:none;transition:opacity 0.2s;max-width:250px;}
+.space-info.show{opacity:1;}
+.space-info-name{font-family:'Orbitron',sans-serif;font-size:0.9rem;font-weight:700;margin-bottom:6px;color:var(--o);}
+.space-info-type{font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.5;margin-bottom:8px;}
+.space-info-data{font-size:0.65rem;line-height:1.6;opacity:0.8;}
+.space-controls{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);
+  border-radius:30px;padding:12px 20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+@media(max-width:600px){.space-controls{bottom:10px;padding:8px 12px;gap:10px;font-size:0.7rem;}}
+.space-control-group{display:flex;align-items:center;gap:8px;}
+.space-control-label{font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.6;}
+input[type="range"]{width:80px;height:4px;background:var(--s2);border-radius:2px;outline:none;
+  -webkit-appearance:none;appearance:none;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;
+  background:var(--o);border-radius:50%;cursor:pointer;box-shadow:0 0 8px var(--o);}
+input[type="range"]::-moz-range-thumb{width:14px;height:14px;background:var(--o);border-radius:50%;
+  cursor:pointer;border:none;box-shadow:0 0 8px var(--o);}
+.btn-small{font-family:'Space Mono',monospace;font-size:0.55rem;letter-spacing:0.1em;text-transform:uppercase;
+  padding:6px 12px;border-radius:20px;border:1px solid var(--s2);background:var(--s1);
+  color:#fff;cursor:pointer;transition:all 0.2s;-webkit-tap-highlight-color:transparent;}
+.btn-small:hover{background:var(--s3);}
+.space-sidebar{background:rgba(255,255,255,0.02);border-left:1px solid var(--s2);
+  padding:20px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--s2) transparent;}
+@media(max-width:900px){.space-sidebar{border-left:none;border-top:1px solid var(--s2);max-height:200px;}}
+.space-sidebar::-webkit-scrollbar{width:4px;}
+.space-sidebar::-webkit-scrollbar-thumb{background:var(--s2);border-radius:2px;}
+.space-sidebar-title{font-family:'Orbitron',sans-serif;font-size:0.75rem;font-weight:700;
+  letter-spacing:0.2em;margin-bottom:16px;opacity:0.6;text-transform:uppercase;}
+.space-objects-list{display:flex;flex-direction:column;gap:8px;}
+.space-object-item{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);
+  border-radius:10px;padding:10px 12px;cursor:pointer;transition:all 0.2s;
+  -webkit-tap-highlight-color:transparent;}
+.space-object-item:hover{background:rgba(255,255,255,0.06);border-color:rgba(77,255,219,0.3);transform:translateX(4px);}
+.space-object-item.active{border-color:var(--o);background:rgba(77,255,219,0.05);}
+.space-object-name{font-size:0.7rem;font-weight:700;margin-bottom:2px;}
+.space-object-type{font-size:0.55rem;opacity:0.5;letter-spacing:0.1em;text-transform:uppercase;}
+
 /* SCREENS */
 .screen{position:fixed;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;transition:opacity 0.5s cubic-bezier(.4,0,.2,1);}
@@ -132,6 +189,10 @@ html,body{height:100%;background:var(--bg);color:#fff;font-family:'Space Mono',m
 .logout-btn{font-family:'Space Mono',monospace;font-size:clamp(0.5rem,2vw,0.55rem);letter-spacing:0.1em;text-transform:uppercase;
   padding:6px 14px;border-radius:20px;border:1px solid var(--s2);background:transparent;color:#555;cursor:pointer;transition:all 0.2s;-webkit-tap-highlight-color:transparent;}
 .logout-btn:hover{color:var(--x);border-color:rgba(255,77,109,0.3);}
+.icon-btn{background:var(--s1);border:1px solid var(--s2);border-radius:50%;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;
+  font-size:1.2rem;-webkit-tap-highlight-color:transparent;}
+.icon-btn:hover{background:var(--s3);transform:scale(1.1);}
 
 /* WAITING */
 #screen-waiting{flex-direction:column;gap:24px;text-align:center;}
@@ -361,6 +422,7 @@ html,body{height:100%;background:var(--bg);color:#fff;font-family:'Space Mono',m
     <div class="lobby-top">
       <div class="brand" style="font-size:1.2rem;letter-spacing:0.2em">Tic · Tac · Toe</div>
       <div style="display:flex;align-items:center;gap:10px">
+        <button class="icon-btn" onclick="openSpaceGallery()" title="Space Gallery">🌌</button>
         <div class="user-chip"><div class="user-avatar" id="lobby-avatar">?</div><div class="user-name" id="lobby-username">–</div></div>
         <button class="logout-btn" onclick="doLogout()">Logout</button>
       </div>
@@ -452,6 +514,40 @@ html,body{height:100%;background:var(--bg);color:#fff;font-family:'Space Mono',m
           <button class="chat-send" onclick="sendChat()">Send</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- SPACE GALLERY -->
+<div id="screen-space" class="screen">
+  <div class="space-gallery-container">
+    <div class="space-header">
+      <button class="btn" onclick="closeSpaceGallery()">← Back</button>
+      <h2 class="space-title">🌌 Space Explorer</h2>
+      <div class="space-tabs">
+        <button class="space-tab active" onclick="switchSpaceTab('solar')">Solar System</button>
+        <button class="space-tab" onclick="switchSpaceTab('stars')">Nearby Stars</button>
+        <button class="space-tab" onclick="switchSpaceTab('nebulae')">Nebulae</button>
+      </div>
+    </div>
+    <div class="space-canvas-wrap">
+      <canvas id="space-canvas"></canvas>
+      <div id="space-info" class="space-info"></div>
+      <div class="space-controls">
+        <div class="space-control-group">
+          <span class="space-control-label">Zoom</span>
+          <input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1">
+        </div>
+        <div class="space-control-group">
+          <span class="space-control-label">Speed</span>
+          <input type="range" id="speed-slider" min="0" max="5" step="0.5" value="1">
+        </div>
+        <button class="btn-small" onclick="resetSpaceView()">Reset View</button>
+      </div>
+    </div>
+    <div class="space-sidebar">
+      <h3 class="space-sidebar-title">Objects</h3>
+      <div id="space-objects-list" class="space-objects-list"></div>
     </div>
   </div>
 </div>
@@ -744,6 +840,15 @@ function initCloudy(){
 // ═══════════════════════════════════════════════════
 // SHOOTING STARS (for space mode only)
 // ═══════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════
+// SPACE GALLERY - Interactive 3D Space Explorer
+// ═══════════════════════════════════════════════════
+const SpaceGallery={canvas:null,ctx:null,objects:[],currentTab:'solar',zoom:1,speed:1,rotation:0,dragStart:null,offset:{x:0,y:0},hoveredObj:null,selectedObj:null,solarSystem:[{name:'Sun',type:'Star',radius:20,distance:0,color:'#FDB813',temp:'5778K',mass:'1.989×10³⁰ kg'},{name:'Mercury',type:'Planet',radius:4,distance:80,color:'#8C7853',orbit:0.24,temp:'167°C',moons:0},{name:'Venus',type:'Planet',radius:9,distance:120,color:'#FFC649',orbit:0.62,temp:'464°C',moons:0},{name:'Earth',type:'Planet',radius:10,distance:170,color:'#4A90E2',orbit:1,temp:'15°C',moons:1},{name:'Mars',type:'Planet',radius:5,distance:220,color:'#E27B58',orbit:1.88,temp:'-65°C',moons:2},{name:'Jupiter',type:'Planet',radius:18,distance:300,color:'#C88B3A',orbit:11.86,temp:'-110°C',moons:79},{name:'Saturn',type:'Planet',radius:16,distance:380,color:'#FAD5A5',orbit:29.46,temp:'-140°C',moons:82,rings:true},{name:'Uranus',type:'Planet',radius:12,distance:450,color:'#4FD0E7',orbit:84.01,temp:'-195°C',moons:27},{name:'Neptune',type:'Planet',radius:12,distance:510,color:'#4166F5',orbit:164.79,temp:'-200°C',moons:14}],nearbyStars:[{name:'Proxima Centauri',type:'Red Dwarf',distance:4.24,color:'#FF6B6B',temp:'3042K',mass:'0.12 M☉'},{name:'Alpha Centauri A',type:'G-type Star',distance:4.37,color:'#FFF4E6',temp:'5790K',mass:'1.1 M☉'},{name:'Alpha Centauri B',type:'K-type Star',distance:4.37,color:'#FFE4B5',temp:'5260K',mass:'0.9 M☉'},{name:"Barnard's Star",type:'Red Dwarf',distance:5.96,color:'#FF8C8C',temp:'3134K',mass:'0.14 M☉'},{name:'Wolf 359',type:'Red Dwarf',distance:7.86,color:'#FF7777',temp:'2800K',mass:'0.09 M☉'},{name:'Sirius A',type:'A-type Star',distance:8.6,color:'#E8F4FF',temp:'9940K',mass:'2.02 M☉'},{name:'Sirius B',type:'White Dwarf',distance:8.6,color:'#FFFFFF',temp:'25200K',mass:'1.02 M☉'},{name:'Luyten 726-8',type:'Red Dwarf',distance:8.73,color:'#FF9999',temp:'2670K',mass:'0.1 M☉'}],nebulae:[{name:'Orion Nebula',type:'Emission Nebula',distance:1344,color:'#FF6B9D',size:24,constellation:'Orion'},{name:'Crab Nebula',type:'Supernova Remnant',distance:6500,color:'#4ECDC4',size:11,constellation:'Taurus'},{name:'Ring Nebula',type:'Planetary Nebula',distance:2300,color:'#95E1D3',size:1.4,constellation:'Lyra'},{name:'Eagle Nebula',type:'Emission Nebula',distance:7000,color:'#F38181',size:70,constellation:'Serpens'},{name:'Helix Nebula',type:'Planetary Nebula',distance:650,color:'#AA96DA',size:2.5,constellation:'Aquarius'},{name:'Horsehead Nebula',type:'Dark Nebula',distance:1500,color:'#5D5D5D',size:3.5,constellation:'Orion'}],init(){this.canvas=document.getElementById('space-canvas');this.ctx=this.canvas.getContext('2d');this.resize();this.loadTab('solar');this.canvas.addEventListener('mousedown',e=>this.onDragStart(e));this.canvas.addEventListener('mousemove',e=>this.onDrag(e));this.canvas.addEventListener('mouseup',()=>this.onDragEnd());this.canvas.addEventListener('mouseleave',()=>this.onDragEnd());this.canvas.addEventListener('wheel',e=>this.onWheel(e));this.canvas.addEventListener('click',e=>this.onClick(e));document.getElementById('zoom-slider').addEventListener('input',e=>this.zoom=parseFloat(e.target.value));document.getElementById('speed-slider').addEventListener('input',e=>this.speed=parseFloat(e.target.value));window.addEventListener('resize',()=>this.resize());this.animate();},resize(){const rect=this.canvas.parentElement.getBoundingClientRect();this.canvas.width=rect.width;this.canvas.height=rect.height;},loadTab(tab){this.currentTab=tab;this.selectedObj=null;this.offset={x:0,y:0};this.rotation=0;document.querySelectorAll('.space-tab').forEach((t,i)=>t.classList.toggle('active',['solar','stars','nebulae'][i]===tab));if(tab==='solar')this.objects=this.solarSystem.map((o,i)=>({...o,angle:Math.random()*Math.PI*2,id:i}));else if(tab==='stars')this.objects=this.nearbyStars.map((o,i)=>({...o,x:Math.random()*400-200,y:Math.random()*400-200,z:Math.random()*200-100,id:i}));else this.objects=this.nebulae.map((o,i)=>({...o,x:Math.random()*500-250,y:Math.random()*500-250,z:Math.random()*150-75,id:i}));this.updateObjectsList();},updateObjectsList(){const list=document.getElementById('space-objects-list');list.innerHTML=this.objects.map(o=>`<div class="space-object-item" onclick="SpaceGallery.focusObject(${o.id})"><div class="space-object-name">${o.name}</div><div class="space-object-type">${o.type}</div></div>`).join('');},focusObject(id){this.selectedObj=this.objects.find(o=>o.id===id);document.querySelectorAll('.space-object-item').forEach((el,i)=>el.classList.toggle('active',i===id));this.showInfo(this.selectedObj);},showInfo(obj){if(!obj)return document.getElementById('space-info').classList.remove('show');const info=document.getElementById('space-info');let html=`<div class="space-info-name">${obj.name}</div><div class="space-info-type">${obj.type}</div><div class="space-info-data">`;if(obj.temp)html+=`Temperature: ${obj.temp}<br>`;if(obj.mass)html+=`Mass: ${obj.mass}<br>`;if(obj.distance!==undefined&&this.currentTab==='solar')html+=`Distance: ${obj.distance}M km<br>`;if(obj.distance&&this.currentTab!=='solar')html+=`Distance: ${obj.distance} ly<br>`;if(obj.orbit)html+=`Orbital Period: ${obj.orbit} years<br>`;if(obj.moons!==undefined)html+=`Moons: ${obj.moons}<br>`;if(obj.size)html+=`Size: ${obj.size} ly<br>`;if(obj.constellation)html+=`Constellation: ${obj.constellation}`;html+=`</div>`;info.innerHTML=html;info.classList.add('show');},onDragStart(e){this.dragStart={x:e.clientX-this.offset.x,y:e.clientY-this.offset.y};},onDrag(e){if(this.dragStart){this.offset.x=e.clientX-this.dragStart.x;this.offset.y=e.clientY-this.dragStart.y;}this.checkHover(e);},onDragEnd(){this.dragStart=null;},onWheel(e){e.preventDefault();this.zoom=Math.max(0.5,Math.min(3,this.zoom-(e.deltaY*0.001)));document.getElementById('zoom-slider').value=this.zoom;},onClick(e){if(this.hoveredObj)this.focusObject(this.hoveredObj.id);},checkHover(e){const rect=this.canvas.getBoundingClientRect();const mx=e.clientX-rect.left,my=e.clientY-rect.top;this.hoveredObj=null;for(const obj of this.objects){const pos=this.getScreenPos(obj);const dist=Math.sqrt((mx-pos.x)**2+(my-pos.y)**2);if(dist<(obj.radius||15)*this.zoom){this.hoveredObj=obj;this.canvas.style.cursor='pointer';return;}}this.canvas.style.cursor=this.dragStart?'grabbing':'grab';},getScreenPos(obj){const cx=this.canvas.width/2+this.offset.x;const cy=this.canvas.height/2+this.offset.y;if(this.currentTab==='solar'){const angle=obj.angle+(obj.orbit?this.rotation*obj.orbit:0);return{x:cx+Math.cos(angle)*obj.distance*this.zoom,y:cy+Math.sin(angle)*obj.distance*this.zoom};}else{const rotX=obj.x*Math.cos(this.rotation)-obj.z*Math.sin(this.rotation);const rotZ=obj.x*Math.sin(this.rotation)+obj.z*Math.cos(this.rotation);return{x:cx+rotX*this.zoom,y:cy+obj.y*this.zoom,z:rotZ};}},animate(){this.ctx.fillStyle='rgba(5,6,14,0.3)';this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);this.rotation+=0.001*this.speed;const sorted=[...this.objects].sort((a,b)=>{const pa=this.getScreenPos(a),pb=this.getScreenPos(b);return(pb.z||0)-(pa.z||0);});sorted.forEach(obj=>{const pos=this.getScreenPos(obj);const r=(obj.radius||15)*this.zoom;const isHovered=this.hoveredObj===obj;const isSelected=this.selectedObj===obj;if(this.currentTab==='solar'&&obj.distance>0){this.ctx.strokeStyle='rgba(255,255,255,0.05)';this.ctx.lineWidth=1;this.ctx.beginPath();this.ctx.arc(this.canvas.width/2+this.offset.x,this.canvas.height/2+this.offset.y,obj.distance*this.zoom,0,Math.PI*2);this.ctx.stroke();}if(isHovered||isSelected){const g=this.ctx.createRadialGradient(pos.x,pos.y,0,pos.x,pos.y,r*2);g.addColorStop(0,obj.color+'44');g.addColorStop(1,'transparent');this.ctx.fillStyle=g;this.ctx.fillRect(pos.x-r*2,pos.y-r*2,r*4,r*4);}const g=this.ctx.createRadialGradient(pos.x-r*0.3,pos.y-r*0.3,0,pos.x,pos.y,r);g.addColorStop(0,obj.color);g.addColorStop(1,obj.color+'88');this.ctx.fillStyle=g;this.ctx.beginPath();this.ctx.arc(pos.x,pos.y,r,0,Math.PI*2);this.ctx.fill();if(obj.rings){this.ctx.strokeStyle=obj.color+'66';this.ctx.lineWidth=r*0.4;this.ctx.beginPath();this.ctx.ellipse(pos.x,pos.y,r*2,r*0.5,0,0,Math.PI*2);this.ctx.stroke();}if(isHovered){this.ctx.fillStyle='#fff';this.ctx.font='12px Orbitron';this.ctx.textAlign='center';this.ctx.fillText(obj.name,pos.x,pos.y-r-10);}});requestAnimationFrame(()=>this.animate());}};
+function openSpaceGallery(){showScreen('space');setTimeout(()=>SpaceGallery.init(),100);}
+function closeSpaceGallery(){showScreen('lobby');}
+function switchSpaceTab(tab){SpaceGallery.loadTab(tab);}
+function resetSpaceView(){SpaceGallery.offset={x:0,y:0};SpaceGallery.zoom=1;SpaceGallery.rotation=0;SpaceGallery.selectedObj=null;document.getElementById('zoom-slider').value=1;document.getElementById('speed-slider').value=1;document.getElementById('space-info').classList.remove('show');document.querySelectorAll('.space-object-item').forEach(el=>el.classList.remove('active'));}
 
 // ═══════════════════════════════════════════════════
 // FIREWORKS ENGINE
