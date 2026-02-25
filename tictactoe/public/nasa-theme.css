@@ -1,0 +1,334 @@
+/* NASA-Style Space UI Theme */
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&display=swap');
+
+:root {
+  --nasa-blue: #00d4ff;
+  --mars-orange: #ff6b35;
+  --earth-teal: #4dffdb;
+  --deep-space: #000510;
+  --hud-border: rgba(0, 212, 255, 0.3);
+  --glass-bg: rgba(0, 5, 16, 0.7);
+}
+
+/* Override base typography */
+body {
+  font-family: 'Space Mono', monospace;
+  background: var(--deep-space);
+}
+
+h1, h2, h3, .brand, .lobby-section-title {
+  font-family: 'Exo 2', sans-serif;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* NASA Corner Brackets */
+.nasa-panel {
+  position: relative;
+  border: 1px solid var(--hud-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+}
+
+.nasa-panel::before,
+.nasa-panel::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--nasa-blue);
+}
+
+.nasa-panel::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.nasa-panel::after {
+  top: -1px;
+  right: -1px;
+  border-left: none;
+  border-bottom: none;
+}
+
+/* Mission Control Label */
+.mission-label {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: var(--nasa-blue);
+  text-align: center;
+  margin-bottom: 1rem;
+  opacity: 0.8;
+}
+
+/* Auth Screen Styling */
+.auth-box {
+  border: 1px solid var(--hud-border) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(15px);
+  position: relative;
+}
+
+.auth-box::before,
+.auth-box::after {
+  content: '';
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  border: 2px solid var(--nasa-blue);
+}
+
+.auth-box::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.auth-box::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+/* Buttons - Mission Style */
+.btn-primary {
+  background: linear-gradient(135deg, var(--nasa-blue), #0099cc) !important;
+  border: 1px solid var(--nasa-blue) !important;
+  font-family: 'Exo 2', sans-serif !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  font-size: 0.85rem !important;
+}
+
+.big-btn-create {
+  background: linear-gradient(135deg, var(--nasa-blue), #0099cc) !important;
+  border: 1px solid var(--nasa-blue) !important;
+}
+
+.big-btn-ai {
+  background: linear-gradient(135deg, var(--mars-orange), #cc5528) !important;
+  border: 1px solid var(--mars-orange) !important;
+}
+
+/* Lobby Card */
+.lobby-card {
+  border: 1px solid var(--hud-border) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Telemetry Stats */
+.stat-pill {
+  font-family: 'Exo 2', sans-serif !important;
+  border: 1px solid var(--hud-border) !important;
+  background: rgba(0, 212, 255, 0.05) !important;
+  letter-spacing: 0.15em;
+}
+
+/* Game Screen - STATIC Background */
+#screen-game {
+  background: var(--deep-space);
+  position: relative;
+}
+
+#screen-game::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(1px 1px at 20% 30%, white, transparent),
+    radial-gradient(1px 1px at 60% 70%, white, transparent),
+    radial-gradient(1px 1px at 50% 50%, white, transparent),
+    radial-gradient(1px 1px at 80% 10%, white, transparent),
+    radial-gradient(1px 1px at 90% 60%, white, transparent),
+    radial-gradient(1px 1px at 33% 80%, white, transparent),
+    radial-gradient(1px 1px at 15% 90%, white, transparent);
+  background-size: 200% 200%;
+  background-position: 0% 0%, 40% 60%, 130% 270%, 70% 100%, 200% 150%, 100% 200%, 50% 250%;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Hide animated canvas during gameplay */
+#screen-game.active ~ #canvas-bg,
+#screen-game.active ~ .aurora {
+  display: none !important;
+}
+
+/* Board - Targeting Grid */
+#board {
+  border: 1px solid var(--hud-border) !important;
+  background: rgba(0, 5, 16, 0.5) !important;
+  position: relative;
+  z-index: 1;
+}
+
+.cell {
+  border: 1px solid rgba(0, 212, 255, 0.2) !important;
+  background: rgba(0, 5, 16, 0.3) !important;
+  position: relative;
+}
+
+.cell::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.1);
+  pointer-events: none;
+}
+
+/* X - Mars Crater Mark */
+.x-sym line {
+  stroke: var(--mars-orange) !important;
+  stroke-width: 6 !important;
+  filter: drop-shadow(0 0 8px var(--mars-orange));
+}
+
+/* O - Orbital Ring */
+.o-sym circle {
+  stroke: var(--earth-teal) !important;
+  stroke-width: 6 !important;
+  filter: drop-shadow(0 0 8px var(--earth-teal));
+}
+
+/* Player Panels - Spacecraft Style */
+.player-panel {
+  border: 1px solid var(--hud-border) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(8px);
+  position: relative;
+}
+
+.player-panel::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 15px;
+  height: 15px;
+  border-top: 2px solid var(--nasa-blue);
+  border-left: 2px solid var(--nasa-blue);
+}
+
+.pp-name {
+  font-family: 'Exo 2', sans-serif !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.9rem !important;
+}
+
+.pp-role {
+  font-size: 0.7rem !important;
+  letter-spacing: 0.15em;
+  opacity: 0.6;
+}
+
+/* Status Indicator */
+#game-status {
+  font-family: 'Exo 2', sans-serif !important;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-size: 0.85rem !important;
+}
+
+#status-dot {
+  width: 8px !important;
+  height: 8px !important;
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* Game Over Overlay - Mission Complete */
+.overlay-result {
+  font-family: 'Exo 2', sans-serif !important;
+  letter-spacing: 0.1em !important;
+}
+
+.overlay-sub {
+  font-family: 'Exo 2', sans-serif !important;
+  letter-spacing: 0.3em !important;
+  font-size: 0.9rem !important;
+  opacity: 0.7;
+}
+
+/* Scan Line Effect */
+.scan-line {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 212, 255, 0.03) 50%,
+    transparent 100%
+  );
+  background-size: 100% 4px;
+  animation: scan 8s linear infinite;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes scan {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100%; }
+}
+
+/* HUD Data Labels */
+.hud-label {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: var(--nasa-blue);
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+/* Waiting Screen */
+.waiting-card {
+  border: 1px solid var(--hud-border) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(15px);
+}
+
+.room-code-display {
+  font-family: 'Exo 2', sans-serif !important;
+  letter-spacing: 0.5em !important;
+  color: var(--nasa-blue) !important;
+  text-shadow: 0 0 20px var(--nasa-blue);
+}
+
+/* Chat - Mission Comms */
+#chat-col {
+  border: 1px solid var(--hud-border) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(8px);
+}
+
+.chat-header {
+  font-family: 'Exo 2', sans-serif !important;
+  letter-spacing: 0.15em;
+  font-size: 0.75rem !important;
+  border-bottom: 1px solid var(--hud-border) !important;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .nasa-panel::before,
+  .nasa-panel::after {
+    width: 15px;
+    height: 15px;
+  }
+  
+  .mission-label {
+    font-size: 0.65rem;
+  }
+}

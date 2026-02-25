@@ -7,10 +7,11 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>TIC · TAC · TOE — Multiplayer</title>
+  <title>TIC · TAC · TOE — Mission Control</title>
   <link
-    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap"
     rel="stylesheet">
+  <link rel="stylesheet" href="/nasa-theme.css">
   <script src="/socket.io/socket.io.js"></script>
   <style>
     *,
@@ -22,15 +23,16 @@
     }
 
     :root {
-      --x: #ff4d6d;
+      --x: #ff6b35;
       --o: #4dffdb;
-      --bg: #05060e;
-      --s1: rgba(255, 255, 255, 0.04);
-      --s2: rgba(255, 255, 255, 0.08);
-      --s3: rgba(255, 255, 255, 0.14);
-      --gx: 0 0 20px #ff4d6d88, 0 0 60px #ff4d6d33;
+      --bg: #000510;
+      --nasa-blue: #00d4ff;
+      --s1: rgba(0, 212, 255, 0.04);
+      --s2: rgba(0, 212, 255, 0.08);
+      --s3: rgba(0, 212, 255, 0.14);
+      --gx: 0 0 20px #ff6b3588, 0 0 60px #ff6b3533;
       --go: 0 0 20px #4dffdb88, 0 0 60px #4dffdb33;
-      --r: 14px;
+      --r: 8px;
     }
 
     html,
@@ -557,7 +559,7 @@
 
     @keyframes brandGlow {
       0% {
-        filter: drop-shadow(0 0 16px #ff4d6d66)
+        filter: drop-shadow(0 0 16px #ff6b3566)
       }
 
       100% {
@@ -1038,11 +1040,11 @@
 
       0%,
       100% {
-        text-shadow: 0 0 20px #ff4d6d88, 0 0 50px #ff4d6d44
+        text-shadow: 0 0 20px #ff6b3588, 0 0 50px #ff6b3544
       }
 
       50% {
-        text-shadow: 0 0 40px #ff4d6dcc, 0 0 90px #ff4d6d66
+        text-shadow: 0 0 40px #ff6b35cc, 0 0 90px #ff6b3566
       }
     }
 
@@ -1992,7 +1994,7 @@
 
     .overlay-result.x-win {
       color: var(--x);
-      text-shadow: 0 0 30px #ff4d6d, 0 0 80px #ff4d6d44;
+      text-shadow: 0 0 30px #ff6b35, 0 0 80px #ff6b3544;
     }
 
     .overlay-result.o-win {
@@ -2054,39 +2056,40 @@
   <div id="screen-auth" class="screen active">
     <div style="display:flex;flex-direction:column;align-items:center;gap:28px">
       <div>
+        <div class="mission-label">◆ MISSION CONTROL ◆</div>
         <div class="brand">Tic · Tac · Toe</div>
-        <div class="brand-sub">Real-time Multiplayer</div>
+        <div class="brand-sub">Tactical Grid Combat System</div>
       </div>
-      <div class="auth-box">
+      <div class="auth-box nasa-panel">
         <div class="tab-bar">
-          <button class="tab-btn active" onclick="switchTab('login')">Sign In</button>
-          <button class="tab-btn" onclick="switchTab('register')">Register</button>
+          <button class="tab-btn active" onclick="switchTab('login')">SIGN IN</button>
+          <button class="tab-btn" onclick="switchTab('register')">REGISTER</button>
         </div>
         <div class="auth-form" id="form-login">
           <div class="field-group">
-            <div class="field-label">Username</div><input class="field-input" id="login-user" type="text"
-              placeholder="your username" autocomplete="username" spellcheck="false">
+            <div class="field-label hud-label">CALLSIGN</div><input class="field-input" id="login-user" type="text"
+              placeholder="enter callsign" autocomplete="username" spellcheck="false">
           </div>
           <div class="field-group">
-            <div class="field-label">Password</div><input class="field-input" id="login-pass" type="password"
+            <div class="field-label hud-label">ACCESS CODE</div><input class="field-input" id="login-pass" type="password"
               placeholder="••••••••" autocomplete="current-password">
           </div>
           <div class="auth-error" id="login-error"></div>
-          <button class="btn btn-primary" onclick="doLogin(this)">Sign In →</button>
+          <button class="btn btn-primary" onclick="doLogin(this)">INITIATE LOGIN →</button>
         </div>
         <div class="auth-form" id="form-register" style="display:none">
           <div class="field-group">
-            <div class="field-label">Username <span style="opacity:0.35;font-size:0.5rem">(3–16 chars)</span></div>
-            <input class="field-input" id="reg-user" type="text" placeholder="choose a username" autocomplete="username"
+            <div class="field-label hud-label">CALLSIGN <span style="opacity:0.35;font-size:0.5rem">(3–16 chars)</span></div>
+            <input class="field-input" id="reg-user" type="text" placeholder="choose callsign" autocomplete="username"
               spellcheck="false">
           </div>
           <div class="field-group">
-            <div class="field-label">Password <span style="opacity:0.35;font-size:0.5rem">(min 8 chars)</span></div>
-            <input class="field-input" id="reg-pass" type="password" placeholder="choose a password"
+            <div class="field-label hud-label">ACCESS CODE <span style="opacity:0.35;font-size:0.5rem">(min 8 chars)</span></div>
+            <input class="field-input" id="reg-pass" type="password" placeholder="set access code"
               autocomplete="new-password">
           </div>
           <div class="auth-error" id="reg-error"></div>
-          <button class="btn btn-primary" onclick="doRegister(this)">Create Account →</button>
+          <button class="btn btn-primary" onclick="doRegister(this)">REGISTER OPERATOR →</button>
         </div>
       </div>
     </div>
@@ -2096,38 +2099,38 @@
   <div id="screen-lobby" class="screen">
     <div style="display:flex;flex-direction:column;align-items:center;gap:18px;width:100%">
       <div class="lobby-top">
-        <div class="brand" style="font-size:1.2rem;letter-spacing:0.2em">Tic · Tac · Toe</div>
+        <div class="mission-label">◆ MISSION CONTROL ◆</div>
         <div style="display:flex;align-items:center;gap:10px">
           <button class="icon-btn" onclick="openSpaceGallery()" title="Space Gallery">🌌</button>
           <div class="user-chip">
             <div class="user-avatar" id="lobby-avatar">?</div>
             <div class="user-name" id="lobby-username">–</div>
           </div>
-          <button class="logout-btn" onclick="doLogout()">Logout</button>
+          <button class="logout-btn" onclick="doLogout()">LOGOUT</button>
         </div>
       </div>
       <div style="display:flex;gap:8px">
-        <div class="stat-pill w">W: <span id="stat-w">0</span></div>
-        <div class="stat-pill d">D: <span id="stat-d">0</span></div>
-        <div class="stat-pill l">L: <span id="stat-l">0</span></div>
+        <div class="stat-pill w hud-label">W-<span id="stat-w">00</span></div>
+        <div class="stat-pill d hud-label">D-<span id="stat-d">00</span></div>
+        <div class="stat-pill l hud-label">L-<span id="stat-l">00</span></div>
       </div>
-      <div class="lobby-card">
+      <div class="lobby-card nasa-panel">
         <div class="lobby-section">
-          <div class="lobby-section-title">⚔ Online Multiplayer</div>
+          <div class="lobby-section-title">🚀 MULTIPLAYER MISSION</div>
           <div class="lobby-modes">
-            <button class="big-btn big-btn-create" onclick="createRoom()"><span>+</span> Create Room</button>
+            <button class="big-btn big-btn-create" onclick="createRoom()"><span>+</span> LAUNCH ROOM</button>
             <div style="display:flex;flex-direction:column;gap:8px">
               <div class="join-row">
                 <input class="join-input" id="join-code" maxlength="4" placeholder="CODE" spellcheck="false">
-                <button class="btn-join" onclick="joinRoom()">Join →</button>
+                <button class="btn-join" onclick="joinRoom()">DOCK →</button>
               </div>
               <div class="lobby-error" id="lobby-error"></div>
             </div>
           </div>
         </div>
         <div class="lobby-section">
-          <div class="lobby-section-title">🤖 Solo Play</div>
-          <button class="big-btn big-btn-ai" onclick="startAI()">Play vs AI</button>
+          <div class="lobby-section-title">🤖 TRAINING MODE</div>
+          <button class="big-btn big-btn-ai" onclick="startAI()">ENGAGE AI</button>
         </div>
       </div>
     </div>
@@ -2835,8 +2838,8 @@
       socket.on('game:turn', ({ currentTurn }) => { S.currentTurn = currentTurn; updateGameStatus(); updatePanelHighlight(); S.ghostSym = currentTurn; updateGhosts(); });
       socket.on('game:over', ({ winner, line, draw, scores }) => {
         S.scores = scores; S.gameActive = false; updateScoreUI();
-        if (line) { highlightWin(line, winner); drawWinLine(line, winner === 'X' ? '#ff4d6d' : '#4dffdb'); }
-        if (winner) { const c = winner === 'X' ? '#ff4d6d' : '#4dffdb'; screenFlash(c + '44'); FW.launch(c, winner === 'X' ? '#ff7b93' : '#7bffec'); }
+        if (line) { highlightWin(line, winner); drawWinLine(line, winner === 'X' ? '#ff6b35' : '#4dffdb'); }
+        if (winner) { const c = winner === 'X' ? '#ff6b35' : '#4dffdb'; screenFlash(c + '44'); FW.launch(c, winner === 'X' ? '#ff9966' : '#7bffec'); }
         setTimeout(() => showGameOver(winner, draw), 900);
       });
       socket.on('game:error', msg => showToast(msg));
@@ -2906,7 +2909,7 @@
         if (S.mode === 'ai') {
           if (S.currentTurn !== 'X') return;
           S.board[i] = 'X'; renderCell(i, 'X');
-          const wl = winLocal(S.board, 'X'); if (wl) { S.gameActive = false; highlightWin(wl, 'X'); drawWinLine(wl, '#ff4d6d'); S.aiScores.X++; S.scores = { ...S.aiScores }; updateScoreUI(); screenFlash('#ff4d6d44'); FW.launch('#ff4d6d', '#ff7b93'); setTimeout(() => showGameOver('X', false), 900); return; }
+          const wl = winLocal(S.board, 'X'); if (wl) { S.gameActive = false; highlightWin(wl, 'X'); drawWinLine(wl, '#ff6b35'); S.aiScores.X++; S.scores = { ...S.aiScores }; updateScoreUI(); screenFlash('#ff6b3544'); FW.launch('#ff6b35', '#ff7b93'); setTimeout(() => showGameOver('X', false), 900); return; }
           if (S.board.every(Boolean)) { S.gameActive = false; S.aiScores.D++; S.scores = { ...S.aiScores }; updateScoreUI(); setTimeout(() => showGameOver(null, true), 500); return; }
           S.currentTurn = 'O'; S.ghostSym = 'O'; updateGameStatus(); updatePanelHighlight(); updateGhosts(); setTimeout(aiMove, 440);
         } else if (S.mode === 'online') {
@@ -2918,7 +2921,7 @@
         const cell = document.querySelector(`.cell[data-i="${i}"]`); if (!cell) return;
         cell.classList.add('taken', player === 'X' ? 'x-cell' : 'o-cell', 'just-placed');
         cell.innerHTML = player === 'X' ? `<svg class="symbol x-sym" viewBox="0 0 50 50"><line x1="11" y1="11" x2="39" y2="39"/><line x1="39" y1="11" x2="11" y2="39"/></svg>` : `<svg class="symbol o-sym" viewBox="0 0 50 50"><circle cx="25" cy="25" r="16"/></svg>`;
-        const r = document.createElement('div'); r.className = 'ripple'; r.style.background = player === 'X' ? '#ff4d6d' : '#4dffdb'; cell.appendChild(r);
+        const r = document.createElement('div'); r.className = 'ripple'; r.style.background = player === 'X' ? '#ff6b35' : '#4dffdb'; cell.appendChild(r);
         r.addEventListener('animationend', () => r.remove());
         cell.addEventListener('animationend', () => cell.classList.remove('just-placed'), { once: true });
         if (S.mode === 'online') { S.ghostSym = player === 'X' ? 'O' : 'X'; updateGhosts(); }
@@ -2930,7 +2933,7 @@
       }
       function updateGameStatus() {
         const dot = document.getElementById('status-dot'), txt = document.getElementById('status-text');
-        const isX = S.currentTurn === 'X', color = isX ? '#ff4d6d' : '#4dffdb';
+        const isX = S.currentTurn === 'X', color = isX ? '#ff6b35' : '#4dffdb';
         dot.style.background = color; dot.style.boxShadow = `0 0 8px ${color}`;
         txt.textContent = S.mode === 'online' ? (S.currentTurn === S.mySymbol ? 'Your turn' : "Opponent's turn") : (isX ? 'Your turn' : 'AI thinking…');
         document.getElementById('game-status').style.color = color;
@@ -2947,10 +2950,10 @@
         const ov = document.getElementById('overlay'), res = document.getElementById('ov-result'), sub = document.getElementById('ov-sub'), sc = document.getElementById('ov-score'), rm = document.getElementById('ov-rematch'), acts = document.getElementById('ov-actions'), glow = document.getElementById('ov-glow'), em = document.getElementById('ov-emoji');
         rm.textContent = ''; res.className = 'overlay-result';
         const scores = S.mode === 'ai' ? S.aiScores : S.scores; sc.textContent = `X ${scores.X}  —  D ${scores.D}  —  O ${scores.O}`;
-        if (isDraw || !winner) { em.textContent = '🤝'; res.textContent = "It's a Draw!"; res.classList.add('draw'); sub.textContent = 'STALEMATE'; glow.style.background = '#888'; triggerRings('d'); }
-        else if (winner === 'X') { const w = S.mode === 'ai' || S.mySymbol === 'X'; em.textContent = w ? '🏆' : '❌'; res.textContent = w ? 'You Win!' : 'X Wins!'; res.classList.add('x-win'); sub.textContent = w ? 'VICTORY' : 'X WINS'; glow.style.background = '#ff4d6d'; triggerRings('x'); }
-        else { const w = S.mode !== 'ai' && S.mySymbol === 'O'; em.textContent = S.mode === 'ai' ? '🤖' : (w ? '🏆' : '⭕'); res.textContent = S.mode === 'ai' ? 'AI Wins!' : (w ? 'You Win!' : 'O Wins!'); res.classList.add('o-win'); sub.textContent = S.mode === 'ai' ? 'DEFEATED' : (w ? 'VICTORY' : 'O WINS'); glow.style.background = '#4dffdb'; triggerRings('o'); }
-        acts.innerHTML = S.mode === 'ai' ? `<button class="btn btn-primary" onclick="newAIGame()">Play Again</button><button class="btn" onclick="leaveGame()">Lobby</button>` : `<button class="btn btn-primary" id="btn-rematch" onclick="requestRematch()">Rematch</button><button class="btn" onclick="leaveGame()">Leave</button>`;
+        if (isDraw || !winner) { em.textContent = '🤝'; res.textContent = "STANDOFF"; res.classList.add('draw'); sub.textContent = 'MISSION DRAW'; glow.style.background = '#888'; triggerRings('d'); }
+        else if (winner === 'X') { const w = S.mode === 'ai' || S.mySymbol === 'X'; em.textContent = w ? '🏆' : '❌'; res.textContent = w ? 'MISSION COMPLETE' : 'X WINS'; res.classList.add('x-win'); sub.textContent = w ? 'VICTORY ACHIEVED' : 'MISSION FAILED'; glow.style.background = '#ff6b35'; triggerRings('x'); }
+        else { const w = S.mode !== 'ai' && S.mySymbol === 'O'; em.textContent = S.mode === 'ai' ? '🤖' : (w ? '🏆' : '⭕'); res.textContent = S.mode === 'ai' ? 'MISSION FAILED' : (w ? 'MISSION COMPLETE' : 'O WINS'); res.classList.add('o-win'); sub.textContent = S.mode === 'ai' ? 'AI VICTORY' : (w ? 'VICTORY ACHIEVED' : 'MISSION FAILED'); glow.style.background = '#4dffdb'; triggerRings('o'); }
+        acts.innerHTML = S.mode === 'ai' ? `<button class="btn btn-primary" onclick="newAIGame()">RE-ENGAGE</button><button class="btn" onclick="leaveGame()">ABORT</button>` : `<button class="btn btn-primary" id="btn-rematch" onclick="requestRematch()">RE-ENGAGE</button><button class="btn" onclick="leaveGame()">ABORT</button>`;
         ov.classList.add('show');
       }
       function requestRematch() { socket.emit('game:rematch', { code: S.roomCode }); document.getElementById('btn-rematch').textContent = 'Waiting…'; document.getElementById('btn-rematch').disabled = true; document.getElementById('ov-rematch').textContent = 'Waiting for opponent…'; }
