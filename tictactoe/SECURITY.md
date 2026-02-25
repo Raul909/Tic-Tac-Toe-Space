@@ -93,12 +93,31 @@ git rm --cached .env
 git commit -m "Remove .env from tracking"
 ```
 
-## 🚨 If You Accidentally Committed Secrets
+## 🚨 If You Accidentally Exposed Secrets
 
-1. **Rotate credentials immediately**
-   - Change MongoDB password
-   - Generate new API keys
+### IMMEDIATE ACTIONS:
+
+1. **Revoke the exposed credential IMMEDIATELY**
+   - MongoDB: Change password in Atlas
+   - API Keys: Revoke and generate new one
+   - AWS: Rotate access keys
    
+2. **Generate new credentials**
+   - Use strong, unique values
+   - Store in `.env` (local) or Render Environment (production)
+   
+3. **Never reuse exposed credentials**
+   - Assume they are compromised
+   - Create completely new ones
+
+### If Exposed in Chat/Email:
+- ❌ The key is now public and compromised
+- ✅ Revoke it immediately
+- ✅ Generate a new one
+- ✅ Never share the new one
+
+### If Committed to GitHub:
+1. **Revoke credentials immediately**
 2. **Remove from git history**
    ```bash
    git filter-branch --force --index-filter \
@@ -107,12 +126,72 @@ git commit -m "Remove .env from tracking"
    
    git push origin --force --all
    ```
-
 3. **Verify removal**
    ```bash
    git log --all --full-history -- .env
-   # Should show nothing
    ```
+
+## 🔐 API Key Management
+
+### Where to Store API Keys:
+
+**Local Development:**
+```bash
+# .env file (in .gitignore)
+MODEL_API_KEY=your_actual_key_here
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+```
+
+**Production (Render):**
+```
+Dashboard → Environment → Add Variable
+Key: MODEL_API_KEY
+Value: your_actual_key_here
+```
+
+**In Code (Safe):**
+```javascript
+// ✅ CORRECT - Read from environment
+const apiKey = process.env.MODEL_API_KEY;
+
+// ❌ WRONG - Hardcoded
+const apiKey = 'al-aFvshpCZKWLI1eqg2Xd0W85dk8d3YClhF4BQ87Er0Wc';
+```
+
+## ⚠️ Common Mistakes to Avoid
+
+### ❌ DON'T:
+- Share keys in chat, email, or messages
+- Commit `.env` files to git
+- Hardcode keys in source code
+- Screenshot keys and share images
+- Post keys in forums or Stack Overflow
+- Share keys with team members directly
+
+### ✅ DO:
+- Use environment variables
+- Keep `.env` in `.gitignore`
+- Use secret management tools
+- Rotate keys regularly
+- Use different keys for dev/staging/prod
+- Share keys through secure password managers
+
+## 🛡️ Security Checklist
+
+Before committing code:
+- [ ] No hardcoded passwords
+- [ ] No API keys in code
+- [ ] `.env` in `.gitignore`
+- [ ] No connection strings in code
+- [ ] No AWS credentials in code
+- [ ] All secrets in environment variables
+
+## 📝 Remember
+
+**If you can see it in your code, so can everyone else on GitHub!**
+
+Use environment variables for ALL secrets.
 
 ## ✅ Current Status
 
