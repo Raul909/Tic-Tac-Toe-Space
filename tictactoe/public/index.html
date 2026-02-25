@@ -584,8 +584,8 @@ const S={token:null,username:null,stats:{wins:0,losses:0,draws:0},mode:null,room
 // SOCKET
 // ═══════════════════════════════════════════════════
 const socket=io({autoConnect:true,reconnectionAttempts:5,withCredentials:true});
-socket.on('connect',()=>{const t=getCookie('session');if(t)socket.emit('auth',{token:t});});
-socket.on('auth:ok',d=>{S.username=d.username;S.stats=d.stats;S.token=getCookie('session');updateLobbyUI();showScreen('lobby');});
+socket.on('connect',()=>{const t=S.token||localStorage.getItem('token');if(t)socket.emit('auth',{token:t});});
+socket.on('auth:ok',d=>{S.username=d.username;S.stats=d.stats;updateLobbyUI();showScreen('lobby');});
 socket.on('auth:error',msg=>{showToast(msg);doLogout();});
 socket.on('room:created',({code,symbol})=>{S.roomCode=code;S.mySymbol=symbol;document.getElementById('waiting-code').textContent=code;showScreen('waiting');});
 socket.on('room:error',msg=>{document.getElementById('lobby-error').textContent=msg;setTimeout(()=>document.getElementById('lobby-error').textContent='',3500);});
@@ -612,8 +612,8 @@ function getCookie(name){const v=`; ${document.cookie}`;const p=v.split(`; ${nam
 function switchTab(t){document.getElementById('form-login').style.display=t==='login'?'flex':'none';document.getElementById('form-register').style.display=t==='register'?'flex':'none';document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&t==='login')||(i===1&&t==='register')));}
 async function doLogin(){const u=document.getElementById('login-user').value.trim(),p=document.getElementById('login-pass').value,e=document.getElementById('login-error');e.textContent='';if(!u||!p)return;const r=await fetchJSON('/api/login',{username:u,password:p});if(!r.ok){e.textContent=r.error;e.classList.remove('shake');void e.offsetWidth;e.classList.add('shake');return;}storeSession(r);}
 async function doRegister(){const u=document.getElementById('reg-user').value.trim(),p=document.getElementById('reg-pass').value,e=document.getElementById('reg-error');e.textContent='';if(!u||!p)return;const r=await fetchJSON('/api/register',{username:u,password:p});if(!r.ok){e.textContent=r.error;e.classList.remove('shake');void e.offsetWidth;e.classList.add('shake');return;}storeSession(r);}
-function storeSession({username,stats}){S.username=username;S.stats=stats;S.token=getCookie('session');socket.emit('auth',{token:S.token});}
-async function doLogout(){await fetch('/api/logout',{method:'POST',credentials:'include'});S.token=S.username=null;showScreen('auth');}
+function storeSession({token,username,stats}){S.token=token;S.username=username;S.stats=stats;localStorage.setItem('token',token);socket.emit('auth',{token});}
+async function doLogout(){await fetch('/api/logout',{method:'POST',credentials:'include'});S.token=S.username=null;localStorage.removeItem('token');showScreen('auth');}
 function updateLobbyUI(){document.getElementById('lobby-username').textContent=S.username;document.getElementById('lobby-avatar').textContent=S.username?.[0]?.toUpperCase()||'?';document.getElementById('stat-w').textContent=S.stats?.wins||0;document.getElementById('stat-d').textContent=S.stats?.draws||0;document.getElementById('stat-l').textContent=S.stats?.losses||0;}
 async function fetchJSON(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)});return r.json();}
 
@@ -735,7 +735,7 @@ function showScreen(n){document.querySelectorAll('.screen').forEach(s=>s.classLi
 let toastTimer;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3000);}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'){const a=document.querySelector('.screen.active')?.id;if(a==='screen-auth')(document.querySelector('.tab-btn.active')?.textContent==='Sign In'?doLogin:doRegister)();}});
-(function init(){const s=getCookie('session');if(s){S.token=s;socket.emit('auth',{token:s});}})();
+(function init(){const s=localStorage.getItem('token');if(s){S.token=s;socket.emit('auth',{token:s});}})();
 </script>
 </body>
 </html>

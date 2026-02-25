@@ -139,7 +139,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
   const { wins, losses, draws } = users[key];
-  res.json({ ok: true, username: users[key].displayName, stats: { wins, losses, draws } });
+  res.json({ ok: true, token, username: users[key].displayName, stats: { wins, losses, draws } });
 });
 
 app.post('/api/login', authLimiter, async (req, res) => {
@@ -162,7 +162,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
   const { wins, losses, draws } = user;
-  res.json({ ok: true, username: user.displayName, stats: { wins, losses, draws } });
+  res.json({ ok: true, token, username: user.displayName, stats: { wins, losses, draws } });
 });
 
 app.post('/api/logout', (req, res) => {
