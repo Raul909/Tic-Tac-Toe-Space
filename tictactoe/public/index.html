@@ -23,16 +23,15 @@
     }
 
     :root {
-      --x: #ff6b35;
+      --x: #ff4d6d;
       --o: #4dffdb;
-      --bg: #000510;
-      --nasa-blue: #00d4ff;
-      --s1: rgba(0, 212, 255, 0.04);
-      --s2: rgba(0, 212, 255, 0.08);
-      --s3: rgba(0, 212, 255, 0.14);
-      --gx: 0 0 20px #ff6b3588, 0 0 60px #ff6b3533;
+      --bg: #05060e;
+      --s1: rgba(255, 255, 255, 0.04);
+      --s2: rgba(255, 255, 255, 0.08);
+      --s3: rgba(255, 255, 255, 0.14);
+      --gx: 0 0 20px #ff4d6d88, 0 0 60px #ff4d6d33;
       --go: 0 0 20px #4dffdb88, 0 0 60px #4dffdb33;
-      --r: 8px;
+      --r: 14px;
     }
 
     html,
@@ -559,7 +558,7 @@
 
     @keyframes brandGlow {
       0% {
-        filter: drop-shadow(0 0 16px #ff6b3566)
+        filter: drop-shadow(0 0 16px #ff4d6d66)
       }
 
       100% {
@@ -1040,11 +1039,11 @@
 
       0%,
       100% {
-        text-shadow: 0 0 20px #ff6b3588, 0 0 50px #ff6b3544
+        text-shadow: 0 0 20px #ff4d6d88, 0 0 50px #ff4d6d44
       }
 
       50% {
-        text-shadow: 0 0 40px #ff6b35cc, 0 0 90px #ff6b3566
+        text-shadow: 0 0 40px #ff4d6dcc, 0 0 90px #ff4d6d66
       }
     }
 
@@ -1994,7 +1993,7 @@
 
     .overlay-result.x-win {
       color: var(--x);
-      text-shadow: 0 0 30px #ff6b35, 0 0 80px #ff6b3544;
+      text-shadow: 0 0 30px #ff4d6d, 0 0 80px #ff4d6d44;
     }
 
     .overlay-result.o-win {
@@ -2056,14 +2055,13 @@
   <div id="screen-auth" class="screen active">
     <div style="display:flex;flex-direction:column;align-items:center;gap:28px">
       <div>
-        <div class="mission-label">◆ MISSION CONTROL ◆</div>
         <div class="brand">Tic · Tac · Toe</div>
-        <div class="brand-sub">Tactical Grid Combat</div>
+        <div class="brand-sub">Real-time Multiplayer</div>
       </div>
-      <div class="auth-box nasa-panel">
+      <div class="auth-box">
         <div class="tab-bar">
-          <button class="tab-btn active" onclick="switchTab('login')">SIGN IN</button>
-          <button class="tab-btn" onclick="switchTab('register')">REGISTER</button>
+          <button class="tab-btn active" onclick="switchTab('login')">Sign In</button>
+          <button class="tab-btn" onclick="switchTab('register')">Register</button>
         </div>
         <div class="auth-form" id="form-login">
           <div class="field-group">
@@ -2838,8 +2836,8 @@
       socket.on('game:turn', ({ currentTurn }) => { S.currentTurn = currentTurn; updateGameStatus(); updatePanelHighlight(); S.ghostSym = currentTurn; updateGhosts(); });
       socket.on('game:over', ({ winner, line, draw, scores }) => {
         S.scores = scores; S.gameActive = false; updateScoreUI();
-        if (line) { highlightWin(line, winner); drawWinLine(line, winner === 'X' ? '#ff6b35' : '#4dffdb'); }
-        if (winner) { const c = winner === 'X' ? '#ff6b35' : '#4dffdb'; screenFlash(c + '44'); FW.launch(c, winner === 'X' ? '#ff7b93' : '#7bffec'); }
+        if (line) { highlightWin(line, winner); drawWinLine(line, winner === 'X' ? '#ff4d6d' : '#4dffdb'); }
+        if (winner) { const c = winner === 'X' ? '#ff4d6d' : '#4dffdb'; screenFlash(c + '44'); FW.launch(c, winner === 'X' ? '#ff7b93' : '#7bffec'); }
         setTimeout(() => showGameOver(winner, draw), 900);
       });
       socket.on('game:error', msg => showToast(msg));
@@ -2859,11 +2857,6 @@
       async function doLogout() { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); S.token = S.username = null; localStorage.removeItem('token'); showScreen('auth'); }
       function updateLobbyUI() { document.getElementById('lobby-username').textContent = S.username; document.getElementById('lobby-avatar').textContent = S.username?.[0]?.toUpperCase() || '?'; document.getElementById('stat-w').textContent = S.stats?.wins || 0; document.getElementById('stat-d').textContent = S.stats?.draws || 0; document.getElementById('stat-l').textContent = S.stats?.losses || 0; }
       async function fetchJSON(url, body) { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) }); return r.json(); }
-      
-      // Make functions globally accessible
-      window.switchTab = switchTab;
-      window.doLogin = doLogin;
-      window.doRegister = doRegister;
 
       // ═══════════════════════════════════════════════════
       // LOBBY
@@ -2914,7 +2907,7 @@
         if (S.mode === 'ai') {
           if (S.currentTurn !== 'X') return;
           S.board[i] = 'X'; renderCell(i, 'X');
-          const wl = winLocal(S.board, 'X'); if (wl) { S.gameActive = false; highlightWin(wl, 'X'); drawWinLine(wl, '#ff6b35'); S.aiScores.X++; S.scores = { ...S.aiScores }; updateScoreUI(); screenFlash('#ff6b3544'); FW.launch('#ff6b35', '#ff7b93'); setTimeout(() => showGameOver('X', false), 900); return; }
+          const wl = winLocal(S.board, 'X'); if (wl) { S.gameActive = false; highlightWin(wl, 'X'); drawWinLine(wl, '#ff4d6d'); S.aiScores.X++; S.scores = { ...S.aiScores }; updateScoreUI(); screenFlash('#ff4d6d44'); FW.launch('#ff4d6d', '#ff7b93'); setTimeout(() => showGameOver('X', false), 900); return; }
           if (S.board.every(Boolean)) { S.gameActive = false; S.aiScores.D++; S.scores = { ...S.aiScores }; updateScoreUI(); setTimeout(() => showGameOver(null, true), 500); return; }
           S.currentTurn = 'O'; S.ghostSym = 'O'; updateGameStatus(); updatePanelHighlight(); updateGhosts(); setTimeout(aiMove, 440);
         } else if (S.mode === 'online') {
@@ -2926,7 +2919,7 @@
         const cell = document.querySelector(`.cell[data-i="${i}"]`); if (!cell) return;
         cell.classList.add('taken', player === 'X' ? 'x-cell' : 'o-cell', 'just-placed');
         cell.innerHTML = player === 'X' ? `<svg class="symbol x-sym" viewBox="0 0 50 50"><line x1="11" y1="11" x2="39" y2="39"/><line x1="39" y1="11" x2="11" y2="39"/></svg>` : `<svg class="symbol o-sym" viewBox="0 0 50 50"><circle cx="25" cy="25" r="16"/></svg>`;
-        const r = document.createElement('div'); r.className = 'ripple'; r.style.background = player === 'X' ? '#ff6b35' : '#4dffdb'; cell.appendChild(r);
+        const r = document.createElement('div'); r.className = 'ripple'; r.style.background = player === 'X' ? '#ff4d6d' : '#4dffdb'; cell.appendChild(r);
         r.addEventListener('animationend', () => r.remove());
         cell.addEventListener('animationend', () => cell.classList.remove('just-placed'), { once: true });
         if (S.mode === 'online') { S.ghostSym = player === 'X' ? 'O' : 'X'; updateGhosts(); }
@@ -2938,7 +2931,7 @@
       }
       function updateGameStatus() {
         const dot = document.getElementById('status-dot'), txt = document.getElementById('status-text');
-        const isX = S.currentTurn === 'X', color = isX ? '#ff6b35' : '#4dffdb';
+        const isX = S.currentTurn === 'X', color = isX ? '#ff4d6d' : '#4dffdb';
         dot.style.background = color; dot.style.boxShadow = `0 0 8px ${color}`;
         txt.textContent = S.mode === 'online' ? (S.currentTurn === S.mySymbol ? 'Your turn' : "Opponent's turn") : (isX ? 'Your turn' : 'AI thinking…');
         document.getElementById('game-status').style.color = color;
@@ -2956,7 +2949,7 @@
         rm.textContent = ''; res.className = 'overlay-result';
         const scores = S.mode === 'ai' ? S.aiScores : S.scores; sc.textContent = `X ${scores.X}  —  D ${scores.D}  —  O ${scores.O}`;
         if (isDraw || !winner) { em.textContent = '🤝'; res.textContent = "It's a Draw!"; res.classList.add('draw'); sub.textContent = 'STALEMATE'; glow.style.background = '#888'; triggerRings('d'); }
-        else if (winner === 'X') { const w = S.mode === 'ai' || S.mySymbol === 'X'; em.textContent = w ? '🏆' : '❌'; res.textContent = w ? 'You Win!' : 'X Wins!'; res.classList.add('x-win'); sub.textContent = w ? 'VICTORY' : 'X WINS'; glow.style.background = '#ff6b35'; triggerRings('x'); }
+        else if (winner === 'X') { const w = S.mode === 'ai' || S.mySymbol === 'X'; em.textContent = w ? '🏆' : '❌'; res.textContent = w ? 'You Win!' : 'X Wins!'; res.classList.add('x-win'); sub.textContent = w ? 'VICTORY' : 'X WINS'; glow.style.background = '#ff4d6d'; triggerRings('x'); }
         else { const w = S.mode !== 'ai' && S.mySymbol === 'O'; em.textContent = S.mode === 'ai' ? '🤖' : (w ? '🏆' : '⭕'); res.textContent = S.mode === 'ai' ? 'AI Wins!' : (w ? 'You Win!' : 'O Wins!'); res.classList.add('o-win'); sub.textContent = S.mode === 'ai' ? 'DEFEATED' : (w ? 'VICTORY' : 'O WINS'); glow.style.background = '#4dffdb'; triggerRings('o'); }
         acts.innerHTML = S.mode === 'ai' ? `<button class="btn btn-primary" onclick="newAIGame()">Play Again</button><button class="btn" onclick="leaveGame()">Lobby</button>` : `<button class="btn btn-primary" id="btn-rematch" onclick="requestRematch()">Rematch</button><button class="btn" onclick="leaveGame()">Leave</button>`;
         ov.classList.add('show');
@@ -2982,7 +2975,7 @@
       function showScreen(n) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); const t = document.getElementById(`screen-${n}`); if (t) t.classList.add('active'); }
       let toastTimer;
       function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3000); }
-      document.addEventListener('keydown', e => { if (e.key === 'Enter') { const a = document.querySelector('.screen.active')?.id; if (a === 'screen-auth') (document.querySelector('.tab-btn.active')?.textContent.includes('SIGN') ? doLogin : doRegister)(); } });
+      document.addEventListener('keydown', e => { if (e.key === 'Enter') { const a = document.querySelector('.screen.active')?.id; if (a === 'screen-auth') (document.querySelector('.tab-btn.active')?.textContent === 'Sign In' ? doLogin : doRegister)(); } });
       (function init() { const s = localStorage.getItem('token'); if (s) { S.token = s; socket.emit('auth', { token: s }); } })();
   </script>
 </body>
