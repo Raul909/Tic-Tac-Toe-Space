@@ -24,8 +24,23 @@
   </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Space+Mono&display=swap');
-    body { font-family: 'Space Mono', monospace; }
+    
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body { 
+      font-family: 'Space Mono', monospace;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
     h1, h2, h3 { font-family: 'Exo 2', sans-serif; }
+    
+    button, a, [x-on\\:click] {
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
     
     #three-canvas {
       position: fixed;
@@ -34,11 +49,16 @@
       width: 100%;
       height: 100%;
       z-index: 0;
+      will-change: transform;
+      transform: translateZ(0);
     }
     
     .content-layer {
       position: relative;
       z-index: 1;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      -webkit-font-smoothing: antialiased;
     }
     
     .nasa-bracket {
@@ -68,7 +88,10 @@
     .glass {
       background: rgba(0, 5, 16, 0.85);
       backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
       border: 1px solid rgba(0, 212, 255, 0.3);
+      will-change: transform;
+      transform: translateZ(0);
     }
     
     @keyframes scan {
