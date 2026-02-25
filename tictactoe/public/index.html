@@ -857,7 +857,7 @@ socket.on('auth:error',msg=>{showToast(msg);doLogout();});
 socket.on('room:created',({code,symbol})=>{S.roomCode=code;S.mySymbol=symbol;document.getElementById('waiting-code').textContent=code;showScreen('waiting');});
 socket.on('room:error',msg=>{document.getElementById('lobby-error').textContent=msg;setTimeout(()=>document.getElementById('lobby-error').textContent='',3500);});
 socket.on('room:joined',({code,symbol})=>{S.roomCode=code;S.mySymbol=symbol;});
-socket.on('game:start',d=>{S.board=d.board;S.currentTurn=d.currentTurn;S.players=d.players;S.scores=d.scores;S.gameActive=true;S.mode='online';initOnlineGame();showScreen('game');});
+socket.on('game:start',d=>{S.board=d.board;S.currentTurn=d.currentTurn;S.players=d.players;S.scores=d.scores;S.gameActive=true;S.mode='online';const me=d.players.find(p=>p.name===S.username);if(me)S.mySymbol=me.symbol;initOnlineGame();showScreen('game');});
 socket.on('game:move',({index,symbol})=>{S.board[index]=symbol;renderCell(index,symbol);});
 socket.on('game:turn',({currentTurn})=>{S.currentTurn=currentTurn;updateGameStatus();updatePanelHighlight();S.ghostSym=currentTurn;updateGhosts();});
 socket.on('game:over',({winner,line,draw,scores})=>{
@@ -906,7 +906,7 @@ function aiMove(){if(!S.gameActive||S.mode!=='ai'||S.currentTurn!=='O')return;co
 // ═══════════════════════════════════════════════════
 // GAME INIT
 // ═══════════════════════════════════════════════════
-function initOnlineGame(){clearWinLine();FW.stop();buildBoard();updateNameBanners();updatePanelHighlight();updateGameStatus();updateScoreUI();document.getElementById('btn-new-ai').style.display='none';document.getElementById('chat-col').style.display='flex';document.getElementById('chat-messages').innerHTML='';S.ghostSym=S.mySymbol;addChat('System','Game started! Good luck.','sys');}
+function initOnlineGame(){document.getElementById('overlay').classList.remove('show');clearWinLine();FW.stop();buildBoard();updateNameBanners();updatePanelHighlight();updateGameStatus();updateScoreUI();document.getElementById('btn-new-ai').style.display='none';document.getElementById('chat-col').style.display='flex';S.ghostSym=S.mySymbol;addChat('System','Game started! Good luck.','sys');}
 
 // ═══════════════════════════════════════════════════
 // BOARD + CELLS
