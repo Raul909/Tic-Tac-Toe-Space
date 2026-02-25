@@ -1,8 +1,8 @@
-# ✅ MongoDB Connection Verified!
+# ✅ MongoDB Connection Verified
 
 ## 🎉 Status: WORKING
 
-### Connection Test Results:
+### Connection Test Results
 
 ```
 ✅ Connected to MongoDB
@@ -10,13 +10,14 @@
 ✅ Data saved to MongoDB Atlas
 ```
 
-### Test User Created:
+### Test User Created
+
 - Username: `mongotest`
 - Stored in: MongoDB Atlas → Cluster0 → tictactoe database → users collection
 
-## 🔍 Verify in MongoDB Atlas:
+## 🔍 Verify in MongoDB Atlas
 
-1. Go to https://cloud.mongodb.com/
+1. Go to <https://cloud.mongodb.com/>
 2. Click **"Database"** → **"Browse Collections"**
 3. Select **Cluster0**
 4. You should see:
@@ -24,15 +25,14 @@
    - Collection: `users`
    - Document: `mongotest` user
 
-## 🔧 Issue Fixed:
+## 🔧 Issue Fixed
 
 **Problem:** Password contained `@` symbol which broke the connection string
 
-**Solution:** URL encoded the password
-- Before: `Iamraul@876`
-- After: `Iamraul%40876`
+**Solution:** URL-encode any special characters in your password (e.g. `@` → `%40`)
 
-### URL Encoding Reference:
+### URL Encoding Reference
+
 - `@` → `%40`
 - `#` → `%23`
 - `$` → `%24`
@@ -44,22 +44,23 @@
 - `=` → `%3D`
 - `?` → `%3F`
 
-## 🚀 Next Steps:
+## 🚀 Next Steps
 
-### 1. Add to Render Environment:
+### 1. Add to Render Environment
 
 Go to Render Dashboard → Environment → Add Variable:
 
 **Key:** `MONGODB_URI`
 
-**Value:** 
+**Value:**
+
 ```
-mongodb+srv://tictactoe_user:Iamraul%40876@cluster0.gm9krrp.mongodb.net/tictactoe?retryWrites=true&w=majority&appName=Cluster0
+mongodb+srv://tictactoe_user:<YOUR_PASSWORD>@cluster0.gm9krrp.mongodb.net/tictactoe?retryWrites=true&w=majority&appName=Cluster0
 ```
 
 ⚠️ **Important:** Use `%40` instead of `@` in the password!
 
-### 2. Push to GitHub:
+### 2. Push to GitHub
 
 ```bash
 git push
@@ -67,26 +68,26 @@ git push
 
 Render will auto-deploy and connect to MongoDB!
 
-### 3. Test on Production:
+### 3. Test on Production
 
 After deployment, register a new user on:
-https://tictactoe-multiplayer-kx9u.onrender.com/
+<https://tictactoe-multiplayer-kx9u.onrender.com/>
 
 Then check MongoDB Atlas - you should see the user!
 
-## 📊 Current Setup:
+## 📊 Current Setup
 
 - ✅ Local: Connected to MongoDB
 - ✅ File-based fallback: Still works if MongoDB fails
 - ⏳ Render: Needs MONGODB_URI environment variable
 
-## 🔒 Security:
+## 🔒 Security
 
 - ✅ Password URL encoded
 - ✅ `.env` not committed to GitHub
 - ✅ Connection string secure
 
-## ✅ MongoDB is Working!
+## ✅ MongoDB is Working
 
 Your app now uses MongoDB for user storage! 🎉
 

@@ -15,10 +15,10 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { 
-    origin: process.env.NODE_ENV === 'production' 
-      ? process.env.ALLOWED_ORIGINS?.split(',') || [] 
-      : '*', 
+  cors: {
+    origin: process.env.NODE_ENV === 'production'
+      ? process.env.ALLOWED_ORIGINS?.split(',') || []
+      : '*',
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -39,12 +39,12 @@ if (MONGODB_URI) {
 
 // User Schema for MongoDB
 const UserSchema = new mongoose.Schema({
-  username: { 
-    type: String, 
-    required: true, 
-    unique: true, 
+  username: {
+    type: String,
+    required: true,
+    unique: true,
     lowercase: true,
-    trim: true 
+    trim: true
   },
   displayName: { type: String, required: true },
   hash: { type: String, required: true },
@@ -92,17 +92,17 @@ let saveTimer;
 function saveUsers() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2)); } catch (e) {}
+    try { fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2)); } catch (e) { }
   }, 1000);
 }
 
 // ── IN-MEMORY SESSIONS & ROOMS ────────────────────────────────────────
-const sessions  = new Map(); // token -> userKey
+const sessions = new Map(); // token -> userKey
 const socketUser = new Map(); // socketId -> userKey
 const userSocket = new Map(); // userKey -> socketId
-const rooms     = new Map(); // roomCode -> roomObj
+const rooms = new Map(); // roomCode -> roomObj
 
-const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const WINS = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
 
 function checkWinner(board) {
   for (const line of WINS) {
@@ -154,29 +154,40 @@ app.post('/api/register', authLimiter, async (req, res) => {
   if (!username?.trim() || !password) return res.json({ ok: false, error: 'Missing fields' });
 
   const key = username.trim().toLowerCase();
-  if (key.length < 3)  return res.json({ ok: false, error: 'Username too short (min 3 chars)' });
+  if (key.length < 3) return res.json({ ok: false, error: 'Username too short (min 3 chars)' });
   if (key.length > 16) return res.json({ ok: false, error: 'Username too long (max 16 chars)' });
   if (!/^[a-z0-9_]+$/.test(key)) return res.json({ ok: false, error: 'Letters, numbers, underscores only' });
-  if (users[key])      return res.json({ ok: false, error: 'Username already taken' });
   if (password.length < 8) return res.json({ ok: false, error: 'Password min 8 characters' });
 
   const hash = await bcrypt.hash(password, 10);
-  users[key] = {
-    displayName: username.trim(),
-    hash,
-    wins: 0, losses: 0, draws: 0,
-    createdAt: Date.now()
-  };
+
+  if (useDB()) {
+    // ── MongoDB path ──
+    try {
+      const existing = await User.findOne({ username: key });
+      if (existing) return res.json({ ok: false, error: 'Username already taken' });
+      const dbUser = await User.create({ username: key, displayName: username.trim(), hash });
+      // Mirror into memory so socket auth works without a DB round-trip
+      users[key] = { displayName: dbUser.displayName, hash, wins: 0, losses: 0, draws: 0, createdAt: Date.now() };
+      const token = uuidv4();
+      sessions.set(token, key);
+      res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
+      return res.json({ ok: true, token, username: dbUser.displayName, stats: { wins: 0, losses: 0, draws: 0 } });
+    } catch (err) {
+      if (err.code === 11000) return res.json({ ok: false, error: 'Username already taken' });
+      console.error('Register DB error:', err.message);
+      // fall through to file-based
+    }
+  }
+
+  // ── File-based fallback ──
+  if (users[key]) return res.json({ ok: false, error: 'Username already taken' });
+  users[key] = { displayName: username.trim(), hash, wins: 0, losses: 0, draws: 0, createdAt: Date.now() };
   saveUsers();
 
   const token = uuidv4();
   sessions.set(token, key);
-  res.cookie('session', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000
-  });
+  res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
   const { wins, losses, draws } = users[key];
   res.json({ ok: true, token, username: users[key].displayName, stats: { wins, losses, draws } });
 });
@@ -186,20 +197,35 @@ app.post('/api/login', authLimiter, async (req, res) => {
   if (!username || !password) return res.json({ ok: false, error: 'Missing fields' });
 
   const key = username.trim().toLowerCase();
+
+  if (useDB()) {
+    // ── MongoDB path ──
+    try {
+      const dbUser = await User.findOne({ username: key });
+      if (!dbUser) return res.json({ ok: false, error: 'User not found' });
+      const match = await bcrypt.compare(password, dbUser.hash);
+      if (!match) return res.json({ ok: false, error: 'Incorrect password' });
+      // Mirror into memory for socket auth
+      users[key] = { displayName: dbUser.displayName, hash: dbUser.hash, wins: dbUser.wins, losses: dbUser.losses, draws: dbUser.draws, createdAt: dbUser.createdAt };
+      const token = uuidv4();
+      sessions.set(token, key);
+      res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
+      return res.json({ ok: true, token, username: dbUser.displayName, stats: { wins: dbUser.wins, losses: dbUser.losses, draws: dbUser.draws } });
+    } catch (err) {
+      console.error('Login DB error:', err.message);
+      // fall through to file-based
+    }
+  }
+
+  // ── File-based fallback ──
   const user = users[key];
   if (!user) return res.json({ ok: false, error: 'User not found' });
-
   const match = await bcrypt.compare(password, user.hash);
   if (!match) return res.json({ ok: false, error: 'Incorrect password' });
 
   const token = uuidv4();
   sessions.set(token, key);
-  res.cookie('session', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000
-  });
+  res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
   const { wins, losses, draws } = user;
   res.json({ ok: true, token, username: user.displayName, stats: { wins, losses, draws } });
 });
@@ -271,9 +297,9 @@ io.on('connection', (socket) => {
 
     const upperCode = code?.toUpperCase().trim();
     const room = rooms.get(upperCode);
-    if (!room)                        return socket.emit('room:error', 'Room not found');
-    if (room.status === 'playing')    return socket.emit('room:error', 'Game in progress');
-    if (room.players.length >= 2)     return socket.emit('room:error', 'Room is full');
+    if (!room) return socket.emit('room:error', 'Room not found');
+    if (room.status === 'playing') return socket.emit('room:error', 'Game in progress');
+    if (room.players.length >= 2) return socket.emit('room:error', 'Room is full');
     if (room.players[0].socketId === socket.id) return socket.emit('room:error', 'You created this room');
 
     leaveCurrentRoom(socket);
@@ -300,10 +326,10 @@ io.on('connection', (socket) => {
     if (!room || room.status !== 'playing') return;
 
     const player = room.players.find(p => p.socketId === socket.id);
-    if (!player)                           return socket.emit('game:error', 'Not in this room');
+    if (!player) return socket.emit('game:error', 'Not in this room');
     if (player.symbol !== room.currentTurn) return socket.emit('game:error', 'Not your turn');
-    if (room.board[index] !== null)         return socket.emit('game:error', 'Cell taken');
-    if (index < 0 || index > 8)            return;
+    if (room.board[index] !== null) return socket.emit('game:error', 'Cell taken');
+    if (index < 0 || index > 8) return;
 
     room.board[index] = player.symbol;
     io.to(code).emit('game:move', { index, symbol: player.symbol });
@@ -313,9 +339,9 @@ io.on('connection', (socket) => {
       room.status = 'done';
       if (result.winner) {
         room.scores[result.winner]++;
-        const winPlayer  = room.players.find(p => p.symbol === result.winner);
+        const winPlayer = room.players.find(p => p.symbol === result.winner);
         const losePlayer = room.players.find(p => p.symbol !== result.winner);
-        if (winPlayer  && users[winPlayer.key])  { users[winPlayer.key].wins++;   saveUsers(); }
+        if (winPlayer && users[winPlayer.key]) { users[winPlayer.key].wins++; saveUsers(); }
         if (losePlayer && users[losePlayer.key]) { users[losePlayer.key].losses++; saveUsers(); }
         io.to(code).emit('game:over', { winner: result.winner, line: result.line, scores: room.scores });
       } else {
