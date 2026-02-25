@@ -237,6 +237,219 @@ app.post('/api/logout', (req, res) => {
   res.json({ ok: true });
 });
 
+// Google OAuth Login
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) return res.json({ ok: false, error: 'No credential provided' });
+
+  try {
+    // Verify Google token
+    const https = require('https');
+    const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`;
+    
+    https.get(tokenInfoUrl, (response) => {
+      let data = '';
+      response.on('data', (chunk) => data += chunk);
+      response.on('end', async () => {
+        try {
+          const googleUser = JSON.parse(data);
+          
+          if (googleUser.error) {
+            return res.json({ ok: false, error: 'Invalid Google token' });
+          }
+          
+          // Extract user info
+          const email = googleUser.email;
+          const name = googleUser.name || email.split('@')[0];
+          const googleId = googleUser.sub;
+          const key = `google_${googleId}`;
+          
+          // Check if user exists
+          let user;
+          if (useDB()) {
+            user = await User.findOne({ username: key });
+            if (!user) {
+              // Create new user
+              user = await User.create({
+                username: key,
+                displayName: name,
+                hash: '', // No password for Google users
+                email: email,
+                googleId: googleId,
+                wins: 0,
+                losses: 0,
+                draws: 0
+              });
+            }
+            // Update memory cache
+            users[key] = {
+              displayName: user.displayName,
+              hash: '',
+              wins: user.wins || 0,
+              losses: user.losses || 0,
+              draws: user.draws || 0,
+              email: email,
+              googleId: googleId
+            };
+          } else {
+            // File-based
+            if (!users[key]) {
+              users[key] = {
+                displayName: name,
+                hash: '',
+                wins: 0,
+                losses: 0,
+                draws: 0,
+                email: email,
+                googleId: googleId,
+                createdAt: Date.now()
+              };
+              saveUsers();
+            }
+            user = users[key];
+          }
+          
+          // Create session
+          const token = uuidv4();
+          sessions.set(token, key);
+          res.cookie('session', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+          });
+          
+          res.json({
+            ok: true,
+            token,
+            username: user.displayName || name,
+            stats: {
+              wins: user.wins || 0,
+              losses: user.losses || 0,
+              draws: user.draws || 0
+            }
+          });
+        } catch (e) {
+          console.error('Google auth error:', e);
+          res.json({ ok: false, error: 'Authentication failed' });
+        }
+      });
+    }).on('error', (e) => {
+      console.error('Google token verification error:', e);
+      res.json({ ok: false, error: 'Token verification failed' });
+    });
+  } catch (e) {
+    console.error('Google OAuth error:', e);
+    res.json({ ok: false, error: 'Authentication error' });
+  }
+});
+
+// Facebook OAuth Login
+app.post('/api/auth/facebook', async (req, res) => {
+  const { accessToken, userID } = req.body;
+  if (!accessToken || !userID) {
+    return res.json({ ok: false, error: 'No access token provided' });
+  }
+
+  try {
+    // Verify Facebook token and get user info
+    const https = require('https');
+    const userInfoUrl = `https://graph.facebook.com/v18.0/me?fields=id,name,email&access_token=${accessToken}`;
+    
+    https.get(userInfoUrl, (response) => {
+      let data = '';
+      response.on('data', (chunk) => data += chunk);
+      response.on('end', async () => {
+        try {
+          const fbUser = JSON.parse(data);
+          
+          if (fbUser.error) {
+            return res.json({ ok: false, error: 'Invalid Facebook token' });
+          }
+          
+          // Extract user info
+          const fbId = fbUser.id;
+          const name = fbUser.name;
+          const email = fbUser.email || `fb_${fbId}@facebook.com`;
+          const key = `facebook_${fbId}`;
+          
+          // Check if user exists
+          let user;
+          if (useDB()) {
+            user = await User.findOne({ username: key });
+            if (!user) {
+              user = await User.create({
+                username: key,
+                displayName: name,
+                hash: '',
+                email: email,
+                facebookId: fbId,
+                wins: 0,
+                losses: 0,
+                draws: 0
+              });
+            }
+            users[key] = {
+              displayName: user.displayName,
+              hash: '',
+              wins: user.wins || 0,
+              losses: user.losses || 0,
+              draws: user.draws || 0,
+              email: email,
+              facebookId: fbId
+            };
+          } else {
+            if (!users[key]) {
+              users[key] = {
+                displayName: name,
+                hash: '',
+                wins: 0,
+                losses: 0,
+                draws: 0,
+                email: email,
+                facebookId: fbId,
+                createdAt: Date.now()
+              };
+              saveUsers();
+            }
+            user = users[key];
+          }
+          
+          // Create session
+          const token = uuidv4();
+          sessions.set(token, key);
+          res.cookie('session', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+          });
+          
+          res.json({
+            ok: true,
+            token,
+            username: user.displayName || name,
+            stats: {
+              wins: user.wins || 0,
+              losses: user.losses || 0,
+              draws: user.draws || 0
+            }
+          });
+        } catch (e) {
+          console.error('Facebook auth error:', e);
+          res.json({ ok: false, error: 'Authentication failed' });
+        }
+      });
+    }).on('error', (e) => {
+      console.error('Facebook token verification error:', e);
+      res.json({ ok: false, error: 'Token verification failed' });
+    });
+  } catch (e) {
+    console.error('Facebook OAuth error:', e);
+    res.json({ ok: false, error: 'Authentication error' });
+  }
+});
+
 // Leaderboard endpoint
 app.get('/api/leaderboard', apiLimiter, (req, res) => {
   const board = Object.values(users)

@@ -45,6 +45,32 @@ function app() {
         this.connectSocket(token);
       }
       this.initSpaceGallery();
+      this.initGoogleSignIn();
+    },
+    
+    initGoogleSignIn() {
+      // Load Google Sign-In script
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+      
+      // Load Facebook SDK
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId: 'YOUR_FACEBOOK_APP_ID',
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        });
+      };
+      
+      const fbScript = document.createElement('script');
+      fbScript.src = 'https://connect.facebook.net/en_US/sdk.js';
+      fbScript.async = true;
+      fbScript.defer = true;
+      document.head.appendChild(fbScript);
     },
     
     connectSocket(token) {
@@ -170,6 +196,84 @@ function app() {
       if (this.socket) this.socket.disconnect();
       this.screen = 'auth';
       this.user = { username: '', stats: { wins: 0, draws: 0, losses: 0 } };
+    },
+    
+    loginWithGoogle() {
+      // Initialize Google Sign-In
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
+          callback: (response) => this.handleGoogleCallback(response)
+        });
+        
+        window.google.accounts.id.prompt();
+      } else {
+        alert('Google Sign-In is loading... Please try again in a moment.');
+      }
+    },
+    
+    async handleGoogleCallback(response) {
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ credential: response.credential })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+          localStorage.setItem('token', data.token);
+          this.user = { username: data.username, stats: data.stats };
+          this.connectSocket(data.token);
+        } else {
+          this.loginError = data.error || 'Google sign-in failed';
+        }
+      } catch (e) {
+        this.loginError = 'Connection error';
+      }
+    },
+    
+    loginWithFacebook() {
+      if (!window.FB) {
+        alert('Facebook SDK is loading... Please try again in a moment.');
+        return;
+      }
+      
+      FB.login((response) => {
+        if (response.authResponse) {
+          this.handleFacebookCallback(response.authResponse);
+        } else {
+          this.loginError = 'Facebook login cancelled';
+        }
+      }, { scope: 'public_profile,email' });
+    },
+    
+    async handleFacebookCallback(authResponse) {
+      try {
+        const res = await fetch('/api/auth/facebook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            accessToken: authResponse.accessToken,
+            userID: authResponse.userID
+          })
+        });
+        
+        const data = await res.json();
+        
+        if (data.ok) {
+          localStorage.setItem('token', data.token);
+          this.user = { username: data.username, stats: data.stats };
+          this.connectSocket(data.token);
+        } else {
+          this.loginError = data.error || 'Facebook sign-in failed';
+        }
+      } catch (e) {
+        this.loginError = 'Connection error';
+      }
     },
     
     createRoom() {
