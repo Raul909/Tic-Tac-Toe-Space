@@ -315,19 +315,12 @@
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div class="lg:col-span-3">
           <div class="glass nasa-bracket rounded-lg p-4 shadow-2xl">
-            <canvas id="space-gallery-canvas"></canvas>
+            <div id="space-gallery-3d" style="width: 100%; height: 500px;"></div>
             <div class="flex gap-4 mt-4">
-              <div class="flex-1">
-                <label class="text-xs text-nasa tracking-wider">ZOOM</label>
-                <input type="range" min="0.5" max="3" step="0.1" value="1" 
-                       class="w-full" x-model="spaceZoom">
+              <button @click="resetSpaceView()" class="bg-gray-800 px-6 py-2 rounded hover:bg-gray-700 transition font-bold">RESET VIEW</button>
+              <div class="text-xs text-gray-400 flex items-center">
+                🖱️ Camera auto-rotates | Click objects to select
               </div>
-              <div class="flex-1">
-                <label class="text-xs text-nasa tracking-wider">SPEED</label>
-                <input type="range" min="0" max="5" step="0.5" value="1" 
-                       class="w-full" x-model="spaceSpeed">
-              </div>
-              <button @click="resetSpaceView()" class="bg-gray-800 px-4 rounded hover:bg-gray-700 transition">RESET</button>
             </div>
           </div>
         </div>
@@ -444,6 +437,7 @@
   </div>
 
   <script src="/space-3d.js"></script>
+  <script src="/space-gallery-3d.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
