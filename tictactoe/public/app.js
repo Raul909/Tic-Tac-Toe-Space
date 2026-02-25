@@ -133,13 +133,21 @@ function app() {
         this.updateGameStatus();
       });
       
-      this.socket.on('game:over', ({ winner, draw, scores }) => {
+      this.socket.on('game:over', ({ winner, draw, scores, line }) => {
         this.scores = scores;
         this.gameActive = false;
-        this.showGameOver(winner, draw);
-        if (winner) {
-          const color = winner === 'X' ? '#ff6b35' : '#4dffdb';
-          if (window.FW) window.FW.launch(color, color);
+        
+        if (line) {
+          this.animateWinningLine(line);
+          setTimeout(() => {
+            this.showGameOver(winner, draw);
+            if (winner) {
+              const color = winner === 'X' ? '#ff6b35' : '#4dffdb';
+              if (window.FW) window.FW.launch(color, color);
+            }
+          }, 500);
+        } else {
+          this.showGameOver(winner, draw);
         }
       });
       
@@ -349,9 +357,11 @@ function app() {
       
       if (this.mode === 'ai') {
         this.board[index] = 'X';
-        if (this.checkWin('X')) {
+        const winLine = this.checkWin('X');
+        if (winLine) {
           this.scores.X++;
-          this.showGameOver('X', false);
+          this.animateWinningLine(winLine);
+          setTimeout(() => this.showGameOver('X', false), 500);
           return;
         }
         if (this.board.every(c => c)) {
@@ -370,9 +380,11 @@ function app() {
       const move = this.getBestMove();
       if (move !== -1) {
         this.board[move] = 'O';
-        if (this.checkWin('O')) {
+        const winLine = this.checkWin('O');
+        if (winLine) {
           this.scores.O++;
-          this.showGameOver('O', false);
+          this.animateWinningLine(winLine);
+          setTimeout(() => this.showGameOver('O', false), 500);
           return;
         }
         if (this.board.every(c => c)) {
@@ -393,7 +405,25 @@ function app() {
     
     checkWin(player) {
       const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-      return wins.some(line => line.every(i => this.board[i] === player));
+      for (const line of wins) {
+        if (line.every(i => this.board[i] === player)) {
+          return line;
+        }
+      }
+      return null;
+    },
+    
+    animateWinningLine(line) {
+      // Add winning class to cells
+      line.forEach((index, i) => {
+        setTimeout(() => {
+          const cell = document.querySelector(`[data-cell-index="${index}"]`);
+          if (cell) {
+            cell.classList.add('winning-cell');
+            cell.style.animation = 'winPulse 0.6s ease-in-out';
+          }
+        }, i * 100);
+      });
     },
     
     updateGameStatus() {

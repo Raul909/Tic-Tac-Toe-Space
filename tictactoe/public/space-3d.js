@@ -22,76 +22,19 @@
   renderer.outputEncoding = THREE.sRGBEncoding;
   camera.position.set(0, 25, 90);
   
-  // Interactive Cursor Effects
-  const mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
-  const cursorParticles = [];
+  // Interactive Mouse Effects - Elements react to cursor
+  const mouse = { x: 0, y: 0 };
+  const mouseInfluence = { x: 0, y: 0 };
   
-  // Mouse move listener
   document.addEventListener('mousemove', (e) => {
-    mouse.targetX = (e.clientX / window.innerWidth) * 2 - 1;
-    mouse.targetY = -(e.clientY / window.innerHeight) * 2 + 1;
-    
-    // Create cursor trail particles
-    if (Math.random() < 0.3) {
-      createCursorParticle(e.clientX, e.clientY);
-    }
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
   });
   
-  // Touch support for mobile
-  document.addEventListener('touchmove', (e) => {
-    if (e.touches.length > 0) {
-      const touch = e.touches[0];
-      mouse.targetX = (touch.clientX / window.innerWidth) * 2 - 1;
-      mouse.targetY = -(touch.clientY / window.innerHeight) * 2 + 1;
-      
-      if (Math.random() < 0.2) {
-        createCursorParticle(touch.clientX, touch.clientY);
-      }
-    }
-  });
-  
-  function createCursorParticle(x, y) {
-    const geometry = new THREE.SphereGeometry(0.5, 8, 8);
-    const material = new THREE.MeshBasicMaterial({
-      color: new THREE.Color().setHSL(Math.random(), 0.8, 0.6),
-      transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending
-    });
-    const particle = new THREE.Mesh(geometry, material);
-    
-    // Convert screen to world position
-    const vector = new THREE.Vector3(
-      (x / window.innerWidth) * 2 - 1,
-      -(y / window.innerHeight) * 2 + 1,
-      0.5
-    );
-    vector.unproject(camera);
-    const dir = vector.sub(camera.position).normalize();
-    const distance = -camera.position.z / dir.z;
-    const pos = camera.position.clone().add(dir.multiplyScalar(distance));
-    
-    particle.position.copy(pos);
-    particle.userData = {
-      velocity: new THREE.Vector3(
-        (Math.random() - 0.5) * 0.5,
-        (Math.random() - 0.5) * 0.5,
-        (Math.random() - 0.5) * 0.5
-      ),
-      life: 1
-    };
-    
-    scene.add(particle);
-    cursorParticles.push(particle);
-  }
-  
-  // Camera follows mouse
-  function updateCameraFromMouse() {
-    mouse.x += (mouse.targetX - mouse.x) * 0.05;
-    mouse.y += (mouse.targetY - mouse.y) * 0.05;
-    
-    camera.position.x += mouse.x * 2;
-    camera.position.y += mouse.y * 2;
+  // Smooth mouse influence
+  function updateMouseInfluence() {
+    mouseInfluence.x += (mouse.x - mouseInfluence.x) * 0.05;
+    mouseInfluence.y += (mouse.y - mouseInfluence.y) * 0.05;
   }
   
   // Weather system for background
@@ -677,30 +620,39 @@
       bgWeatherParticles.geometry.attributes.position.needsUpdate = true;
     }
     
-    // Cinematic camera movement
+    // Cinematic camera movement with mouse influence
     const time = currentTime * 0.0001;
-    camera.position.x = Math.sin(time) * 4;
-    camera.position.y = 25 + Math.cos(time * 0.7) * 2;
+    updateMouseInfluence();
+    
+    camera.position.x = Math.sin(time) * 4 + mouseInfluence.x * 10;
+    camera.position.y = 25 + Math.cos(time * 0.7) * 2 + mouseInfluence.y * 10;
     camera.lookAt(0, 0, -50);
     
-    // Interactive camera follow mouse
-    updateCameraFromMouse();
-    
-    // Update cursor particles
-    for (let i = cursorParticles.length - 1; i >= 0; i--) {
-      const particle = cursorParticles[i];
-      particle.position.add(particle.userData.velocity);
-      particle.userData.life -= 0.02;
-      particle.material.opacity = particle.userData.life * 0.8;
-      particle.scale.setScalar(1 + (1 - particle.userData.life) * 2);
+    // Make planets react to mouse
+    planets.forEach(planet => {
+      const dx = planet.mesh.position.x - (mouseInfluence.x * 50);
+      const dy = planet.mesh.position.y - (mouseInfluence.y * 50);
+      const distance = Math.sqrt(dx * dx + dy * dy);
       
-      if (particle.userData.life <= 0) {
-        scene.remove(particle);
-        particle.geometry.dispose();
-        particle.material.dispose();
-        cursorParticles.splice(i, 1);
+      if (distance < 100) {
+        const force = (100 - distance) / 100;
+        planet.mesh.position.x += dx * force * 0.02;
+        planet.mesh.position.y += dy * force * 0.02;
       }
-    }
+    });
+    
+    // Make asteroids react to mouse
+    asteroids.forEach(asteroid => {
+      const dx = asteroid.mesh.position.x - (mouseInfluence.x * 50);
+      const dy = asteroid.mesh.position.y - (mouseInfluence.y * 50);
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < 80) {
+        const force = (80 - distance) / 80;
+        asteroid.mesh.position.x += dx * force * 0.03;
+        asteroid.mesh.position.y += dy * force * 0.03;
+      }
+    });
     
     renderer.render(scene, camera);
   }

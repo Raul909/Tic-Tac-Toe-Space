@@ -34,53 +34,6 @@
       font-family: 'Space Mono', monospace;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
-      cursor: none;
-    }
-    
-    /* Custom Cursor */
-    #custom-cursor {
-      position: fixed;
-      width: 20px;
-      height: 20px;
-      border: 2px solid #00d4ff;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 9999;
-      transition: transform 0.1s ease;
-      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
-    }
-    
-    #custom-cursor::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 4px;
-      height: 4px;
-      background: #00d4ff;
-      border-radius: 50%;
-    }
-    
-    body:hover #custom-cursor {
-      transform: scale(1.5);
-    }
-    
-    button:hover ~ #custom-cursor,
-    a:hover ~ #custom-cursor,
-    [x-on\\:click]:hover ~ #custom-cursor {
-      transform: scale(2);
-      background: rgba(0, 212, 255, 0.1);
-    }
-    
-    @media (max-width: 768px) {
-      body {
-        cursor: auto;
-      }
-      
-      #custom-cursor {
-        display: none;
-      }
     }
     
     h1, h2, h3 { font-family: 'Exo 2', sans-serif; }
@@ -185,6 +138,64 @@
       border-color: #00d4ff;
     }
     
+    /* Winning Animation */
+    @keyframes winPulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(0, 212, 255, 0);
+      }
+      25% {
+        transform: scale(1.1);
+        box-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
+      }
+      50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 50px rgba(0, 212, 255, 1);
+      }
+      75% {
+        transform: scale(1.1);
+        box-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
+      }
+    }
+    
+    @keyframes winGlow {
+      0%, 100% {
+        filter: brightness(1);
+      }
+      50% {
+        filter: brightness(2);
+      }
+    }
+    
+    .winning-cell {
+      animation: winPulse 0.6s ease-in-out, winGlow 1s ease-in-out infinite !important;
+      background: rgba(0, 212, 255, 0.3) !important;
+      border-color: #00d4ff !important;
+      box-shadow: 0 0 30px rgba(0, 212, 255, 0.8) !important;
+    }
+    
+    /* Victory Screen Animation */
+    @keyframes victoryBounce {
+      0%, 100% {
+        transform: scale(1) rotate(0deg);
+      }
+      25% {
+        transform: scale(1.2) rotate(-5deg);
+      }
+      50% {
+        transform: scale(1.1) rotate(5deg);
+      }
+      75% {
+        transform: scale(1.2) rotate(-5deg);
+      }
+    }
+    
+    @keyframes victoryShake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+      20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+    
     /* Mobile Responsiveness */
     @media (max-width: 768px) {
       body {
@@ -273,7 +284,6 @@
   <canvas id="three-canvas"></canvas>
   <div class="scan-line"></div>
   <canvas id="fw-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:99"></canvas>
-  <div id="custom-cursor"></div>
   
   <!-- Auth Screen -->
   <div x-show="screen === 'auth'" class="content-layer min-h-screen flex items-center justify-center p-4">
@@ -513,6 +523,7 @@
         <template x-for="(cell, i) in board" :key="i">
           <button @click="makeMove(i)" 
                   :disabled="!canMove(i)"
+                  :data-cell-index="i"
                   class="aspect-square glass nasa-bracket rounded-lg text-6xl font-bold hover:bg-gray-800/50 disabled:cursor-not-allowed transition-all shadow-lg"
                   :class="cell === 'X' ? 'text-mars border-mars/50' : cell === 'O' ? 'text-earth border-earth/50' : 'border-nasa/30'"
                   x-text="cell || ''">
@@ -526,10 +537,21 @@
     </div>
   </div>
   
-  <div x-show="gameOver" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-    <div class="glass nasa-bracket rounded-lg p-8 text-center max-w-md shadow-2xl">
-      <div class="text-6xl mb-4" x-text="gameOverEmoji"></div>
-      <div class="text-3xl font-bold mb-2" x-text="gameOverTitle"></div>
+  <div x-show="gameOver" 
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+    <div class="glass nasa-bracket rounded-lg p-8 text-center max-w-md shadow-2xl"
+         x-transition:enter="transition ease-out duration-500 delay-150"
+         x-transition:enter-start="opacity-0 scale-50"
+         x-transition:enter-end="opacity-100 scale-100">
+      <div class="text-6xl mb-4" 
+           x-text="gameOverEmoji"
+           :style="gameOverTitle.includes('COMPLETE') || gameOverTitle.includes('VICTORY') ? 'animation: victoryBounce 1s ease-in-out infinite' : ''"></div>
+      <div class="text-3xl font-bold mb-2" 
+           x-text="gameOverTitle"
+           :style="gameOverTitle.includes('COMPLETE') || gameOverTitle.includes('VICTORY') ? 'animation: victoryShake 0.5s ease-in-out' : ''"></div>
       <div class="text-nasa text-sm mb-6 tracking-wider" x-text="gameOverSubtitle"></div>
       
       <!-- Social Share Section -->
@@ -574,27 +596,5 @@
   <script src="/space-3d.js"></script>
   <script src="/space-gallery-3d.js"></script>
   <script src="/app.js"></script>
-  
-  <script>
-    // Custom Cursor Tracking
-    const cursor = document.getElementById('custom-cursor');
-    let mouseX = 0, mouseY = 0;
-    let cursorX = 0, cursorY = 0;
-    
-    document.addEventListener('mousemove', (e) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-    });
-    
-    function animateCursor() {
-      cursorX += (mouseX - cursorX) * 0.2;
-      cursorY += (mouseY - cursorY) * 0.2;
-      cursor.style.left = cursorX + 'px';
-      cursor.style.top = cursorY + 'px';
-      requestAnimationFrame(animateCursor);
-    }
-    
-    animateCursor();
-  </script>
 </body>
 </html>

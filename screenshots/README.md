@@ -1,47 +1,68 @@
-# Screenshots Folder
+# Screenshots
 
-This folder contains all screenshots and videos for the README.
+This folder contains screenshots of the Tic Tac Toe Mission Control app.
 
-## Required Files
+## Required Screenshots
 
-Place your captured screenshots here:
+Visit: **https://tictactoe-multiplayer-kx9u.onrender.com/**
 
-- `banner.png` - Main banner (1200x400px)
-- `login.png` - Login screen
-- `lobby.png` - Lobby view
-- `game.png` - Active game
-- `victory.png` - Victory screen
-- `space-solar.png` - Space gallery solar system
-- `space-stars.png` - Space gallery stars
-- `space-nebulae.png` - Space gallery nebulae
-- `mobile-game.png` - Mobile game view
-- `mobile-lobby.png` - Mobile lobby view
-- `video-thumbnail.png` - Video thumbnail (1280x720px)
-- `demo-video.mp4` - Demo video (2-3 minutes)
+### 1. auth-screen.png
+- Login/Register page with 3D space background
+- Shows planets, stars, and authentication form
+
+### 2. game-board.png
+- Active game with X's and O's on the board
+- Shows the mission control interface
+
+### 3. victory-share.png
+- Victory screen with social share buttons
+- Shows Twitter, Facebook, WhatsApp options
+
+### 4. space-explorer.png
+- 3D Space Explorer (any tab: Solar System, Stars, or Nebulae)
+- Shows 3D controls and objects
 
 ## How to Capture
 
-Run the guide script:
-```bash
-./screenshot-guide.sh
+### Windows
+```
+Win + Shift + S
 ```
 
-Or visit: https://tictactoe-multiplayer-kx9u.onrender.com/ and capture manually.
+### Mac
+```
+Cmd + Shift + 4
+```
 
-## Tips
+### Linux
+Use your screenshot tool (usually PrtScn or Shift+PrtScn)
 
-- Use browser dev tools for mobile screenshots (F12 → Device Toolbar)
-- Record video at 1920x1080 resolution
-- Keep video under 3 minutes
-- Show all major features
-- Use OBS Studio for best quality
+### Browser DevTools
+1. Press F12
+2. Press Ctrl+Shift+P (Cmd+Shift+P on Mac)
+3. Type "screenshot"
+4. Select "Capture screenshot"
 
-## After Adding
+## File Naming
+
+Save files with exact names:
+- `auth-screen.png`
+- `game-board.png`
+- `victory-share.png`
+- `space-explorer.png`
+
+## Recommended Size
+
+- Width: 800-1200px
+- Format: PNG
+- Quality: High
+
+## After Capturing
 
 ```bash
 git add screenshots/
-git commit -m "Add screenshots and demo video"
+git commit -m "Add screenshots"
 git push
 ```
 
-The README will automatically display all media!
+The README will automatically display your screenshots!

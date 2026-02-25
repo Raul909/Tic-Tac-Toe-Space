@@ -70,7 +70,7 @@
       this.renderer.setSize(container.clientWidth, 500);
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 1.2;
+      this.renderer.toneMappingExposure = 1.8;
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(this.renderer.domElement);
@@ -332,30 +332,30 @@
     },
     
     setupLighting() {
-      // Ambient light
-      const ambient = new THREE.AmbientLight(0x1a1a2e, 0.4);
+      // Brighter ambient light for better visibility
+      const ambient = new THREE.AmbientLight(0x404060, 0.8);
       this.scene.add(ambient);
       
       if (this.currentTab === 'solar') {
         // Sun as key light
-        const sunLight = new THREE.PointLight(0xFFD700, 2, 800);
+        const sunLight = new THREE.PointLight(0xFFD700, 3, 800);
         sunLight.position.set(0, 0, 0);
         sunLight.castShadow = true;
         sunLight.shadow.mapSize.width = 1024;
         sunLight.shadow.mapSize.height = 1024;
         this.scene.add(sunLight);
       } else {
-        // Cinematic three-point lighting
-        const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        // Brighter cinematic three-point lighting
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2);
         keyLight.position.set(100, 100, 100);
         keyLight.castShadow = true;
         this.scene.add(keyLight);
         
-        const fillLight = new THREE.DirectionalLight(0x4A90E2, 0.5);
+        const fillLight = new THREE.DirectionalLight(0x4A90E2, 1);
         fillLight.position.set(-80, 40, 60);
         this.scene.add(fillLight);
         
-        const rimLight = new THREE.DirectionalLight(0x8A2BE2, 0.6);
+        const rimLight = new THREE.DirectionalLight(0x8A2BE2, 1);
         rimLight.position.set(60, -30, -80);
         this.scene.add(rimLight);
       }
