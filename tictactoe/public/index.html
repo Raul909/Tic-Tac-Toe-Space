@@ -2859,6 +2859,11 @@
       async function doLogout() { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); S.token = S.username = null; localStorage.removeItem('token'); showScreen('auth'); }
       function updateLobbyUI() { document.getElementById('lobby-username').textContent = S.username; document.getElementById('lobby-avatar').textContent = S.username?.[0]?.toUpperCase() || '?'; document.getElementById('stat-w').textContent = S.stats?.wins || 0; document.getElementById('stat-d').textContent = S.stats?.draws || 0; document.getElementById('stat-l').textContent = S.stats?.losses || 0; }
       async function fetchJSON(url, body) { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) }); return r.json(); }
+      
+      // Make functions globally accessible
+      window.switchTab = switchTab;
+      window.doLogin = doLogin;
+      window.doRegister = doRegister;
 
       // ═══════════════════════════════════════════════════
       // LOBBY

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Auth</title>
+</head>
+<body>
+  <h1>Test Registration</h1>
+  <input id="test-user" type="text" placeholder="username">
+  <input id="test-pass" type="password" placeholder="password">
+  <button onclick="testRegister()">Test Register</button>
+  <div id="result"></div>
+
+  <script>
+    async function testRegister() {
+      const username = document.getElementById('test-user').value;
+      const password = document.getElementById('test-pass').value;
+      
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
+      });
+      
+      const data = await response.json();
+      document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+      console.log('Response:', data);
+    }
+  </script>
+</body>
+</html>
