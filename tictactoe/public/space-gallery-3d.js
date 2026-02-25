@@ -51,6 +51,12 @@
       this.scene = new THREE.Scene();
       this.scene.fog = new THREE.FogExp2(0x000208, 0.0008);
       
+      // Weather system
+      this.weatherParticles = null;
+      this.currentWeather = 'clear'; // clear, rain, snow, cloudy
+      this.userLocation = null;
+      this.getUserLocationAndWeather();
+      
       // Camera
       this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / 500, 0.1, 5000);
       this.camera.position.set(0, 100, 300);
@@ -68,6 +74,15 @@
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(this.renderer.domElement);
+      
+      // Orbit Controls for 3D rotation
+      this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+      this.controls.enableDamping = true;
+      this.controls.dampingFactor = 0.05;
+      this.controls.minDistance = 50;
+      this.controls.maxDistance = 800;
+      this.controls.autoRotate = true;
+      this.controls.autoRotateSpeed = 0.5;
       
       // Raycaster for clicking
       this.raycaster = new THREE.Raycaster();
@@ -87,6 +102,7 @@
       this.currentTab = tab;
       this.clearScene();
       this.setupLighting();
+      this.addReferencePoint();
       
       if (tab === 'solar') {
         this.createSolarSystem();
@@ -97,6 +113,206 @@
       }
       
       this.updateObjectsList();
+    },
+    
+    getUserLocationAndWeather() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            this.userLocation = {
+              lat: position.coords.latitude,
+              lon: position.coords.longitude
+            };
+            this.fetchWeather();
+          },
+          (error) => {
+            console.log('Location access denied, using default weather');
+            this.setDefaultWeather();
+          }
+        );
+      } else {
+        this.setDefaultWeather();
+      }
+    },
+    
+    async fetchWeather() {
+      try {
+        // Using Open-Meteo API (free, no API key needed)
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${this.userLocation.lat}&longitude=${this.userLocation.lon}&current=temperature_2m,weather_code&timezone=auto`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        // Weather codes: 0=clear, 1-3=cloudy, 45-48=fog, 51-67=rain, 71-77=snow, 80-99=rain/thunderstorm
+        const code = data.current.weather_code;
+        
+        if (code === 0) {
+          this.currentWeather = 'clear';
+        } else if (code >= 1 && code <= 3) {
+          this.currentWeather = 'cloudy';
+        } else if (code >= 51 && code <= 67 || code >= 80 && code <= 99) {
+          this.currentWeather = 'rain';
+        } else if (code >= 71 && code <= 77) {
+          this.currentWeather = 'snow';
+        } else {
+          this.currentWeather = 'cloudy';
+        }
+        
+        this.addWeatherEffect();
+      } catch (error) {
+        console.error('Weather fetch failed:', error);
+        this.setDefaultWeather();
+      }
+    },
+    
+    setDefaultWeather() {
+      const hour = new Date().getHours();
+      if (hour >= 6 && hour < 18) {
+        this.currentWeather = 'clear';
+      } else {
+        this.currentWeather = Math.random() > 0.5 ? 'rain' : 'snow';
+      }
+      this.addWeatherEffect();
+    },
+    
+    checkWeather() {
+      // Simple weather detection based on time
+      const hour = new Date().getHours();
+      if (hour >= 6 && hour < 18) {
+        this.currentWeather = 'clear';
+      } else if (Math.random() > 0.5) {
+        this.currentWeather = 'rain';
+      } else {
+        this.currentWeather = 'snow';
+      }
+      this.addWeatherEffect();
+    },
+    
+    addWeatherEffect() {
+      if (this.weatherParticles) {
+        this.scene.remove(this.weatherParticles);
+        this.weatherParticles.geometry.dispose();
+        this.weatherParticles.material.dispose();
+      }
+      
+      if (this.currentWeather === 'clear') {
+        this.updateWeatherUI();
+        return;
+      }
+      
+      const particleCount = this.currentWeather === 'cloudy' ? 500 : 1000;
+      const geometry = new THREE.BufferGeometry();
+      const positions = [];
+      const velocities = [];
+      
+      for (let i = 0; i < particleCount; i++) {
+        positions.push(
+          (Math.random() - 0.5) * 1000,
+          Math.random() * 500,
+          (Math.random() - 0.5) * 1000
+        );
+        
+        if (this.currentWeather === 'cloudy') {
+          velocities.push(
+            (Math.random() - 0.5) * 0.2,
+            -0.1 - Math.random() * 0.1,
+            (Math.random() - 0.5) * 0.2
+          );
+        } else if (this.currentWeather === 'rain') {
+          velocities.push(
+            (Math.random() - 0.5) * 0.5,
+            -2 - Math.random() * 2,
+            (Math.random() - 0.5) * 0.5
+          );
+        } else { // snow
+          velocities.push(
+            (Math.random() - 0.5) * 0.5,
+            -0.5 - Math.random() * 0.5,
+            (Math.random() - 0.5) * 0.5
+          );
+        }
+      }
+      
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
+      
+      const material = new THREE.PointsMaterial({
+        size: this.currentWeather === 'rain' ? 1 : this.currentWeather === 'cloudy' ? 5 : 3,
+        color: this.currentWeather === 'rain' ? 0x4A90E2 : this.currentWeather === 'cloudy' ? 0x888888 : 0xFFFFFF,
+        transparent: true,
+        opacity: this.currentWeather === 'rain' ? 0.6 : this.currentWeather === 'cloudy' ? 0.3 : 0.8,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      
+      this.weatherParticles = new THREE.Points(geometry, material);
+      this.scene.add(this.weatherParticles);
+      
+      this.updateWeatherUI();
+    },
+    
+    updateWeatherUI() {
+      const indicator = document.getElementById('weather-indicator');
+      if (indicator) {
+        const icons = { 
+          clear: '☀️ Clear', 
+          rain: '🌧️ Rain', 
+          snow: '❄️ Snow',
+          cloudy: '☁️ Cloudy'
+        };
+        indicator.textContent = icons[this.currentWeather];
+        
+        if (this.userLocation) {
+          indicator.title = `Weather at ${this.userLocation.lat.toFixed(2)}°, ${this.userLocation.lon.toFixed(2)}°`;
+        }
+      }
+    },
+    
+    addReferencePoint() {
+      // Add Earth as reference point (Your Location)
+      const earthGeometry = new THREE.SphereGeometry(5, 32, 32);
+      const earthMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4A90E2,
+        emissive: 0x2E5F8C,
+        emissiveIntensity: 0.3,
+        roughness: 0.7,
+        metalness: 0.1
+      });
+      const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+      earth.position.set(0, 0, 0);
+      earth.castShadow = true;
+      earth.receiveShadow = true;
+      
+      // Atmosphere glow
+      const glowGeometry = new THREE.SphereGeometry(6, 24, 24);
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0x4A90E2,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending
+      });
+      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+      earth.add(glow);
+      
+      // Label
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#00d4ff';
+      ctx.font = 'bold 32px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('🌍 YOUR LOCATION', 128, 40);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.position.set(0, 12, 0);
+      sprite.scale.set(40, 10, 1);
+      earth.add(sprite);
+      
+      this.scene.add(earth);
+      this.referenceEarth = earth;
     },
     
     clearScene() {
@@ -411,11 +627,36 @@
     animate() {
       requestAnimationFrame(() => this.animate());
       
-      // Rotate camera around scene
-      const time = Date.now() * 0.0001;
-      this.camera.position.x = Math.sin(time) * 300;
-      this.camera.position.z = Math.cos(time) * 300;
-      this.camera.lookAt(0, 0, 0);
+      // Update controls for smooth damping
+      if (this.controls) {
+        this.controls.update();
+      }
+      
+      // Update weather particles
+      if (this.weatherParticles) {
+        const positions = this.weatherParticles.geometry.attributes.position.array;
+        const velocities = this.weatherParticles.geometry.attributes.velocity.array;
+        
+        for (let i = 0; i < positions.length; i += 3) {
+          positions[i] += velocities[i];
+          positions[i + 1] += velocities[i + 1];
+          positions[i + 2] += velocities[i + 2];
+          
+          // Reset particle if it falls below
+          if (positions[i + 1] < -50) {
+            positions[i + 1] = 500;
+            positions[i] = (Math.random() - 0.5) * 1000;
+            positions[i + 2] = (Math.random() - 0.5) * 1000;
+          }
+        }
+        
+        this.weatherParticles.geometry.attributes.position.needsUpdate = true;
+      }
+      
+      // Rotate reference Earth
+      if (this.referenceEarth) {
+        this.referenceEarth.rotation.y += 0.005;
+      }
       
       // Rotate objects
       this.objects.forEach(obj => {
@@ -442,6 +683,10 @@
     
     reset() {
       this.camera.position.set(0, 100, 300);
+      if (this.controls) {
+        this.controls.reset();
+        this.controls.autoRotate = true;
+      }
       this.selectedObj = null;
       document.getElementById('space-object-details').innerHTML = '';
       document.querySelectorAll('.space-object-item').forEach(el => el.classList.remove('active'));

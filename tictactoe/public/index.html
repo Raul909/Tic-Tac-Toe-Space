@@ -6,6 +6,7 @@
   <title>Tic Tac Toe - Mission Control</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -318,8 +319,12 @@
             <div id="space-gallery-3d" style="width: 100%; height: 500px;"></div>
             <div class="flex gap-4 mt-4">
               <button @click="resetSpaceView()" class="bg-gray-800 px-6 py-2 rounded hover:bg-gray-700 transition font-bold">RESET VIEW</button>
-              <div class="text-xs text-gray-400 flex items-center">
-                🖱️ Camera auto-rotates | Click objects to select
+              <div class="text-xs text-gray-400 flex items-center gap-4">
+                <span>🖱️ Drag to rotate</span>
+                <span>🔍 Scroll to zoom</span>
+                <span>👆 Click objects</span>
+                <span>🌍 Blue = Your Location</span>
+                <span id="weather-indicator" class="text-nasa"></span>
               </div>
             </div>
           </div>

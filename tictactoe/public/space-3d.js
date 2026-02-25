@@ -22,6 +22,71 @@
   renderer.outputEncoding = THREE.sRGBEncoding;
   camera.position.set(0, 25, 90);
   
+  // Weather system for background
+  let bgWeatherParticles = null;
+  let currentBgWeather = 'clear';
+  
+  // Sync with Space Gallery weather
+  function syncBackgroundWeather() {
+    if (window.SpaceGallery3D && window.SpaceGallery3D.currentWeather) {
+      const weather = window.SpaceGallery3D.currentWeather;
+      if (weather !== currentBgWeather) {
+        currentBgWeather = weather;
+        updateBackgroundWeather();
+      }
+    }
+  }
+  
+  function updateBackgroundWeather() {
+    if (bgWeatherParticles) {
+      scene.remove(bgWeatherParticles);
+      bgWeatherParticles.geometry.dispose();
+      bgWeatherParticles.material.dispose();
+      bgWeatherParticles = null;
+    }
+    
+    if (currentBgWeather === 'clear') return;
+    
+    const particleCount = currentBgWeather === 'cloudy' ? 300 : 600;
+    const geometry = new THREE.BufferGeometry();
+    const positions = [];
+    const velocities = [];
+    
+    for (let i = 0; i < particleCount; i++) {
+      positions.push(
+        (Math.random() - 0.5) * 500,
+        Math.random() * 300,
+        (Math.random() - 0.5) * 500
+      );
+      
+      if (currentBgWeather === 'cloudy') {
+        velocities.push(0, -0.05, 0);
+      } else if (currentBgWeather === 'rain') {
+        velocities.push(0, -1.5, 0);
+      } else {
+        velocities.push(0, -0.3, 0);
+      }
+    }
+    
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
+    
+    const material = new THREE.PointsMaterial({
+      size: currentBgWeather === 'rain' ? 0.5 : currentBgWeather === 'cloudy' ? 3 : 2,
+      color: currentBgWeather === 'rain' ? 0x4A90E2 : currentBgWeather === 'cloudy' ? 0x666666 : 0xFFFFFF,
+      transparent: true,
+      opacity: currentBgWeather === 'rain' ? 0.4 : currentBgWeather === 'cloudy' ? 0.2 : 0.6,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    
+    bgWeatherParticles = new THREE.Points(geometry, material);
+    scene.add(bgWeatherParticles);
+  }
+  
+  // Check for weather sync every 2 seconds
+  setInterval(syncBackgroundWeather, 2000);
+  
   // Highly Detailed Starfield
   const starGeometry = new THREE.BufferGeometry();
   const starVertices = [];
@@ -488,6 +553,24 @@
         star.line.material.dispose();
         shootingStars.splice(i, 1);
       }
+    }
+    
+    // Background weather particles
+    if (bgWeatherParticles) {
+      const positions = bgWeatherParticles.geometry.attributes.position.array;
+      const velocities = bgWeatherParticles.geometry.attributes.velocity.array;
+      
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i + 1] += velocities[i + 1];
+        
+        if (positions[i + 1] < -50) {
+          positions[i + 1] = 300;
+          positions[i] = (Math.random() - 0.5) * 500;
+          positions[i + 2] = (Math.random() - 0.5) * 500;
+        }
+      }
+      
+      bgWeatherParticles.geometry.attributes.position.needsUpdate = true;
     }
     
     // Cinematic camera movement
