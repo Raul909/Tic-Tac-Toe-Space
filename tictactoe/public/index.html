@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tic Tac Toe - Mission Control</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -26,15 +27,13 @@
     body { font-family: 'Space Mono', monospace; }
     h1, h2, h3 { font-family: 'Exo 2', sans-serif; }
     
-    /* Animated Space Background */
-    #space-canvas {
+    #three-canvas {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
       z-index: 0;
-      pointer-events: none;
     }
     
     .content-layer {
@@ -42,7 +41,6 @@
       z-index: 1;
     }
     
-    /* NASA Corner Brackets */
     .nasa-bracket {
       position: relative;
     }
@@ -67,14 +65,12 @@
       border-top: none;
     }
     
-    /* Glass morphism */
     .glass {
-      background: rgba(0, 5, 16, 0.7);
-      backdrop-filter: blur(10px);
+      background: rgba(0, 5, 16, 0.85);
+      backdrop-filter: blur(15px);
       border: 1px solid rgba(0, 212, 255, 0.3);
     }
     
-    /* Scan line effect */
     @keyframes scan {
       0% { transform: translateY(-100%); }
       100% { transform: translateY(100vh); }
@@ -90,77 +86,101 @@
       pointer-events: none;
       z-index: 100;
     }
+    
+    #space-gallery-canvas {
+      width: 100%;
+      height: 500px;
+      border-radius: 0.5rem;
+      cursor: grab;
+    }
+    #space-gallery-canvas:active {
+      cursor: grabbing;
+    }
+    
+    .space-object-item {
+      padding: 0.75rem;
+      background: rgba(0, 212, 255, 0.05);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .space-object-item:hover {
+      background: rgba(0, 212, 255, 0.15);
+      border-color: rgba(0, 212, 255, 0.5);
+    }
+    .space-object-item.active {
+      background: rgba(0, 212, 255, 0.25);
+      border-color: #00d4ff;
+    }
   </style>
 </head>
-<body class="bg-space text-white min-h-screen" x-data="app()" x-init="init()">
+<body class="bg-space text-white min-h-screen overflow-x-hidden" x-data="app()" x-init="init()">
   
-  <!-- Animated Space Background -->
-  <canvas id="space-canvas"></canvas>
+  <div id="three-canvas"></div>
   <div class="scan-line"></div>
+  <canvas id="fw-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:99"></canvas>
   
   <!-- Auth Screen -->
   <div x-show="screen === 'auth'" class="content-layer min-h-screen flex items-center justify-center p-4">
     <div class="max-w-md w-full">
       <div class="text-center mb-8">
         <div class="text-nasa text-sm tracking-widest mb-2">◆ MISSION CONTROL ◆</div>
-        <h1 class="text-4xl font-bold tracking-wider">TIC TAC TOE</h1>
-        <p class="text-gray-400 text-sm mt-2">Tactical Grid Combat</p>
+        <h1 class="text-5xl font-bold tracking-wider mb-2">TIC TAC TOE</h1>
+        <p class="text-gray-400 text-sm tracking-wide">TACTICAL GRID COMBAT SYSTEM</p>
       </div>
       
       <div class="glass nasa-bracket rounded-lg p-6 shadow-2xl">
-        <!-- Tabs -->
         <div class="flex gap-2 mb-6">
           <button @click="authTab = 'login'" 
                   :class="authTab === 'login' ? 'bg-nasa text-black' : 'bg-gray-800 text-white'"
-                  class="flex-1 py-2 px-4 rounded font-semibold transition">
+                  class="flex-1 py-2 px-4 rounded font-semibold transition tracking-wider">
             SIGN IN
           </button>
           <button @click="authTab = 'register'" 
                   :class="authTab === 'register' ? 'bg-nasa text-black' : 'bg-gray-800 text-white'"
-                  class="flex-1 py-2 px-4 rounded font-semibold transition">
+                  class="flex-1 py-2 px-4 rounded font-semibold transition tracking-wider">
             REGISTER
           </button>
         </div>
         
-        <!-- Login Form -->
         <form x-show="authTab === 'login'" @submit.prevent="login()" class="space-y-4">
           <div>
-            <label class="block text-xs text-nasa mb-1 tracking-wider">CALLSIGN</label>
+            <label class="block text-xs text-nasa mb-1 tracking-widest">CALLSIGN</label>
             <input x-model="loginForm.username" type="text" 
-                   class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none"
+                   class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none transition"
                    placeholder="Enter callsign">
           </div>
           <div>
-            <label class="block text-xs text-nasa mb-1 tracking-wider">ACCESS CODE</label>
+            <label class="block text-xs text-nasa mb-1 tracking-widest">ACCESS CODE</label>
             <input x-model="loginForm.password" type="password" 
-                   class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none"
+                   class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none transition"
                    placeholder="••••••••">
           </div>
           <div x-show="loginError" x-text="loginError" class="text-mars text-sm"></div>
           <button type="submit" :disabled="loginLoading"
-                  class="w-full bg-nasa text-black font-bold py-3 rounded hover:bg-nasa/90 transition disabled:opacity-50">
+                  class="w-full bg-nasa text-black font-bold py-3 rounded hover:bg-nasa/90 transition disabled:opacity-50 tracking-wider">
             <span x-show="!loginLoading">INITIATE LOGIN →</span>
             <span x-show="loginLoading">AUTHENTICATING...</span>
           </button>
         </form>
         
-        <!-- Register Form -->
         <form x-show="authTab === 'register'" @submit.prevent="register()" class="space-y-4">
           <div>
-            <label class="block text-xs text-nasa mb-1 tracking-wider">CALLSIGN <span class="text-gray-500">(3-16 chars)</span></label>
+            <label class="block text-xs text-nasa mb-1 tracking-widest">CALLSIGN <span class="text-gray-500">(3-16 chars)</span></label>
             <input x-model="registerForm.username" type="text" 
-                   class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none"
+                   class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none transition"
                    placeholder="Choose callsign">
           </div>
           <div>
-            <label class="block text-xs text-nasa mb-1 tracking-wider">ACCESS CODE <span class="text-gray-500">(min 8 chars)</span></label>
+            <label class="block text-xs text-nasa mb-1 tracking-widest">ACCESS CODE <span class="text-gray-500">(min 8 chars)</span></label>
             <input x-model="registerForm.password" type="password" 
-                   class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none"
+                   class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none transition"
                    placeholder="Set access code">
           </div>
           <div x-show="registerError" x-text="registerError" class="text-mars text-sm"></div>
           <button type="submit" :disabled="registerLoading"
-                  class="w-full bg-nasa text-black font-bold py-3 rounded hover:bg-nasa/90 transition disabled:opacity-50">
+                  class="w-full bg-nasa text-black font-bold py-3 rounded hover:bg-nasa/90 transition disabled:opacity-50 tracking-wider">
             <span x-show="!registerLoading">REGISTER OPERATOR →</span>
             <span x-show="registerLoading">CREATING...</span>
           </button>
@@ -175,45 +195,45 @@
       <div class="flex justify-between items-center mb-6">
         <div>
           <div class="text-nasa text-xs tracking-widest">◆ MISSION CONTROL ◆</div>
-          <div class="text-2xl font-bold" x-text="user.username"></div>
+          <div class="text-3xl font-bold tracking-wide" x-text="user.username"></div>
         </div>
         <div class="flex gap-2">
-          <button @click="openSpaceGallery()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition">🌌 SPACE</button>
-          <button @click="logout()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition">LOGOUT</button>
+          <button @click="openSpaceGallery()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">🌌 SPACE</button>
+          <button @click="logout()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">LOGOUT</button>
         </div>
       </div>
       
       <div class="flex gap-4 mb-6">
-        <div class="glass rounded px-4 py-2 border border-nasa/50">
-          <span class="text-nasa text-xs tracking-wider">W-</span><span class="font-bold" x-text="String(user.stats.wins).padStart(2, '0')">00</span>
+        <div class="glass rounded px-6 py-3 border border-nasa/50">
+          <span class="text-nasa text-xs tracking-wider">W-</span><span class="font-bold text-lg" x-text="String(user.stats.wins).padStart(2, '0')">00</span>
         </div>
-        <div class="glass rounded px-4 py-2 border border-nasa/50">
-          <span class="text-nasa text-xs tracking-wider">D-</span><span class="font-bold" x-text="String(user.stats.draws).padStart(2, '0')">00</span>
+        <div class="glass rounded px-6 py-3 border border-nasa/50">
+          <span class="text-nasa text-xs tracking-wider">D-</span><span class="font-bold text-lg" x-text="String(user.stats.draws).padStart(2, '0')">00</span>
         </div>
-        <div class="glass rounded px-4 py-2 border border-nasa/50">
-          <span class="text-nasa text-xs tracking-wider">L-</span><span class="font-bold" x-text="String(user.stats.losses).padStart(2, '0')">00</span>
+        <div class="glass rounded px-6 py-3 border border-nasa/50">
+          <span class="text-nasa text-xs tracking-wider">L-</span><span class="font-bold text-lg" x-text="String(user.stats.losses).padStart(2, '0')">00</span>
         </div>
       </div>
       
       <div class="glass nasa-bracket rounded-lg p-6 space-y-6 shadow-2xl">
         <div>
-          <h3 class="text-nasa text-sm tracking-wider mb-4">🚀 MULTIPLAYER MISSION</h3>
+          <h3 class="text-nasa text-sm tracking-widest mb-4">🚀 MULTIPLAYER MISSION</h3>
           <div class="flex gap-4">
-            <button @click="createRoom()" class="flex-1 bg-nasa text-black font-bold py-4 rounded hover:bg-nasa/90">
+            <button @click="createRoom()" class="flex-1 bg-nasa text-black font-bold py-4 rounded hover:bg-nasa/90 transition tracking-wide">
               + LAUNCH ROOM
             </button>
             <div class="flex-1 flex gap-2">
               <input x-model="joinCode" type="text" maxlength="4" placeholder="CODE"
-                     class="flex-1 bg-gray-800 border border-gray-700 rounded px-4 uppercase text-center focus:border-nasa focus:outline-none">
-              <button @click="joinRoom()" class="bg-gray-800 px-6 rounded hover:bg-gray-700">DOCK →</button>
+                     class="flex-1 bg-gray-800 border border-gray-700 rounded px-4 uppercase text-center focus:border-nasa focus:outline-none transition">
+              <button @click="joinRoom()" class="bg-gray-800 px-6 rounded hover:bg-gray-700 transition font-bold">DOCK →</button>
             </div>
           </div>
           <div x-show="lobbyError" x-text="lobbyError" class="text-mars text-sm mt-2"></div>
         </div>
         
         <div>
-          <h3 class="text-nasa text-sm tracking-wider mb-4">🤖 TRAINING MODE</h3>
-          <button @click="startAI()" class="w-full bg-mars text-white font-bold py-4 rounded hover:bg-mars/90">
+          <h3 class="text-nasa text-sm tracking-widest mb-4">🤖 TRAINING MODE</h3>
+          <button @click="startAI()" class="w-full bg-mars text-white font-bold py-4 rounded hover:bg-mars/90 transition tracking-wide">
             ENGAGE AI
           </button>
         </div>
@@ -221,7 +241,66 @@
     </div>
   </div>
   
-  <!-- Waiting Screen -->
+  <!-- Space Gallery -->
+  <div x-show="screen === 'space'" class="content-layer min-h-screen p-4">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-4xl font-bold tracking-wider">🌌 SPACE EXPLORER</h2>
+        <button @click="closeSpaceGallery()" class="bg-gray-800 px-6 py-3 rounded hover:bg-gray-700 transition font-bold">← BACK</button>
+      </div>
+      
+      <div class="flex gap-2 mb-4">
+        <button @click="spaceTab = 'solar'" 
+                :class="spaceTab === 'solar' ? 'bg-nasa text-black' : 'bg-gray-800'"
+                class="px-6 py-2 rounded font-bold transition">SOLAR SYSTEM</button>
+        <button @click="spaceTab = 'stars'" 
+                :class="spaceTab === 'stars' ? 'bg-nasa text-black' : 'bg-gray-800'"
+                class="px-6 py-2 rounded font-bold transition">NEARBY STARS</button>
+        <button @click="spaceTab = 'nebulae'" 
+                :class="spaceTab === 'nebulae' ? 'bg-nasa text-black' : 'bg-gray-800'"
+                class="px-6 py-2 rounded font-bold transition">NEBULAE</button>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div class="lg:col-span-3">
+          <div class="glass nasa-bracket rounded-lg p-4 shadow-2xl">
+            <canvas id="space-gallery-canvas"></canvas>
+            <div class="flex gap-4 mt-4">
+              <div class="flex-1">
+                <label class="text-xs text-nasa tracking-wider">ZOOM</label>
+                <input type="range" min="0.5" max="3" step="0.1" value="1" 
+                       class="w-full" x-model="spaceZoom">
+              </div>
+              <div class="flex-1">
+                <label class="text-xs text-nasa tracking-wider">SPEED</label>
+                <input type="range" min="0" max="5" step="0.5" value="1" 
+                       class="w-full" x-model="spaceSpeed">
+              </div>
+              <button @click="resetSpaceView()" class="bg-gray-800 px-4 rounded hover:bg-gray-700 transition">RESET</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="glass rounded-lg p-4">
+          <h3 class="text-nasa text-sm tracking-widest mb-4">OBJECTS</h3>
+          <div class="space-y-2 max-h-96 overflow-y-auto" id="space-objects-list">
+            <!-- Objects will be populated by JavaScript -->
+          </div>
+          
+          <div x-show="selectedObject" class="mt-4 pt-4 border-t border-nasa/30">
+            <h4 class="text-nasa text-xs tracking-widest mb-2">DETAILS</h4>
+            <div class="text-sm space-y-1" id="space-object-details">
+              <!-- Details will be populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Waiting, Game, Game Over screens remain the same as before -->
+  <!-- (keeping them short for file size) -->
+  
   <div x-show="screen === 'waiting'" class="content-layer min-h-screen flex items-center justify-center p-4">
     <div class="glass nasa-bracket rounded-lg p-8 text-center shadow-2xl">
       <div class="text-xl mb-4 text-nasa tracking-wider">WAITING FOR OPPONENT...</div>
@@ -234,7 +313,6 @@
     </div>
   </div>
   
-  <!-- Game Screen -->
   <div x-show="screen === 'game'" class="content-layer min-h-screen p-4">
     <div class="max-w-4xl mx-auto">
       <div class="text-center mb-6">
@@ -269,7 +347,6 @@
     </div>
   </div>
   
-  <!-- Game Over Modal -->
   <div x-show="gameOver" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
     <div class="glass nasa-bracket rounded-lg p-8 text-center max-w-md shadow-2xl">
       <div class="text-6xl mb-4" x-text="gameOverEmoji"></div>
@@ -285,418 +362,8 @@
       </div>
     </div>
   </div>
-  
-  <!-- Space Gallery -->
-  <div x-show="screen === 'space'" class="content-layer min-h-screen p-4">
-    <div class="max-w-6xl mx-auto">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-3xl font-bold tracking-wider">🌌 SPACE EXPLORER</h2>
-        <button @click="closeSpaceGallery()" class="bg-gray-800 px-6 py-2 rounded hover:bg-gray-700 transition">← BACK</button>
-      </div>
-      
-      <div class="glass nasa-bracket rounded-lg p-6 shadow-2xl">
-        <div class="text-center text-gray-400 py-20">
-          <div class="text-6xl mb-4">🪐</div>
-          <div class="text-xl mb-2">Interactive Space Gallery</div>
-          <div class="text-sm">Explore planets, stars, and nebulae</div>
-          <div class="text-xs mt-4 text-nasa">Coming soon: Full 3D solar system explorer</div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <script>
-    // Space Background Animation
-    (function initSpaceBackground() {
-      const canvas = document.getElementById('space-canvas');
-      const ctx = canvas.getContext('2d');
-      let stars = [];
-      let planets = [];
-      
-      function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        
-        // Create stars
-        stars = Array.from({ length: 200 }, () => ({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          r: Math.random() * 1.5 + 0.5,
-          opacity: Math.random() * 0.8 + 0.2,
-          twinkle: Math.random() * Math.PI * 2,
-          speed: Math.random() * 0.02 + 0.01
-        }));
-        
-        // Create planets
-        planets = [
-          { x: canvas.width * 0.2, y: canvas.height * 0.3, r: 30, color: '#FDB813', speed: 0.0005 },
-          { x: canvas.width * 0.7, y: canvas.height * 0.6, r: 40, color: '#4A90E2', speed: 0.0003 },
-          { x: canvas.width * 0.5, y: canvas.height * 0.8, r: 25, color: '#E27B58', speed: 0.0007 }
-        ];
-      }
-      
-      function animate() {
-        ctx.fillStyle = 'rgba(0, 5, 16, 0.1)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw stars
-        stars.forEach(star => {
-          star.twinkle += star.speed;
-          const alpha = star.opacity * (0.5 + 0.5 * Math.sin(star.twinkle));
-          
-          ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-          ctx.beginPath();
-          ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
-          ctx.fill();
-        });
-        
-        // Draw planets
-        planets.forEach(planet => {
-          planet.x += Math.sin(Date.now() * planet.speed) * 0.5;
-          planet.y += Math.cos(Date.now() * planet.speed) * 0.3;
-          
-          // Planet glow
-          const gradient = ctx.createRadialGradient(
-            planet.x, planet.y, 0,
-            planet.x, planet.y, planet.r * 2
-          );
-          gradient.addColorStop(0, planet.color);
-          gradient.addColorStop(0.5, planet.color + '44');
-          gradient.addColorStop(1, 'transparent');
-          
-          ctx.fillStyle = gradient;
-          ctx.beginPath();
-          ctx.arc(planet.x, planet.y, planet.r * 2, 0, Math.PI * 2);
-          ctx.fill();
-          
-          // Planet body
-          ctx.fillStyle = planet.color;
-          ctx.beginPath();
-          ctx.arc(planet.x, planet.y, planet.r, 0, Math.PI * 2);
-          ctx.fill();
-        });
-        
-        requestAnimationFrame(animate);
-      }
-      
-      window.addEventListener('resize', resize);
-      resize();
-      animate();
-    })();
-    
-    function app() {
-      return {
-        screen: 'auth',
-        authTab: 'login',
-        socket: null,
-        user: { username: '', stats: { wins: 0, draws: 0, losses: 0 } },
-        
-        // Auth
-        loginForm: { username: '', password: '' },
-        registerForm: { username: '', password: '' },
-        loginError: '',
-        registerError: '',
-        loginLoading: false,
-        registerLoading: false,
-        
-        // Lobby
-        joinCode: '',
-        lobbyError: '',
-        
-        // Game
-        roomCode: '',
-        mySymbol: '',
-        board: Array(9).fill(null),
-        currentTurn: 'X',
-        gameActive: false,
-        scores: { X: 0, O: 0, D: 0 },
-        gameStatus: '',
-        gameOver: false,
-        gameOverTitle: '',
-        gameOverSubtitle: '',
-        gameOverEmoji: '',
-        mode: '',
-        
-        init() {
-          const token = localStorage.getItem('token');
-          if (token) {
-            this.connectSocket(token);
-          }
-        },
-        
-        connectSocket(token) {
-          this.socket = io({ autoConnect: true, reconnectionAttempts: 5, withCredentials: true });
-          
-          this.socket.on('connect', () => {
-            this.socket.emit('auth', { token });
-          });
-          
-          this.socket.on('auth:ok', (data) => {
-            this.user = { username: data.username, stats: data.stats };
-            this.screen = 'lobby';
-          });
-          
-          this.socket.on('auth:error', () => {
-            localStorage.removeItem('token');
-            this.screen = 'auth';
-          });
-          
-          this.socket.on('room:created', ({ code, symbol }) => {
-            this.roomCode = code;
-            this.mySymbol = symbol;
-            this.screen = 'waiting';
-          });
-          
-          this.socket.on('room:error', (msg) => {
-            this.lobbyError = msg;
-            setTimeout(() => this.lobbyError = '', 3000);
-          });
-          
-          this.socket.on('game:start', (data) => {
-            this.board = data.board;
-            this.currentTurn = data.currentTurn;
-            this.scores = data.scores;
-            this.gameActive = true;
-            this.mode = 'online';
-            this.screen = 'game';
-            this.updateGameStatus();
-          });
-          
-          this.socket.on('game:move', ({ index, symbol }) => {
-            this.board[index] = symbol;
-          });
-          
-          this.socket.on('game:turn', ({ currentTurn }) => {
-            this.currentTurn = currentTurn;
-            this.updateGameStatus();
-          });
-          
-          this.socket.on('game:over', ({ winner, draw, scores }) => {
-            this.scores = scores;
-            this.gameActive = false;
-            this.showGameOver(winner, draw);
-          });
-        },
-        
-        async login() {
-          this.loginError = '';
-          if (!this.loginForm.username || !this.loginForm.password) {
-            this.loginError = 'Please fill all fields';
-            return;
-          }
-          
-          this.loginLoading = true;
-          try {
-            const res = await fetch('/api/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify(this.loginForm)
-            });
-            const data = await res.json();
-            
-            if (data.ok) {
-              localStorage.setItem('token', data.token);
-              this.user = { username: data.username, stats: data.stats };
-              this.connectSocket(data.token);
-            } else {
-              this.loginError = data.error;
-            }
-          } catch (e) {
-            this.loginError = 'Connection error';
-          }
-          this.loginLoading = false;
-        },
-        
-        async register() {
-          this.registerError = '';
-          if (!this.registerForm.username || !this.registerForm.password) {
-            this.registerError = 'Please fill all fields';
-            return;
-          }
-          
-          this.registerLoading = true;
-          try {
-            const res = await fetch('/api/register', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify(this.registerForm)
-            });
-            const data = await res.json();
-            
-            if (data.ok) {
-              localStorage.setItem('token', data.token);
-              this.user = { username: data.username, stats: data.stats };
-              this.connectSocket(data.token);
-            } else {
-              this.registerError = data.error;
-            }
-          } catch (e) {
-            this.registerError = 'Connection error';
-          }
-          this.registerLoading = false;
-        },
-        
-        logout() {
-          localStorage.removeItem('token');
-          if (this.socket) this.socket.disconnect();
-          this.screen = 'auth';
-          this.user = { username: '', stats: { wins: 0, draws: 0, losses: 0 } };
-        },
-        
-        createRoom() {
-          this.lobbyError = '';
-          this.socket.emit('room:create');
-        },
-        
-        joinRoom() {
-          const code = this.joinCode.trim().toUpperCase();
-          if (code.length !== 4) {
-            this.lobbyError = 'Code must be 4 characters';
-            return;
-          }
-          this.lobbyError = '';
-          this.socket.emit('room:join', { code });
-        },
-        
-        cancelWaiting() {
-          if (this.roomCode) {
-            this.socket.emit('room:leave', { code: this.roomCode });
-          }
-          this.screen = 'lobby';
-        },
-        
-        copyRoomCode() {
-          navigator.clipboard.writeText(this.roomCode);
-        },
-        
-        startAI() {
-          this.mode = 'ai';
-          this.mySymbol = 'X';
-          this.board = Array(9).fill(null);
-          this.currentTurn = 'X';
-          this.gameActive = true;
-          this.scores = { X: 0, O: 0, D: 0 };
-          this.screen = 'game';
-          this.updateGameStatus();
-        },
-        
-        canMove(index) {
-          return this.gameActive && !this.board[index] && 
-                 (this.mode === 'ai' ? this.currentTurn === 'X' : this.currentTurn === this.mySymbol);
-        },
-        
-        makeMove(index) {
-          if (!this.canMove(index)) return;
-          
-          if (this.mode === 'ai') {
-            this.board[index] = 'X';
-            if (this.checkWin('X')) {
-              this.scores.X++;
-              this.showGameOver('X', false);
-              return;
-            }
-            if (this.board.every(c => c)) {
-              this.scores.D++;
-              this.showGameOver(null, true);
-              return;
-            }
-            this.currentTurn = 'O';
-            setTimeout(() => this.aiMove(), 500);
-          } else {
-            this.socket.emit('game:move', { code: this.roomCode, index });
-          }
-        },
-        
-        aiMove() {
-          const move = this.getBestMove();
-          if (move !== -1) {
-            this.board[move] = 'O';
-            if (this.checkWin('O')) {
-              this.scores.O++;
-              this.showGameOver('O', false);
-              return;
-            }
-            if (this.board.every(c => c)) {
-              this.scores.D++;
-              this.showGameOver(null, true);
-              return;
-            }
-            this.currentTurn = 'X';
-          }
-        },
-        
-        getBestMove() {
-          for (let i = 0; i < 9; i++) {
-            if (!this.board[i]) return i;
-          }
-          return -1;
-        },
-        
-        checkWin(player) {
-          const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-          return wins.some(line => line.every(i => this.board[i] === player));
-        },
-        
-        updateGameStatus() {
-          if (this.mode === 'ai') {
-            this.gameStatus = this.currentTurn === 'X' ? 'YOUR TURN' : 'AI THINKING...';
-          } else {
-            this.gameStatus = this.currentTurn === this.mySymbol ? 'YOUR TURN' : 'OPPONENT TURN';
-          }
-        },
-        
-        showGameOver(winner, draw) {
-          this.gameActive = false;
-          this.gameOver = true;
-          
-          if (draw) {
-            this.gameOverEmoji = '🤝';
-            this.gameOverTitle = 'STANDOFF';
-            this.gameOverSubtitle = 'MISSION DRAW';
-          } else if (winner === this.mySymbol || (this.mode === 'ai' && winner === 'X')) {
-            this.gameOverEmoji = '🏆';
-            this.gameOverTitle = 'MISSION COMPLETE';
-            this.gameOverSubtitle = 'VICTORY ACHIEVED';
-          } else {
-            this.gameOverEmoji = '❌';
-            this.gameOverTitle = 'MISSION FAILED';
-            this.gameOverSubtitle = this.mode === 'ai' ? 'AI VICTORY' : 'DEFEAT';
-          }
-        },
-        
-        rematch() {
-          this.gameOver = false;
-          if (this.mode === 'ai') {
-            this.board = Array(9).fill(null);
-            this.currentTurn = 'X';
-            this.gameActive = true;
-            this.updateGameStatus();
-          } else {
-            this.socket.emit('game:rematch', { code: this.roomCode });
-          }
-        },
-        
-        leaveGame() {
-          this.gameOver = false;
-          if (this.mode === 'online' && this.roomCode) {
-            this.socket.emit('room:leave', { code: this.roomCode });
-          }
-          this.screen = 'lobby';
-          this.board = Array(9).fill(null);
-          this.gameActive = false;
-        },
-        
-        openSpaceGallery() {
-          this.screen = 'space';
-        },
-        
-        closeSpaceGallery() {
-          this.screen = 'lobby';
-        }
-      }
-    }
-  </script>
+  <script src="/space-3d.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
