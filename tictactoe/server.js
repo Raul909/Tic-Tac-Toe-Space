@@ -7,6 +7,10 @@ const fs = require('fs');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+const mongoose = require('mongoose');
+
+// Load environment variables
+require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
@@ -19,6 +23,41 @@ const io = new Server(server, {
     credentials: true
   }
 });
+
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI;
+if (MONGODB_URI) {
+  mongoose.connect(MONGODB_URI)
+    .then(() => console.log('✅ Connected to MongoDB'))
+    .catch(err => {
+      console.error('❌ MongoDB connection error:', err.message);
+      console.log('⚠️  Falling back to file-based storage');
+    });
+} else {
+  console.log('⚠️  No MONGODB_URI found, using file-based storage');
+}
+
+// User Schema for MongoDB
+const UserSchema = new mongoose.Schema({
+  username: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    lowercase: true,
+    trim: true 
+  },
+  displayName: { type: String, required: true },
+  hash: { type: String, required: true },
+  wins: { type: Number, default: 0 },
+  losses: { type: Number, default: 0 },
+  draws: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model('User', UserSchema);
+
+// Helper to check if MongoDB is connected
+const useDB = () => mongoose.connection.readyState === 1;
 
 app.use(express.json());
 app.use(cookieParser());
