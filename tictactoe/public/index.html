@@ -661,12 +661,19 @@ function initSpace(){
   },2500);
   
   function draw(){
-    ctx.fillStyle='rgba(5,6,14,0.15)';ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle='rgba(5,6,14,0.2)';ctx.fillRect(0,0,cv.width,cv.height);
     
-    // Nebulae with rotation
-    nebulae.forEach(n=>{
-      n.x+=n.drift;if(n.x>cv.width+n.r)n.x=-n.r;
-      n.rotation+=0.0002;
+    // Limit updates for performance
+    const now=Date.now();
+    if(!draw.lastUpdate)draw.lastUpdate=now;
+    const delta=(now-draw.lastUpdate)/16.67; // 60fps baseline
+    draw.lastUpdate=now;
+    
+    // Nebulae (update every other frame)
+    if(draw.frame%2===0){
+      nebulae.forEach(n=>{
+        n.x+=n.drift*delta;if(n.x>cv.width+n.r)n.x=-n.r;
+        n.rotation+=0.0002*delta;
       ctx.save();
       ctx.translate(n.x,n.y);
       ctx.rotate(n.rotation);
