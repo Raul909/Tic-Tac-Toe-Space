@@ -143,16 +143,6 @@ node server.js
 
 Then open: http://localhost:3000
 
-## Rollback Instructions
-
-If issues arise, restore the backup:
-
-```bash
-cd "/var/home/raul/Documents/Tic Tac Toe/tictactoe/public"
-cp index.html.backup index.html
-rm nasa-theme.css
-```
-
 ## Future Enhancements (Optional)
 
 1. Integrate nasa-solar-system.js for auth/lobby backgrounds

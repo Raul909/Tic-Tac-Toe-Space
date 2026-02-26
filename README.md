@@ -36,38 +36,40 @@
 
 ## ✨ Features
 
+### 🚀 NASA-Inspired UI
+- **Mission Control Theme** - Professional HUD interface with "Exo 2" typography
+- **Cinematic Experience** - Dynamic lighting, realistic 3D planets, and glassmorphism panels
+- **Corner Bracket System** - Tactical interface design inspired by spacecraft displays
+
+### 📱 Mobile & Performance
+- **Mobile-First Design** - Fully responsive layout optimized for all screen sizes
+- **Touch Controls** - Enhanced tap targets and fluid typography for mobile operators
+- **High Performance** - Optimized rendering achieving 60fps on desktop and smooth mobile play
+- **Static Background Mode** - Smart switching to static starfields during gameplay for zero lag
+
 ### 🎮 Game Modes
 - **Online Multiplayer** - Play with friends using 4-character room codes
 - **AI Opponent** - Challenge an unbeatable minimax AI
 - **Live Chat** - Real-time chat during multiplayer games
 - **Rematch System** - Quick rematch with symbol swapping
 
-### 🔐 Authentication
-- Username/Password login
-- Google OAuth
-- Facebook OAuth
-- Persistent stats (wins, losses, draws)
+### 🔐 Authentication & Data
+- **Zero-Config Persistence** - Automatic file-based database (users.json) requires NO setup
+- **Secure Auth** - Username/Password, Google OAuth, and Facebook OAuth
+- **Stats Tracking** - Persistent records of wins, losses, and draws
 
 ### 🌌 3D Space Experience
-- **20,000+ Stars** with realistic colors
-- **Complete Solar System** - All 8 planets + Moon
-- **Cinematic Lighting** - Three-point lighting system
-- **Real-Time Weather** - Rain, snow, clouds based on your location
-- **Interactive Cursor** - Particle trail effects
-- **Shooting Stars** - Realistic meteor trails
+- **Scientifically Accurate** - Real astronomical data for planets and stars
+- **20,000+ Stars** - Temperature-based coloring (Red Dwarfs to Blue Giants)
+- **Complete Solar System** - All 8 planets + Moon with correct orbital periods
+- **Real-Time Weather** - Rain, snow, clouds based on your physical location
+- **Interactive Cursor** - Particle trail effects and shooting stars
 
 ### 🌠 3D Space Explorer
-- **Full 3D Controls** - Drag to rotate, scroll to zoom
-- **Solar System** - All planets with realistic orbits
-- **Nearby Stars** - 8 closest stars with data
-- **Nebulae** - 6 famous nebulae as particle clouds
-- **Your Location** - Earth reference point
-- **Weather Sync** - Real-time weather effects
-
-### 🎉 Social Sharing
-- Share victories on Twitter, Facebook, WhatsApp
-- Download victory screenshots
-- Copy shareable links
+- **Interactive Orerry** - Full 3D controls to rotate and zoom the solar system
+- **Nearby Stars** - Explore the 8 closest stars to Earth (Proxima Centauri, Sirius, etc.)
+- **Nebulae Gallery** - View 6 famous nebulae (Orion, Crab, etc.) with accurate details
+- **Detailed Info** - Click any object for mass, temperature, distance, and type
 
 ---
 
@@ -88,7 +90,7 @@ cd Tic-Tac-Toe-/tictactoe
 npm install
 
 # Start the server
-npm start
+node server.js
 ```
 
 Visit `http://localhost:3000` and start playing!
@@ -128,10 +130,10 @@ The app syncs with your real location to display weather effects:
 
 ## 🛠️ Tech Stack
 
-**Backend**: Node.js, Express, Socket.IO, MongoDB  
-**Frontend**: Alpine.js, Tailwind CSS, Three.js  
-**Auth**: Google OAuth, Facebook OAuth, JWT  
-**3D**: Three.js, OrbitControls, PBR materials
+**Backend**: Node.js, Express, Socket.IO, MongoDB / File-based JSON
+**Frontend**: Alpine.js, Tailwind CSS, Three.js, Exo 2 Font
+**Auth**: Google OAuth, Facebook OAuth, JWT
+**3D**: Three.js, OrbitControls, PBR materials, Post-processing
 
 ---
 
@@ -143,7 +145,7 @@ The app syncs with your real location to display weather effects:
 2. Connect to [Render](https://render.com)
 3. Render auto-detects `render.yaml`
 4. Set environment variables (optional):
-   - `MONGODB_URI` - MongoDB connection string
+   - `MONGODB_URI` - MongoDB connection string (Optional - defaults to local file)
    - `GOOGLE_CLIENT_ID` - Google OAuth
    - `FACEBOOK_APP_ID` - Facebook OAuth
 5. Deploy!
@@ -171,10 +173,11 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for details.
 - [x] Interactive cursor effects
 - [x] Social sharing
 - [x] Google & Facebook OAuth
+- [x] Mobile-optimized Web App (PWA ready)
+- [x] Zero-config deployment
 - [ ] Tournament mode
 - [ ] Global leaderboard
 - [ ] Sound effects
-- [ ] Mobile app
 
 ---
 

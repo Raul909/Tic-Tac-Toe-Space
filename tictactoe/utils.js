@@ -30,8 +30,27 @@ function generateRoomCode(roomsMap) {
   return code;
 }
 
+/**
+ * Validates registration input.
+ * @param {string} username - The username to validate.
+ * @param {string} password - The password to validate.
+ * @returns {Object} - Result object with { ok: boolean, error?: string, key?: string }.
+ */
+function validateRegistration(username, password) {
+  if (!username?.trim() || !password) return { ok: false, error: 'Missing fields' };
+
+  const key = username.trim().toLowerCase();
+  if (key.length < 3) return { ok: false, error: 'Username too short (min 3 chars)' };
+  if (key.length > 16) return { ok: false, error: 'Username too long (max 16 chars)' };
+  if (!/^[a-z0-9_]+$/.test(key)) return { ok: false, error: 'Letters, numbers, underscores only' };
+  if (password.length < 8) return { ok: false, error: 'Password min 8 characters' };
+
+  return { ok: true, key };
+}
+
 module.exports = {
   WINS,
   checkWinner,
-  generateRoomCode
+  generateRoomCode,
+  validateRegistration
 };
