@@ -192,6 +192,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
 
 app.post('/api/login', authLimiter, async (req, res) => {
   const { username, password } = req.body || {};
+  if (typeof username !== 'string' || typeof password !== 'string') return res.json({ ok: false, error: 'Invalid input' });
   if (!username || !password) return res.json({ ok: false, error: 'Missing fields' });
 
   const key = username.trim().toLowerCase();
@@ -527,7 +528,8 @@ io.on('connection', (socket) => {
     const key = socketUser.get(socket.id);
     if (!key) return socket.emit('error', 'Not authenticated');
 
-    const upperCode = code?.toUpperCase().trim();
+    if (typeof code !== 'string') return socket.emit('room:error', 'Invalid room code');
+    const upperCode = code.toUpperCase().trim();
     const room = rooms.get(upperCode);
     if (!room) return socket.emit('room:error', 'Room not found');
     if (room.status === 'playing') return socket.emit('room:error', 'Game in progress');
@@ -618,7 +620,8 @@ io.on('connection', (socket) => {
   // ── CHAT ──
   socket.on('chat:msg', ({ code, text }) => {
     const key = socketUser.get(socket.id);
-    if (!key || !text?.trim()) return;
+    if (typeof text !== 'string') return;
+    if (!key || !text.trim()) return;
     const clean = sanitize(text);
     if (!clean) return;
     io.to(code).emit('chat:msg', {
