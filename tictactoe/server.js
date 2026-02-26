@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
+const rateLimiter = require('./rateLimiter');
 const mongoose = require('mongoose');
 const { checkWinner, generateRoomCode } = require('./utils');
 
@@ -441,6 +442,18 @@ app.get('/api/leaderboard', apiLimiter, (req, res) => {
 // ── SOCKET.IO ─────────────────────────────────────────────────────────
 io.on('connection', (socket) => {
 
+  // ── RATE LIMITER ──
+  socket.use((packet, next) => {
+    const eventName = packet[0];
+    // Check if rateLimiter allows the event
+    if (!rateLimiter.check(socket.id, eventName)) {
+      if (eventName === 'disconnect') return next();
+      socket.emit('error', 'Rate limit exceeded. Please slow down.');
+      return;
+    }
+    next();
+  });
+
   // ── AUTH ──
   socket.on('auth', ({ token }) => {
     const key = sessions.get(token);
@@ -589,6 +602,7 @@ io.on('connection', (socket) => {
 
   // ── DISCONNECT ──
   socket.on('disconnect', () => {
+    rateLimiter.cleanup(socket.id);
     const key = socketUser.get(socket.id);
     if (key) {
       userSocket.delete(key);
