@@ -115,30 +115,37 @@ function saveUsers() {
 const sessions = new Map(); // token -> userKey
 const socketUser = new Map(); // socketId -> userKey
 const userSocket = new Map(); // userKey -> socketId
-const rooms = new Map(); // roomCode -> roomObj
+const rooms = new Map();
+const socketRoom = new Map(); // roomCode -> roomObj
 
 function leaveCurrentRoom(socket) {
-  for (const [code, room] of rooms.entries()) {
+  const code = socketRoom.get(socket.id);
+  if (!code) return;
+
+  const room = rooms.get(code);
+  if (room) {
     const idx = room.players.findIndex(p => p.socketId === socket.id);
-    if (idx === -1) continue;
-    socket.leave(code);
-    room.players.splice(idx, 1);
-    if (room.players.length === 0) {
-      rooms.delete(code);
-    } else {
-      room.status = 'waiting';
-      delete room.rematchVotes;
-      socket.to(code).emit('game:opponent-left');
+    if (idx !== -1) {
+      socket.leave(code);
+      room.players.splice(idx, 1);
+      if (room.players.length === 0) {
+        rooms.delete(code);
+      } else {
+        room.status = 'waiting';
+        delete room.rematchVotes;
+        socket.to(code).emit('game:opponent-left');
+      }
     }
-    break;
   }
+  socketRoom.delete(socket.id);
 }
 
 function getRoomForSocket(socketId) {
-  for (const [code, room] of rooms.entries()) {
-    if (room.players.some(p => p.socketId === socketId)) return { code, room };
-  }
-  return null;
+  const code = socketRoom.get(socketId);
+  if (!code) return null;
+  const room = rooms.get(code);
+  if (!room) return null;
+  return { code, room };
 }
 
 // ── REST ENDPOINTS ────────────────────────────────────────────────────
@@ -512,6 +519,7 @@ io.on('connection', (socket) => {
       scores: { X: 0, O: 0, D: 0 }
     };
     rooms.set(code, room);
+    socketRoom.set(socket.id, code);
     socket.join(code);
     socket.emit('room:created', { code, symbol: 'X' });
   });
@@ -532,6 +540,7 @@ io.on('connection', (socket) => {
 
     room.players.push({ socketId: socket.id, key, name: users[key].displayName, symbol: 'O' });
     room.status = 'playing';
+    socketRoom.set(socket.id, upperCode);
     socket.join(upperCode);
     socket.emit('room:joined', { code: upperCode, symbol: 'O' });
 
@@ -629,12 +638,18 @@ io.on('connection', (socket) => {
       userSocket.delete(key);
       socketUser.delete(socket.id);
 
-      for (const [code, room] of rooms.entries()) {
-        const idx = room.players.findIndex(p => p.socketId === socket.id);
-        if (idx !== -1) {
+      const code = socketRoom.get(socket.id);
+      if (code) {
+        const room = rooms.get(code);
+        if (room) {
           socket.to(code).emit('game:opponent-left');
+          // Remove all players from socketRoom since room is deleted
+          for (const p of room.players) {
+            socketRoom.delete(p.socketId);
+          }
           rooms.delete(code);
-          break;
+        } else {
+          socketRoom.delete(socket.id);
         }
       }
     }
