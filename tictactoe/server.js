@@ -9,13 +9,14 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const rateLimiter = require('./rateLimiter');
 const mongoose = require('mongoose');
-const { checkWinner, generateRoomCode } = require('./utils');
+const { checkWinner, generateRoomCode, validateRegistration } = require('./utils');
 const { handleAuthUser } = require('./auth-utils');
 
 // Load environment variables
 require('dotenv').config();
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
