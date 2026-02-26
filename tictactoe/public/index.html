@@ -233,6 +233,34 @@
       }
     }
     
+    /* Accessibility Modes */
+    body.high-contrast {
+      --nasa: #00ffff;
+      --earth: #00ff00;
+      --mars: #ff0000;
+    }
+    
+    body.high-contrast .glass {
+      background: rgba(0, 0, 0, 0.95);
+      border: 2px solid #00ffff;
+    }
+    
+    body.colorblind .text-mars {
+      color: #0066ff !important;
+    }
+    
+    body.colorblind .text-earth {
+      color: #ffaa00 !important;
+    }
+    
+    body.colorblind .border-mars\\/50 {
+      border-color: rgba(0, 102, 255, 0.5) !important;
+    }
+    
+    body.colorblind .border-earth\\/50 {
+      border-color: rgba(255, 170, 0, 0.5) !important;
+    }
+    
     /* Victory Screen Animation */
     @keyframes victoryBounce {
       0%, 100% {
@@ -342,7 +370,7 @@
   <canvas id="fw-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:99"></canvas>
   
   <!-- Home/Landing Screen -->
-  <div x-show="screen === 'home'" style="display: none;" class="content-layer min-h-screen flex items-center justify-center p-4 sm:p-6">
+  <div x-show="screen === 'home'" class="content-layer min-h-screen flex items-center justify-center p-4 sm:p-6">
     <div class="max-w-4xl w-full text-center">
       <div class="mb-6 sm:mb-8">
         <div class="text-nasa text-xs sm:text-sm tracking-widest mb-3 sm:mb-4 animate-pulse">◆ MISSION CONTROL ◆</div>
@@ -495,15 +523,17 @@
           <div class="text-nasa text-xs tracking-widest">◆ MISSION CONTROL ◆</div>
           <div class="text-3xl font-bold tracking-wide" x-text="user.username"></div>
           <div class="text-xs text-gray-400 mt-1">
-            <span class="text-nasa" x-text="user.rank"></span> • 
-            <span x-text="user.stats.wins + ' Wins'"></span> • 
+            <span class="text-nasa" x-text="getELORank()"></span> • 
+            <span x-text="'ELO: ' + user.elo"></span> • 
             <span x-text="'Streak: ' + user.stats.winStreak"></span>
           </div>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
+          <button @click="showFriends = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">👥 FRIENDS</button>
           <button @click="showProfile = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">👤 PROFILE</button>
           <button @click="showStats = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">📊 STATS</button>
           <button @click="showAchievements = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">🏆 BADGES</button>
+          <button @click="showSettings = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">⚙️ SETTINGS</button>
           <button @click="openSpaceGallery()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">🌌 SPACE</button>
           <button @click="logout()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">LOGOUT</button>
         </div>
@@ -1061,6 +1091,103 @@
           </template>
           <div x-show="gameHistory.length === 0" class="text-center text-gray-500 py-4">
             No games played yet
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Friends Modal -->
+  <div x-show="showFriends" @click.self="showFriends = false" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="glass nasa-bracket rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">👥 FRIENDS LIST</h2>
+        <button @click="showFriends = false" class="text-gray-400 hover:text-white text-2xl">×</button>
+      </div>
+      
+      <div class="mb-6">
+        <div class="flex gap-2">
+          <input x-model="friendRequest" @keyup.enter="addFriend()" type="text" placeholder="Enter username..." 
+                 class="flex-1 bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none">
+          <button @click="addFriend()" class="bg-nasa text-black px-6 py-2 rounded font-bold hover:bg-nasa/90 transition">
+            + ADD
+          </button>
+        </div>
+      </div>
+      
+      <div class="space-y-2">
+        <template x-for="friend in user.friends">
+          <div class="glass rounded-lg p-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+              <div class="text-3xl">👤</div>
+              <div>
+                <div class="font-bold" x-text="friend"></div>
+                <div class="text-xs text-gray-400">Online</div>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button @click="challengeFriend(friend)" class="bg-nasa text-black px-4 py-2 rounded text-sm font-bold hover:bg-nasa/90 transition">
+                ⚔️ CHALLENGE
+              </button>
+              <button @click="removeFriend(friend)" class="bg-gray-800 px-4 py-2 rounded text-sm hover:bg-gray-700 transition">
+                ✕
+              </button>
+            </div>
+          </div>
+        </template>
+        <div x-show="user.friends.length === 0" class="text-center text-gray-500 py-8">
+          No friends yet. Add some to play together!
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div x-show="showSettings" @click.self="showSettings = false" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="glass nasa-bracket rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">⚙️ SETTINGS</h2>
+        <button @click="showSettings = false" class="text-gray-400 hover:text-white text-2xl">×</button>
+      </div>
+      
+      <div class="space-y-6">
+        <div>
+          <h3 class="text-nasa text-sm tracking-widest mb-3">🔊 SOUND PACK</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <template x-for="pack in soundPacks">
+              <button @click="changeSoundPack(pack)" 
+                      :class="user.profile.soundPack === pack ? 'border-nasa bg-nasa/20' : 'border-gray-700'"
+                      class="glass rounded-lg border-2 p-3 hover:border-nasa/50 transition">
+                <div class="text-sm font-bold uppercase" x-text="pack"></div>
+              </button>
+            </template>
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="text-nasa text-sm tracking-widest mb-3">♿ ACCESSIBILITY</h3>
+          <div class="space-y-3">
+            <label class="flex items-center justify-between glass rounded-lg p-3 cursor-pointer hover:bg-gray-800/50">
+              <span>High Contrast Mode</span>
+              <input type="checkbox" x-model="highContrast" @change="toggleHighContrast()" class="w-5 h-5">
+            </label>
+            <label class="flex items-center justify-between glass rounded-lg p-3 cursor-pointer hover:bg-gray-800/50">
+              <span>Colorblind Friendly</span>
+              <input type="checkbox" x-model="colorblindMode" @change="toggleColorblindMode()" class="w-5 h-5">
+            </label>
+            <label class="flex items-center justify-between glass rounded-lg p-3 cursor-pointer hover:bg-gray-800/50">
+              <span>Keyboard Navigation (1-9 keys)</span>
+              <input type="checkbox" x-model="keyboardNav" @change="enableKeyboardNav()" class="w-5 h-5">
+            </label>
+          </div>
+        </div>
+        
+        <div class="glass rounded-lg p-4 border border-nasa/30">
+          <h3 class="text-nasa text-sm tracking-widest mb-2">📱 APP INFO</h3>
+          <div class="text-xs text-gray-400 space-y-1">
+            <div>Version: 2.0.0</div>
+            <div>Build: Space Explorer Edition</div>
+            <div>Made with ❤️ for space enthusiasts</div>
           </div>
         </div>
       </div>

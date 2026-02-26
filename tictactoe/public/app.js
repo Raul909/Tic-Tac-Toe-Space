@@ -8,9 +8,10 @@ function app() {
       username: '', 
       stats: { wins: 0, draws: 0, losses: 0, gamesPlayed: 0, winStreak: 0, bestStreak: 0 },
       achievements: [],
-      profile: { avatar: 'astronaut', symbol: 'default', theme: 'space', banner: 'nebula' },
+      profile: { avatar: 'astronaut', symbol: 'default', theme: 'space', banner: 'nebula', soundPack: 'scifi' },
       elo: 1000,
-      rank: 'Cadet'
+      rank: 'Cadet',
+      friends: []
     },
     aiDifficulty: 'normal',
     
@@ -18,10 +19,25 @@ function app() {
     showProfile: false,
     showAchievements: false,
     showStats: false,
+    showFriends: false,
+    showSettings: false,
     avatars: ['astronaut', 'alien', 'robot', 'satellite', 'comet'],
     symbols: ['default', 'star', 'planet', 'rocket', 'galaxy'],
     themes: ['space', 'mars', 'moon', 'jupiter', 'nebula'],
     banners: ['nebula', 'galaxy', 'aurora', 'supernova', 'blackhole'],
+    soundPacks: ['scifi', 'retro', 'realistic', 'minimal'],
+    
+    // Social Features
+    friendRequest: '',
+    onlinePlayers: [],
+    chatMessages: [],
+    chatInput: '',
+    emotes: ['👍', '😄', '🚀', '⭐', '🔥', '💯', '🎯', '👏'],
+    
+    // Accessibility
+    highContrast: false,
+    colorblindMode: false,
+    keyboardNav: false,
     
     // Achievements
     achievements: [
@@ -30,7 +46,9 @@ function app() {
       { id: 'black_hole', name: 'Black Hole', desc: 'Win without opponent scoring', icon: '🕳️', unlocked: false },
       { id: 'supernova', name: 'Supernova', desc: 'Win 5 games in a row', icon: '💥', unlocked: false, progress: 0, target: 5 },
       { id: 'speed_demon', name: 'Speed Demon', desc: 'Win a blitz match under 30s', icon: '⚡', unlocked: false },
-      { id: 'explorer', name: 'Space Explorer', desc: 'Visit all space environments', icon: '🌌', unlocked: false, progress: 0, target: 5 }
+      { id: 'explorer', name: 'Space Explorer', desc: 'Visit all space environments', icon: '🌌', unlocked: false, progress: 0, target: 5 },
+      { id: 'social_butterfly', name: 'Social Butterfly', desc: 'Add 5 friends', icon: '🦋', unlocked: false, progress: 0, target: 5 },
+      { id: 'ranked_warrior', name: 'Ranked Warrior', desc: 'Reach 1500 ELO', icon: '⚔️', unlocked: false }
     ],
     
     // Game Modes
@@ -824,6 +842,121 @@ function app() {
 
     showRandomSpaceFact() {
       this.spaceFact = this.spaceFacts[Math.floor(Math.random() * this.spaceFacts.length)];
+    },
+
+    // Social Features
+    addFriend() {
+      if (!this.friendRequest.trim()) return;
+      if (this.user.friends.includes(this.friendRequest)) {
+        alert('Already friends!');
+        return;
+      }
+      this.user.friends.push(this.friendRequest);
+      this.friendRequest = '';
+      
+      // Check social butterfly achievement
+      if (this.user.friends.length >= 5 && !this.achievements[6].unlocked) {
+        this.achievements[6].unlocked = true;
+        this.showAchievementNotification([this.achievements[6]]);
+      } else {
+        this.achievements[6].progress = this.user.friends.length;
+      }
+      
+      this.saveStats();
+    },
+
+    removeFriend(friend) {
+      this.user.friends = this.user.friends.filter(f => f !== friend);
+      this.achievements[6].progress = this.user.friends.length;
+      this.saveStats();
+    },
+
+    challengeFriend(friend) {
+      alert(`Challenge sent to ${friend}! (Feature coming soon)`);
+    },
+
+    sendChat() {
+      if (!this.chatInput.trim()) return;
+      this.chatMessages.push({
+        user: this.user.username,
+        message: this.chatInput,
+        timestamp: Date.now()
+      });
+      this.chatInput = '';
+      
+      // Keep only last 50 messages
+      if (this.chatMessages.length > 50) {
+        this.chatMessages = this.chatMessages.slice(-50);
+      }
+    },
+
+    sendEmote(emote) {
+      this.chatMessages.push({
+        user: this.user.username,
+        message: emote,
+        isEmote: true,
+        timestamp: Date.now()
+      });
+    },
+
+    // ELO System
+    updateELO(won, opponentELO = 1000) {
+      const K = 32; // K-factor
+      const expectedScore = 1 / (1 + Math.pow(10, (opponentELO - this.user.elo) / 400));
+      const actualScore = won ? 1 : 0;
+      const eloChange = Math.round(K * (actualScore - expectedScore));
+      
+      this.user.elo += eloChange;
+      
+      // Check ranked warrior achievement
+      if (this.user.elo >= 1500 && !this.achievements[7].unlocked) {
+        this.achievements[7].unlocked = true;
+        this.showAchievementNotification([this.achievements[7]]);
+      }
+      
+      return eloChange;
+    },
+
+    getELORank() {
+      if (this.user.elo >= 2000) return '👑 Grandmaster';
+      if (this.user.elo >= 1800) return '💎 Master';
+      if (this.user.elo >= 1600) return '🥇 Diamond';
+      if (this.user.elo >= 1400) return '🥈 Platinum';
+      if (this.user.elo >= 1200) return '🥉 Gold';
+      if (this.user.elo >= 1000) return '🔰 Silver';
+      return '🌱 Bronze';
+    },
+
+    // Accessibility
+    toggleHighContrast() {
+      this.highContrast = !this.highContrast;
+      document.body.classList.toggle('high-contrast', this.highContrast);
+      localStorage.setItem('highContrast', this.highContrast);
+    },
+
+    toggleColorblindMode() {
+      this.colorblindMode = !this.colorblindMode;
+      document.body.classList.toggle('colorblind', this.colorblindMode);
+      localStorage.setItem('colorblindMode', this.colorblindMode);
+    },
+
+    enableKeyboardNav() {
+      this.keyboardNav = true;
+      document.addEventListener('keydown', (e) => {
+        if (!this.gameActive) return;
+        const key = parseInt(e.key);
+        if (key >= 1 && key <= 9) {
+          this.makeMove(key - 1);
+        }
+      });
+    },
+
+    changeSoundPack(pack) {
+      this.user.profile.soundPack = pack;
+      if (window.SoundManager) {
+        window.SoundManager.changePack(pack);
+      }
+      this.saveStats();
     },
     
     rematch() {
