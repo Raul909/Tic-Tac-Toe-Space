@@ -280,6 +280,7 @@
   </style>
 </head>
 <body class="bg-space text-white min-h-screen overflow-x-hidden" x-data="app()" x-init="init()">
+  <button @click="toggleMute()" class="fixed top-4 right-4 z-50 glass p-2 rounded-full hover:bg-gray-800 transition" :class="muted ? 'text-gray-500' : 'text-nasa'"><svg x-show="!muted" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg><svg x-show="muted" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg></button>
   
   <canvas id="three-canvas"></canvas>
   <div class="scan-line"></div>
@@ -420,6 +421,14 @@
               <button @click="joinRoom()" class="bg-gray-800 px-6 rounded hover:bg-gray-700 transition font-bold">DOCK →</button>
             </div>
           </div>
+          <div class="flex gap-4 mt-4">
+             <button @click="createTournament()" class="flex-1 bg-purple-600 text-white font-bold py-4 rounded hover:bg-purple-700 transition tracking-wide">
+               🏆 HOST TOURNAMENT
+             </button>
+             <button @click="joinTournament()" class="flex-1 bg-purple-900/50 border border-purple-500 text-white font-bold py-4 rounded hover:bg-purple-900 transition tracking-wide">
+               JOIN TOURNAMENT
+             </button>
+          </div>
           <div x-show="lobbyError" x-text="lobbyError" class="text-mars text-sm mt-2"></div>
         </div>
         
@@ -428,12 +437,130 @@
           <button @click="startAI()" class="w-full bg-mars text-white font-bold py-4 rounded hover:bg-mars/90 transition tracking-wide">
             ENGAGE AI
           </button>
+          <button @click="openLeaderboard()" class="w-full bg-gray-800 text-nasa font-bold py-4 rounded hover:bg-gray-700 transition tracking-wide mt-4 border border-nasa/30">
+            📊 VIEW LEADERBOARD
+          </button>
         </div>
       </div>
     </div>
   </div>
   
-  <!-- Space Gallery -->
+  <!-- Leaderboard -->
+  <!-- Tournament Lobby -->
+  <div x-show="screen === 'tournament-lobby'" class="content-layer min-h-screen flex items-center justify-center p-4">
+    <div class="glass nasa-bracket rounded-lg p-8 text-center shadow-2xl w-full max-w-lg">
+      <div class="text-xl mb-4 text-nasa tracking-wider">TOURNAMENT LOBBY</div>
+      <div class="text-6xl font-bold text-nasa mb-2 tracking-widest" x-text="tournamentCode"></div>
+      <div class="text-gray-400 mb-6 text-sm tracking-wide">SHARE CODE TO JOIN</div>
+
+      <div class="space-y-2 mb-8">
+        <template x-for="(player, index) in tournamentPlayers" :key="index">
+          <div class="glass p-3 flex justify-between items-center">
+            <span class="text-nasa font-bold" x-text="'P' + (index + 1)"></span>
+            <span class="font-mono" x-text="player.name"></span>
+            <span class="text-green-400 text-xs">READY</span>
+          </div>
+        </template>
+        <template x-for="i in (4 - tournamentPlayers.length)" :key="'empty-' + i">
+          <div class="glass p-3 flex justify-between items-center opacity-50">
+             <span class="text-gray-600 font-bold">--</span>
+             <span class="text-gray-600">WAITING...</span>
+          </div>
+        </template>
+      </div>
+
+      <button @click="setScreen('lobby')" class="block mx-auto text-gray-400 hover:text-white transition">← ABORT</button>
+    </div>
+  </div>
+
+  <!-- Tournament Bracket -->
+  <div x-show="screen === 'tournament-bracket'" class="content-layer min-h-screen flex items-center justify-center p-4">
+    <div class="glass nasa-bracket rounded-lg p-8 w-full max-w-4xl shadow-2xl">
+      <h2 class="text-3xl font-bold text-center mb-2 tracking-widest text-nasa">TOURNAMENT BRACKET</h2>
+      <div class="text-center mb-8 text-sm text-gray-400" x-text="tournamentStatus === 'completed' ? 'CHAMPION DECLARED' : 'IN PROGRESS'"></div>
+
+      <div x-show="tournamentChampion" class="text-center mb-8 animate-bounce">
+         <div class="text-6xl mb-2">🏆</div>
+         <div class="text-2xl font-bold text-nasa">CHAMPION</div>
+         <div class="text-4xl font-bold text-white" x-text="tournamentChampion"></div>
+      </div>
+
+      <div class="flex justify-around items-center gap-8 relative">
+        <!-- Semifinals Column -->
+        <div class="space-y-12 flex-1">
+          <!-- Match 1 -->
+          <div class="glass p-4 relative" :class="tournamentMatches[0]?.winner !== null ? 'opacity-50' : ''">
+             <div class="text-xs text-nasa mb-2">SEMIFINAL 1</div>
+             <div class="flex justify-between p-2 border-b border-gray-700" :class="tournamentMatches[0]?.winner === 0 ? 'text-nasa font-bold' : ''">
+               <span x-text="tournamentPlayers[tournamentMatches[0]?.p1]?.name || '...'"></span>
+               <span x-show="tournamentMatches[0]?.winner === 0">✓</span>
+             </div>
+             <div class="flex justify-between p-2" :class="tournamentMatches[0]?.winner === 1 ? 'text-nasa font-bold' : ''">
+               <span x-text="tournamentPlayers[tournamentMatches[0]?.p2]?.name || '...'"></span>
+               <span x-show="tournamentMatches[0]?.winner === 1">✓</span>
+             </div>
+          </div>
+
+          <!-- Match 2 -->
+          <div class="glass p-4 relative" :class="tournamentMatches[1]?.winner !== null ? 'opacity-50' : ''">
+             <div class="text-xs text-nasa mb-2">SEMIFINAL 2</div>
+             <div class="flex justify-between p-2 border-b border-gray-700" :class="tournamentMatches[1]?.winner === 2 ? 'text-nasa font-bold' : ''">
+               <span x-text="tournamentPlayers[tournamentMatches[1]?.p1]?.name || '...'"></span>
+               <span x-show="tournamentMatches[1]?.winner === 2">✓</span>
+             </div>
+             <div class="flex justify-between p-2" :class="tournamentMatches[1]?.winner === 3 ? 'text-nasa font-bold' : ''">
+               <span x-text="tournamentPlayers[tournamentMatches[1]?.p2]?.name || '...'"></span>
+               <span x-show="tournamentMatches[1]?.winner === 3">✓</span>
+             </div>
+          </div>
+        </div>
+
+        <!-- Final Column -->
+        <div class="flex-1">
+           <div class="glass p-6 border-2 border-nasa/50 relative">
+             <div class="text-xs text-nasa mb-2 text-center">FINAL MISSION</div>
+             <div class="flex justify-between p-3 border-b border-gray-700" :class="tournamentMatches[2]?.winner === tournamentMatches[2]?.p1 && tournamentMatches[2]?.p1 !== null ? 'text-nasa font-bold' : ''">
+               <span x-text="tournamentMatches[2]?.p1 !== null ? tournamentPlayers[tournamentMatches[2]?.p1]?.name : '...'"></span>
+               <span x-show="tournamentMatches[2]?.winner === tournamentMatches[2]?.p1 && tournamentMatches[2]?.p1 !== null">👑</span>
+             </div>
+             <div class="flex justify-between p-3" :class="tournamentMatches[2]?.winner === tournamentMatches[2]?.p2 && tournamentMatches[2]?.p2 !== null ? 'text-nasa font-bold' : ''">
+               <span x-text="tournamentMatches[2]?.p2 !== null ? tournamentPlayers[tournamentMatches[2]?.p2]?.name : '...'"></span>
+               <span x-show="tournamentMatches[2]?.winner === tournamentMatches[2]?.p2 && tournamentMatches[2]?.p2 !== null">👑</span>
+             </div>
+           </div>
+        </div>
+      </div>
+
+      <div class="mt-8 text-center">
+        <button @click="exitTournament()" class="bg-gray-800 px-6 py-2 rounded hover:bg-gray-700 transition font-bold">EXIT TO LOBBY</button>
+      </div>
+    </div>
+  </div>
+  <div x-show="screen === 'leaderboard'" class="content-layer min-h-screen flex items-center justify-center p-4">
+    <div class="glass nasa-bracket rounded-lg p-8 w-full max-w-2xl shadow-2xl relative">
+      <button @click="closeLeaderboard()" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+      <h2 class="text-3xl font-bold text-center mb-6 tracking-widest text-nasa">GLOBAL LEADERBOARD</h2>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-gray-700 text-xs text-gray-400 tracking-wider">
+              <th class="p-3">RANK</th>
+              <th class="p-3">CALLSIGN</th>
+              <th class="p-3 text-right">WINS</th>
+                <td class="p-3 text-right font-mono text-earth" x-text="player.draws"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-6 text-center">
+        <button @click="closeLeaderboard()" class="bg-gray-800 px-6 py-2 rounded hover:bg-gray-700 transition font-bold">← BACK TO BASE</button>
+      </div>
+    </div>
+  </div>
+
   <div x-show="screen === 'space'" class="content-layer min-h-screen p-4">
     <div class="max-w-7xl mx-auto">
       <div class="flex justify-between items-center mb-6">
@@ -583,7 +710,8 @@
       </div>
       
       <div class="flex gap-4">
-        <button @click="rematch()" class="flex-1 bg-nasa text-black font-bold py-3 rounded hover:bg-nasa/90 transition">
+        <button x-show="tournamentStatus" @click="viewBracket()" class="flex-1 bg-purple-600 text-white font-bold py-3 rounded hover:bg-purple-700 transition">VIEW BRACKET</button>
+        <button x-show="!tournamentStatus" @click="rematch()" class="flex-1 bg-nasa text-black font-bold py-3 rounded hover:bg-nasa/90 transition">
           RE-ENGAGE
         </button>
         <button @click="leaveGame()" class="flex-1 bg-gray-800 py-3 rounded hover:bg-gray-700 transition">
@@ -597,6 +725,7 @@
   <script src="/space-gallery-3d.js"></script>
   <script src="/config.js"></script>
   <script src="/game-logic.js"></script>
+  <script src="/sound-manager.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

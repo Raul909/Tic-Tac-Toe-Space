@@ -17,6 +17,12 @@ function app() {
     // Lobby
     joinCode: '',
     lobbyError: '',
+    leaderboard: [],
+    tournamentCode: '',
+    tournamentPlayers: [],
+    tournamentMatches: [],
+    tournamentStatus: '',
+    tournamentChampion: '',
     
     // Game
     roomCode: '',
@@ -32,6 +38,8 @@ function app() {
     gameOverEmoji: '',
     mode: '',
     shareCopied: false,
+    muted: false,
+    toggleMute() { this.muted = window.SoundManager.toggleMute(); },
     
     // Space Gallery
     spaceTab: 'solar',
@@ -41,11 +49,10 @@ function app() {
     
     // Cinematic Helper
     setScreen(screenName) {
-      if (this.screen === screenName) return;
+      if (this.screen === screenName) return; this.screen = screenName;
       if (window.CinematicSpace && typeof window.CinematicSpace.triggerWarp === 'function') {
         window.CinematicSpace.triggerWarp();
       }
-      this.screen = screenName;
     },
 
     init() {
@@ -98,8 +105,13 @@ function app() {
       });
       
       this.socket.on('auth:ok', (data) => {
+        window.SoundManager.play('start');
         this.user = { username: data.username, stats: data.stats };
+      if (this.mode === 'tournament') {
+        this.exitTournament();
+      } else {
         this.setScreen('lobby');
+      }
       });
       
       this.socket.on('auth:error', () => {
@@ -124,17 +136,19 @@ function app() {
       });
       
       this.socket.on('game:start', (data) => {
+        window.SoundManager.play('start');
         this.board = data.board;
         this.currentTurn = data.currentTurn;
         this.scores = data.scores;
         this.gameActive = true;
-        this.mode = 'online';
+        this.mode = data.tournamentMatch ? 'tournament' : 'online';
         this.setScreen('game');
         this.updateGameStatus();
       });
       
       this.socket.on('game:move', ({ index, symbol }) => {
         this.board[index] = symbol;
+        window.SoundManager.play('move');
       });
       
       this.socket.on('game:turn', ({ currentTurn }) => {
@@ -168,12 +182,42 @@ function app() {
         this.gameActive = false;
         this.lobbyError = 'Opponent left the game';
         setTimeout(() => {
-          this.setScreen('lobby');
+          if (this.mode === 'tournament') {
+            this.exitTournament();
+          } else {
+            this.setScreen('lobby');
+          }
           this.lobbyError = '';
         }, 2000);
       });
+
+      this.socket.on('tournament:created', ({ code }) => {
+
+        this.tournamentCode = code;
+        this.setScreen('tournament-lobby');
+      });
+
+      this.socket.on('tournament:update', ({ players, matches, status }) => {
+        if (players) this.tournamentPlayers = players;
+        if (matches) this.tournamentMatches = matches;
+        if (status) this.tournamentStatus = status;
+        if (this.screen === 'tournament-lobby' && status === 'semifinals') {
+          this.setScreen('tournament-bracket');
+        }
+      });
+
+      this.socket.on('tournament:start', ({ matches }) => {
+        this.tournamentMatches = matches;
+        this.tournamentStatus = 'semifinals';
+        this.setScreen('tournament-bracket');
+        if (window.SoundManager) window.SoundManager.play('start');
+      });
+
+      this.socket.on('tournament:champion', ({ champion }) => {
+        this.tournamentChampion = champion;
+        if (window.SoundManager) window.SoundManager.play('win');
+      });
     },
-    
     handleAuthSuccess(data) {
       localStorage.setItem('token', data.token);
       this.user = { username: data.username, stats: data.stats };
@@ -322,7 +366,11 @@ function app() {
       if (this.roomCode) {
         this.socket.emit('room:leave', { code: this.roomCode });
       }
-      this.setScreen('lobby');
+      if (this.mode === 'tournament') {
+        this.exitTournament();
+      } else {
+        this.setScreen('lobby');
+      }
     },
     
     copyRoomCode() {
@@ -347,6 +395,7 @@ function app() {
     
     makeMove(index) {
       if (!this.canMove(index)) return;
+      window.SoundManager.play('click');
       
       if (this.mode === 'ai') {
         this.board[index] = 'X';
@@ -426,15 +475,15 @@ function app() {
       this.gameOver = true;
       
       if (draw) {
-        this.gameOverEmoji = '🤝';
+        window.SoundManager.play('draw'); this.gameOverEmoji = '🤝';
         this.gameOverTitle = 'STANDOFF';
         this.gameOverSubtitle = 'MISSION DRAW';
       } else if (winner === this.mySymbol || (this.mode === 'ai' && winner === 'X')) {
-        this.gameOverEmoji = '🏆';
+        window.SoundManager.play('win'); this.gameOverEmoji = '🏆';
         this.gameOverTitle = 'MISSION COMPLETE';
         this.gameOverSubtitle = 'VICTORY ACHIEVED';
       } else {
-        this.gameOverEmoji = '❌';
+        window.SoundManager.play('lose'); this.gameOverEmoji = '❌';
         this.gameOverTitle = 'MISSION FAILED';
         this.gameOverSubtitle = this.mode === 'ai' ? 'AI VICTORY' : 'DEFEAT';
       }
@@ -457,18 +506,70 @@ function app() {
       if (this.mode === 'online' && this.roomCode) {
         this.socket.emit('room:leave', { code: this.roomCode });
       }
-      this.setScreen('lobby');
+      if (this.mode === 'tournament') {
+        this.exitTournament();
+      } else {
+        this.setScreen('lobby');
+      }
       this.board = Array(9).fill(null);
       this.gameActive = false;
     },
     
+    async fetchLeaderboard() {
+      try {
+        const res = await fetch('/api/leaderboard');
+        this.leaderboard = await res.json();
+      } catch (e) {
+        console.error('Failed to fetch leaderboard', e);
+      }
+    },
+
+    openLeaderboard() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      this.fetchLeaderboard();
+      this.setScreen('leaderboard');
+    },
+
+    closeLeaderboard() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      this.setScreen('lobby');
+    },
+
+    createTournament() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      this.socket.emit('tournament:create');
+    },
+
+    joinTournament() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      if (!this.joinCode) return;
+      this.socket.emit('tournament:join', { code: this.joinCode });
+    },
+
+    viewBracket() {
+      this.setScreen('tournament-bracket');
+    },
+
+    exitTournament() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      this.tournamentCode = '';
+      this.tournamentPlayers = [];
+      this.tournamentMatches = [];
+      this.tournamentStatus = '';
+      this.tournamentChampion = '';
+      this.setScreen('lobby');
+    },
     openSpaceGallery() {
       this.setScreen('space');
       setTimeout(() => this.loadSpaceTab(this.spaceTab), 100);
     },
     
     closeSpaceGallery() {
-      this.setScreen('lobby');
+      if (this.mode === 'tournament') {
+        this.exitTournament();
+      } else {
+        this.setScreen('lobby');
+      }
     },
     
     initSpaceGallery() {

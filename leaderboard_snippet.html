@@ -1,0 +1,36 @@
+  <!-- Leaderboard -->
+  <div x-show="screen === 'leaderboard'" class="content-layer min-h-screen flex items-center justify-center p-4">
+    <div class="glass nasa-bracket rounded-lg p-8 w-full max-w-2xl shadow-2xl relative">
+      <button @click="closeLeaderboard()" class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+      <h2 class="text-3xl font-bold text-center mb-6 tracking-widest text-nasa">GLOBAL LEADERBOARD</h2>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-gray-700 text-xs text-gray-400 tracking-wider">
+              <th class="p-3">RANK</th>
+              <th class="p-3">CALLSIGN</th>
+              <th class="p-3 text-right">WINS</th>
+              <th class="p-3 text-right">LOSSES</th>
+              <th class="p-3 text-right">DRAWS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="(player, index) in leaderboard" :key="index">
+              <tr class="border-b border-gray-800 hover:bg-white/5 transition">
+                <td class="p-3 font-mono text-nasa" x-text="String(index + 1).padStart(2, '0')"></td>
+                <td class="p-3 font-bold" x-text="player.name"></td>
+                <td class="p-3 text-right font-mono text-mars" x-text="player.wins"></td>
+                <td class="p-3 text-right font-mono text-gray-400" x-text="player.losses"></td>
+                <td class="p-3 text-right font-mono text-earth" x-text="player.draws"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-6 text-center">
+        <button @click="closeLeaderboard()" class="bg-gray-800 px-6 py-2 rounded hover:bg-gray-700 transition font-bold">← BACK TO BASE</button>
+      </div>
+    </div>
+  </div>
