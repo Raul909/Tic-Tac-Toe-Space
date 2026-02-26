@@ -12,7 +12,7 @@ NC='\033[0m' # No Color
 
 # Start server
 echo "📦 Starting server..."
-cd "/var/home/raul/Documents/Tic Tac Toe/tictactoe"
+cd "$(dirname "$0")"
 npm start > /tmp/test-server.log 2>&1 &
 SERVER_PID=$!
 sleep 3
@@ -39,7 +39,7 @@ test_api() {
         response=$(curl -s "http://localhost:3000$endpoint")
     fi
     
-    if echo "$response" | grep -q "$expected"; then
+    if echo "$response" | grep -Fq "$expected"; then
         echo -e "${GREEN}✓ PASSED${NC}"
         ((PASSED++))
     else

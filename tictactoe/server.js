@@ -82,6 +82,10 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 let users = {};
+let cachedLeaderboard = null;
+let lastLeaderboardUpdate = 0;
+const LEADERBOARD_CACHE_TTL = 60 * 1000; // 60 seconds
+
 try {
   if (fs.existsSync(USERS_FILE)) {
     users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
@@ -452,10 +456,18 @@ app.post('/api/auth/facebook', async (req, res) => {
 
 // Leaderboard endpoint
 app.get('/api/leaderboard', apiLimiter, (req, res) => {
+  const now = Date.now();
+  if (cachedLeaderboard && (now - lastLeaderboardUpdate < LEADERBOARD_CACHE_TTL)) {
+    return res.json(cachedLeaderboard);
+  }
+
   const board = Object.values(users)
     .map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }))
     .sort((a, b) => b.wins - a.wins)
     .slice(0, 10);
+
+  cachedLeaderboard = board;
+  lastLeaderboardUpdate = now;
   res.json(board);
 });
 
