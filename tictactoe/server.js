@@ -634,6 +634,7 @@ io.on('connection', (socket) => {
   });
 
   // ── TOURNAMENT ──
+  socket.on('tournament:create', () => {
     const key = socketUser.get(socket.id);
     if (!key) return socket.emit('error', 'Not authenticated');
     leaveCurrentRoom(socket);
