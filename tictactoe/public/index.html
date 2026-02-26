@@ -173,6 +173,34 @@
       border-color: #00d4ff !important;
       box-shadow: 0 0 30px rgba(0, 212, 255, 0.8) !important;
     }
+
+    #winning-line {
+      opacity: 0;
+      transition: opacity 0.3s ease-out;
+    }
+
+    #winning-line.active {
+      opacity: 1;
+      animation: neonPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes neonPulse {
+      0%, 100% {
+        filter: drop-shadow(0 0 8px #00d4ff) drop-shadow(0 0 15px #00d4ff);
+      }
+      50% {
+        filter: drop-shadow(0 0 15px #00ffff) drop-shadow(0 0 25px #00ffff);
+      }
+    }
+
+    @keyframes drawLine {
+      from {
+        stroke-dashoffset: 1000;
+      }
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
     
     /* Victory Screen Animation */
     @keyframes victoryBounce {
@@ -660,16 +688,28 @@
         </div>
       </div>
       
-      <div class="grid grid-cols-3 gap-3 max-w-md mx-auto mb-6">
-        <template x-for="(cell, i) in board" :key="i">
-          <button @click="makeMove(i)" 
-                  :disabled="!canMove(i)"
-                  :data-cell-index="i"
-                  class="aspect-square glass nasa-bracket rounded-lg text-6xl font-bold hover:bg-gray-800/50 disabled:cursor-not-allowed transition-all shadow-lg"
-                  :class="cell === 'X' ? 'text-mars border-mars/50' : cell === 'O' ? 'text-earth border-earth/50' : 'border-nasa/30'"
-                  x-text="cell || ''">
-          </button>
-        </template>
+      <div class="relative max-w-md mx-auto mb-6">
+        <div class="grid grid-cols-3 gap-3" id="game-board">
+          <template x-for="(cell, i) in board" :key="i">
+            <button @click="makeMove(i)" 
+                    :disabled="!canMove(i)"
+                    :data-cell-index="i"
+                    class="aspect-square glass nasa-bracket rounded-lg text-6xl font-bold hover:bg-gray-800/50 disabled:cursor-not-allowed transition-all shadow-lg"
+                    :class="cell === 'X' ? 'text-mars border-mars/50' : cell === 'O' ? 'text-earth border-earth/50' : 'border-nasa/30'"
+                    x-text="cell || ''">
+            </button>
+          </template>
+        </div>
+        <svg id="winning-line" class="absolute inset-0 pointer-events-none" style="width: 100%; height: 100%;">
+          <line id="win-line" x1="0" y1="0" x2="0" y2="0" stroke="url(#neonGradient)" stroke-width="6" stroke-linecap="round" style="filter: drop-shadow(0 0 10px currentColor);" />
+          <defs>
+            <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+              <stop offset="50%" style="stop-color:#00ffff;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
       
       <div class="text-center">

@@ -137,6 +137,7 @@ function app() {
       });
       
       this.socket.on('game:start', (data) => {
+        this.clearWinningCells();
         window.SoundManager.play('start');
         this.board = data.board;
         this.currentTurn = data.currentTurn;
@@ -384,6 +385,7 @@ function app() {
     },
 
     startAI() {
+      this.clearWinningCells();
       this.mode = 'ai';
       this.mySymbol = 'X';
       this.board = Array(9).fill(null);
@@ -448,8 +450,25 @@ function app() {
       return GameLogic.checkWin(this.board, player);
     },
     
+    clearWinningCells() {
+      document.querySelectorAll('.winning-cell').forEach(cell => {
+        cell.classList.remove('winning-cell');
+        cell.style.animation = '';
+      });
+      const svg = document.getElementById('winning-line');
+      if (svg) {
+        svg.classList.remove('active');
+        const line = document.getElementById('win-line');
+        if (line) {
+          line.setAttribute('x1', '0');
+          line.setAttribute('y1', '0');
+          line.setAttribute('x2', '0');
+          line.setAttribute('y2', '0');
+        }
+      }
+    },
+
     animateWinningLine(line) {
-      // Add winning class to cells
       line.forEach((index, i) => {
         setTimeout(() => {
           const cell = document.querySelector(`[data-cell-index="${index}"]`);
@@ -459,6 +478,46 @@ function app() {
           }
         }, i * 100);
       });
+
+      setTimeout(() => this.drawWinningLine(line), 300);
+    },
+
+    drawWinningLine(line) {
+      const board = document.getElementById('game-board');
+      const svg = document.getElementById('winning-line');
+      const svgLine = document.getElementById('win-line');
+      if (!board || !svg || !svgLine) return;
+
+      const cells = line.map(i => document.querySelector(`[data-cell-index="${i}"]`));
+      if (!cells[0] || !cells[2]) return;
+
+      const boardRect = board.getBoundingClientRect();
+      const firstRect = cells[0].getBoundingClientRect();
+      const lastRect = cells[2].getBoundingClientRect();
+
+      const x1 = firstRect.left + firstRect.width / 2 - boardRect.left;
+      const y1 = firstRect.top + firstRect.height / 2 - boardRect.top;
+      const x2 = lastRect.left + lastRect.width / 2 - boardRect.left;
+      const y2 = lastRect.top + lastRect.height / 2 - boardRect.top;
+
+      const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+
+      svgLine.setAttribute('x1', x1);
+      svgLine.setAttribute('y1', y1);
+      svgLine.setAttribute('x2', x1);
+      svgLine.setAttribute('y2', y1);
+      svgLine.style.strokeDasharray = length;
+      svgLine.style.strokeDashoffset = length;
+
+      svg.classList.add('active');
+
+      requestAnimationFrame(() => {
+        svgLine.setAttribute('x2', x2);
+        svgLine.setAttribute('y2', y2);
+        svgLine.style.transition = 'stroke-dashoffset 0.6s ease-out';
+        svgLine.style.strokeDashoffset = '0';
+      });
+    },
     },
     
     updateGameStatus() {
@@ -489,6 +548,7 @@ function app() {
     },
     
     rematch() {
+      this.clearWinningCells();
       this.gameOver = false;
       if (this.mode === 'ai') {
         this.board = Array(9).fill(null);
@@ -501,6 +561,7 @@ function app() {
     },
     
     leaveGame() {
+      this.clearWinningCells();
       this.gameOver = false;
       if (this.mode === 'online' && this.roomCode) {
         this.socket.emit('room:leave', { code: this.roomCode });
