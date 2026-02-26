@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Tic Tac Toe - Mission Control</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <link rel="stylesheet" href="/mobile-optimizations.css">
   <script>
     tailwind.config = {
       theme: {
@@ -535,62 +536,72 @@
   </div>
   
   <!-- Lobby Screen -->
-  <div x-show="screen === 'lobby'" class="content-layer min-h-screen p-4">
+  <div x-show="screen === 'lobby'" class="content-layer min-h-screen p-3 sm:p-4">
     <div class="max-w-4xl mx-auto">
-      <div class="flex justify-between items-center mb-6">
-        <div>
-          <div class="text-nasa text-xs tracking-widest">◆ MISSION CONTROL ◆</div>
-          <div class="text-3xl font-bold tracking-wide" x-text="user.username"></div>
-          <div class="text-xs text-gray-400 mt-1">
-            <span class="text-nasa" x-text="getELORank()"></span> • 
-            <span x-text="'ELO: ' + user.elo"></span> • 
-            <span x-text="'Streak: ' + user.stats.winStreak"></span>
-          </div>
-        </div>
-        <div class="flex gap-2 flex-wrap">
-          <button @click="showFriends = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">👥 FRIENDS</button>
-          <button @click="showProfile = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">👤 PROFILE</button>
-          <button @click="showStats = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">📊 STATS</button>
-          <button @click="showAchievements = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">🏆 BADGES</button>
-          <button @click="showSettings = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">⚙️ SETTINGS</button>
-          <button @click="openSpaceGallery()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">🌌 SPACE</button>
-          <button @click="logout()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">LOGOUT</button>
+      <!-- Header - Mobile Optimized -->
+      <div class="mb-4 sm:mb-6">
+        <div class="text-nasa text-xs tracking-widest">◆ MISSION CONTROL ◆</div>
+        <div class="text-2xl sm:text-3xl font-bold tracking-wide truncate" x-text="user.username"></div>
+        <div class="text-xs text-gray-400 mt-1 flex flex-wrap gap-2">
+          <span class="text-nasa" x-text="getELORank()"></span>
+          <span>•</span>
+          <span x-text="'ELO: ' + user.elo"></span>
+          <span>•</span>
+          <span x-text="'Streak: ' + user.stats.winStreak"></span>
         </div>
       </div>
       
-      <div class="flex gap-4 mb-6">
-        <div class="glass rounded px-6 py-3 border border-nasa/50">
-          <span class="text-nasa text-xs tracking-wider">W-</span><span class="font-bold text-lg" x-text="String(user.stats.wins).padStart(2, '0')">00</span>
+      <!-- Action Buttons - Mobile Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 mb-4 sm:mb-6">
+        <button @click="showProfile = true" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 transition font-bold text-sm">👤</button>
+        <button @click="showAchievements = true" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 transition font-bold text-sm">🏆</button>
+        <button @click="showSettings = true" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 transition font-bold text-sm">⚙️</button>
+        <button @click="openSpaceGallery()" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 transition font-bold text-sm">🌌</button>
+        <button @click="showFriends = true" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 transition font-bold text-sm hidden sm:block">👥</button>
+        <button @click="showStats = true" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 transition font-bold text-sm hidden sm:block">📊</button>
+        <button @click="logout()" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 transition font-bold text-sm col-span-2 sm:col-span-1">LOGOUT</button>
+      </div>
+      
+      <!-- Stats - Mobile Optimized -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+        <div class="glass rounded px-3 sm:px-6 py-2 sm:py-3 border border-nasa/50">
+          <span class="text-nasa text-xs tracking-wider">W</span>
+          <span class="font-bold text-lg ml-1" x-text="user.stats.wins">0</span>
         </div>
-        <div class="glass rounded px-6 py-3 border border-nasa/50">
-          <span class="text-nasa text-xs tracking-wider">D-</span><span class="font-bold text-lg" x-text="String(user.stats.draws).padStart(2, '0')">00</span>
+        <div class="glass rounded px-3 sm:px-6 py-2 sm:py-3 border border-nasa/50">
+          <span class="text-nasa text-xs tracking-wider">D</span>
+          <span class="font-bold text-lg ml-1" x-text="user.stats.draws">0</span>
         </div>
-        <div class="glass rounded px-6 py-3 border border-nasa/50">
-          <span class="text-nasa text-xs tracking-wider">L-</span><span class="font-bold text-lg" x-text="String(user.stats.losses).padStart(2, '0')">00</span>
+        <div class="glass rounded px-3 sm:px-6 py-2 sm:py-3 border border-nasa/50">
+          <span class="text-nasa text-xs tracking-wider">L</span>
+          <span class="font-bold text-lg ml-1" x-text="user.stats.losses">0</span>
         </div>
-        <div class="glass rounded px-6 py-3 border border-earth/50">
-          <span class="text-earth text-xs tracking-wider">BEST STREAK-</span><span class="font-bold text-lg" x-text="user.stats.bestStreak">0</span>
+        <div class="glass rounded px-3 sm:px-6 py-2 sm:py-3 border border-earth/50">
+          <span class="text-earth text-xs tracking-wider">BEST</span>
+          <span class="font-bold text-lg ml-1" x-text="user.stats.bestStreak">0</span>
         </div>
       </div>
       
-      <div class="glass nasa-bracket rounded-lg p-6 space-y-6 shadow-2xl">
+      <div class="glass nasa-bracket rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl">
         <div>
-          <h3 class="text-nasa text-sm tracking-widest mb-4">🚀 MULTIPLAYER MISSION</h3>
-          <div class="flex gap-4">
-            <button @click="createRoom()" class="flex-1 bg-nasa text-black font-bold py-4 rounded hover:bg-nasa/90 transition tracking-wide">
+          <h3 class="text-nasa text-sm tracking-widest mb-3 sm:mb-4">🚀 MULTIPLAYER MISSION</h3>
+          <!-- Mobile: Stack buttons vertically -->
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-4">
+            <button @click="createRoom()" class="w-full sm:flex-1 bg-nasa text-black font-bold py-3 sm:py-4 rounded hover:bg-nasa/90 transition tracking-wide text-sm sm:text-base">
               + LAUNCH ROOM
             </button>
-            <div class="flex-1 flex gap-2">
+            <div class="w-full sm:flex-1 flex gap-2">
               <input id="join-code" name="roomCode" x-model="joinCode" type="text" maxlength="4" placeholder="CODE"
-                     class="flex-1 bg-gray-800 border border-gray-700 rounded px-4 uppercase text-center focus:border-nasa focus:outline-none transition">
-              <button @click="joinRoom()" class="bg-gray-800 px-6 rounded hover:bg-gray-700 transition font-bold">DOCK →</button>
+                     class="flex-1 bg-gray-800 border border-gray-700 rounded px-3 sm:px-4 uppercase text-center focus:border-nasa focus:outline-none transition text-sm sm:text-base">
+              <button @click="joinRoom()" class="bg-gray-800 px-4 sm:px-6 rounded hover:bg-gray-700 transition font-bold text-sm sm:text-base">DOCK →</button>
             </div>
           </div>
-          <div class="flex gap-4 mt-4">
-             <button @click="createTournament()" class="flex-1 bg-purple-600 text-white font-bold py-4 rounded hover:bg-purple-700 transition tracking-wide">
+          <!-- Tournament buttons - Stack on mobile -->
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-3 sm:mt-4">
+             <button @click="createTournament()" class="w-full sm:flex-1 bg-purple-600 text-white font-bold py-3 sm:py-4 rounded hover:bg-purple-700 transition tracking-wide text-sm sm:text-base">
                🏆 HOST TOURNAMENT
              </button>
-             <button @click="joinTournament()" class="flex-1 bg-purple-900/50 border border-purple-500 text-white font-bold py-4 rounded hover:bg-purple-900 transition tracking-wide">
+             <button @click="joinTournament()" class="w-full sm:flex-1 bg-purple-900/50 border border-purple-500 text-white font-bold py-3 sm:py-4 rounded hover:bg-purple-900 transition tracking-wide text-sm sm:text-base">
                JOIN TOURNAMENT
              </button>
           </div>
@@ -598,11 +609,11 @@
         </div>
         
         <div>
-          <h3 class="text-nasa text-sm tracking-widest mb-4">⚙️ GAME SETTINGS</h3>
-          <div class="grid grid-cols-2 gap-4 mb-4">
+          <h3 class="text-nasa text-sm tracking-widest mb-3 sm:mb-4">⚙️ GAME SETTINGS</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
             <div>
               <label class="text-xs text-gray-400 mb-2 block">BOARD SIZE</label>
-              <select x-model="boardSize" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-nasa focus:outline-none">
+              <select x-model="boardSize" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-nasa focus:outline-none text-sm sm:text-base">
                 <option value="3">3x3 Classic</option>
                 <option value="4">4x4 Advanced</option>
                 <option value="5">5x5 Expert</option>
@@ -610,7 +621,7 @@
             </div>
             <div>
               <label class="text-xs text-gray-400 mb-2 block">GAME MODE</label>
-              <select x-model="gameMode" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-nasa focus:outline-none">
+              <select x-model="gameMode" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-nasa focus:outline-none text-sm sm:text-base">
                 <option value="classic">Classic</option>
                 <option value="blitz">⚡ Blitz (60s)</option>
                 <option value="educational">🎓 Educational</option>
@@ -619,40 +630,40 @@
           </div>
           <div>
             <label class="text-xs text-gray-400 mb-2 block">BOARD THEME</label>
-            <div class="grid grid-cols-5 gap-2">
-              <button @click="boardTheme = 'space'" :class="boardTheme === 'space' ? 'border-nasa bg-nasa/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-nasa/50 transition">🌌 Space</button>
-              <button @click="boardTheme = 'mars'" :class="boardTheme === 'mars' ? 'border-mars bg-mars/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-mars/50 transition">🔴 Mars</button>
-              <button @click="boardTheme = 'moon'" :class="boardTheme === 'moon' ? 'border-gray-400 bg-gray-400/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-gray-400/50 transition">🌙 Moon</button>
-              <button @click="boardTheme = 'jupiter'" :class="boardTheme === 'jupiter' ? 'border-earth bg-earth/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-earth/50 transition">🪐 Jupiter</button>
-              <button @click="boardTheme = 'nebula'" :class="boardTheme === 'nebula' ? 'border-purple-500 bg-purple-500/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-purple-500/50 transition">💫 Nebula</button>
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              <button @click="boardTheme = 'space'" :class="boardTheme === 'space' ? 'border-nasa bg-nasa/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-nasa/50 transition">🌌</button>
+              <button @click="boardTheme = 'mars'" :class="boardTheme === 'mars' ? 'border-mars bg-mars/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-mars/50 transition">🔴</button>
+              <button @click="boardTheme = 'moon'" :class="boardTheme === 'moon' ? 'border-gray-400 bg-gray-400/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-gray-400/50 transition">🌙</button>
+              <button @click="boardTheme = 'jupiter'" :class="boardTheme === 'jupiter' ? 'border-earth bg-earth/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-earth/50 transition">🪐</button>
+              <button @click="boardTheme = 'nebula'" :class="boardTheme === 'nebula' ? 'border-purple-500 bg-purple-500/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-purple-500/50 transition">💫</button>
             </div>
           </div>
         </div>
         
         <div>
-          <h3 class="text-nasa text-sm tracking-widest mb-4">🤖 TRAINING MODE</h3>
-          <div class="flex gap-2 mb-4">
+          <h3 class="text-nasa text-sm tracking-widest mb-3 sm:mb-4">🤖 TRAINING MODE</h3>
+          <div class="grid grid-cols-3 gap-2 mb-3 sm:mb-4">
             <button @click="setDifficulty('easy')"
                     :class="aiDifficulty === 'easy' ? 'bg-[#4dffdb] text-black border-[#4dffdb]' : 'bg-gray-800 text-[#4dffdb] border-gray-700'"
-                    class="flex-1 font-bold py-2 rounded border transition hover:bg-[#4dffdb]/20 text-xs tracking-wider">
-              RECRUIT
+                    class="font-bold py-2 sm:py-3 rounded border transition hover:bg-[#4dffdb]/20 text-xs sm:text-sm tracking-wider">
+              EASY
             </button>
             <button @click="setDifficulty('normal')"
                     :class="aiDifficulty === 'normal' ? 'bg-[#00d4ff] text-black border-[#00d4ff]' : 'bg-gray-800 text-[#00d4ff] border-gray-700'"
-                    class="flex-1 font-bold py-2 rounded border transition hover:bg-[#00d4ff]/20 text-xs tracking-wider">
-              OFFICER
+                    class="font-bold py-2 sm:py-3 rounded border transition hover:bg-[#00d4ff]/20 text-xs sm:text-sm tracking-wider">
+              NORMAL
             </button>
             <button @click="setDifficulty('hard')"
                     :class="aiDifficulty === 'hard' ? 'bg-[#ff6b35] text-black border-[#ff6b35]' : 'bg-gray-800 text-[#ff6b35] border-gray-700'"
-                    class="flex-1 font-bold py-2 rounded border transition hover:bg-[#ff6b35]/20 text-xs tracking-wider">
-              COMMANDER
+                    class="font-bold py-2 sm:py-3 rounded border transition hover:bg-[#ff6b35]/20 text-xs sm:text-sm tracking-wider">
+              HARD
             </button>
           </div>
 
-          <button @click="startAI()" class="w-full bg-mars text-white font-bold py-4 rounded hover:bg-mars/90 transition tracking-wide">
+          <button @click="startAI()" class="w-full bg-mars text-white font-bold py-3 sm:py-4 rounded hover:bg-mars/90 transition tracking-wide text-sm sm:text-base">
             ENGAGE AI
           </button>
-          <button @click="openLeaderboard()" class="w-full bg-gray-800 text-nasa font-bold py-4 rounded hover:bg-gray-700 transition tracking-wide mt-4 border border-nasa/30">
+          <button @click="openLeaderboard()" class="w-full bg-gray-800 text-nasa font-bold py-3 sm:py-4 rounded hover:bg-gray-700 transition tracking-wide mt-3 sm:mt-4 border border-nasa/30 text-sm sm:text-base">
             📊 VIEW LEADERBOARD
           </button>
         </div>

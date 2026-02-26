@@ -1,0 +1,49 @@
+/* Mobile Optimization Overrides */
+
+/* Reduce modal padding on mobile */
+@media (max-width: 640px) {
+  .glass.nasa-bracket {
+    padding: 1rem !important;
+  }
+  
+  /* Smaller text in modals */
+  .glass.nasa-bracket h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  .glass.nasa-bracket h3 {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  /* Compact buttons */
+  .glass.nasa-bracket button {
+    padding: 0.5rem !important;
+    font-size: 0.875rem !important;
+  }
+  
+  /* Reduce gaps */
+  .space-y-6 > * + * {
+    margin-top: 1rem !important;
+  }
+  
+  /* Smaller emoji in profile */
+  .aspect-square {
+    font-size: 2rem !important;
+  }
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 768px) {
+  button, a, [x-on\:click] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Prevent text selection on buttons */
+  button {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
