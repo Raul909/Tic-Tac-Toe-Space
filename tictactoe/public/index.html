@@ -111,6 +111,22 @@
       z-index: 100;
     }
     
+    /* Mobile optimizations */
+    @media (max-width: 640px) {
+      #three-canvas {
+        transform: scale(1.1);
+      }
+      .glass {
+        backdrop-filter: blur(8px);
+      }
+    }
+    
+    /* Touch-friendly interactions */
+    .touch-manipulation {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
     #space-gallery-canvas {
       width: 100%;
       height: 500px;
@@ -311,45 +327,46 @@
   <canvas id="fw-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:99"></canvas>
   
   <!-- Home/Landing Screen -->
-  <div x-show="screen === 'home'" class="content-layer min-h-screen flex items-center justify-center p-4">
+  <div x-show="screen === 'home'" class="content-layer min-h-screen flex items-center justify-center p-4 sm:p-6">
     <div class="max-w-4xl w-full text-center">
-      <div class="mb-8 animate-pulse">
-        <div class="text-nasa text-sm tracking-widest mb-4">◆ MISSION CONTROL ◆</div>
-        <h1 class="text-7xl md:text-8xl font-bold tracking-wider mb-4 text-transparent bg-clip-text bg-gradient-to-r from-nasa via-earth to-mars">
+      <div class="mb-6 sm:mb-8 animate-pulse">
+        <div class="text-nasa text-xs sm:text-sm tracking-widest mb-3 sm:mb-4">◆ MISSION CONTROL ◆</div>
+        <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-wider mb-3 sm:mb-4 text-transparent bg-clip-text bg-gradient-to-r from-nasa via-earth to-mars px-2">
           TIC TAC TOE
         </h1>
-        <p class="text-xl md:text-2xl text-gray-300 tracking-wide mb-2">TACTICAL GRID COMBAT SYSTEM</p>
-        <p class="text-sm text-gray-500 tracking-widest">REAL-TIME MULTIPLAYER • AI OPPONENT • 3D SPACE</p>
+        <p class="text-lg sm:text-xl md:text-2xl text-gray-300 tracking-wide mb-2 px-2">TACTICAL GRID COMBAT SYSTEM</p>
+        <p class="text-xs sm:text-sm text-gray-500 tracking-widest px-2">REAL-TIME MULTIPLAYER • AI OPPONENT • 3D SPACE</p>
       </div>
 
-      <div class="glass nasa-bracket rounded-lg p-8 md:p-12 shadow-2xl mb-8 max-w-2xl mx-auto">
-        <div class="grid md:grid-cols-3 gap-6 mb-8">
+      <div class="glass nasa-bracket rounded-lg p-6 sm:p-8 md:p-12 shadow-2xl mb-6 sm:mb-8 max-w-2xl mx-auto">
+        <div class="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
           <div class="text-center">
-            <div class="text-4xl mb-2">🌐</div>
-            <div class="text-nasa font-bold mb-1">MULTIPLAYER</div>
-            <div class="text-xs text-gray-400">Play with friends online</div>
+            <div class="text-3xl sm:text-4xl mb-1 sm:mb-2">🌐</div>
+            <div class="text-nasa font-bold mb-1 text-xs sm:text-sm md:text-base">MULTIPLAYER</div>
+            <div class="text-[10px] sm:text-xs text-gray-400 hidden sm:block">Play with friends online</div>
           </div>
           <div class="text-center">
-            <div class="text-4xl mb-2">🤖</div>
-            <div class="text-earth font-bold mb-1">AI OPPONENT</div>
-            <div class="text-xs text-gray-400">Challenge unbeatable AI</div>
+            <div class="text-3xl sm:text-4xl mb-1 sm:mb-2">🤖</div>
+            <div class="text-earth font-bold mb-1 text-xs sm:text-sm md:text-base">AI OPPONENT</div>
+            <div class="text-[10px] sm:text-xs text-gray-400 hidden sm:block">Challenge unbeatable AI</div>
           </div>
           <div class="text-center">
-            <div class="text-4xl mb-2">🌌</div>
-            <div class="text-mars font-bold mb-1">3D SPACE</div>
-            <div class="text-xs text-gray-400">Explore the solar system</div>
+            <div class="text-3xl sm:text-4xl mb-1 sm:mb-2">🌌</div>
+            <div class="text-mars font-bold mb-1 text-xs sm:text-sm md:text-base">3D SPACE</div>
+            <div class="text-[10px] sm:text-xs text-gray-400 hidden sm:block">Explore the solar system</div>
           </div>
         </div>
 
         <button @click="setScreen('auth')" 
-                class="w-full bg-gradient-to-r from-nasa to-earth text-black font-bold py-4 px-8 rounded-lg text-xl tracking-wider hover:shadow-lg hover:shadow-nasa/50 transition-all transform hover:scale-105">
+                class="w-full bg-gradient-to-r from-nasa to-earth text-black font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-lg text-lg sm:text-xl tracking-wider hover:shadow-lg hover:shadow-nasa/50 transition-all transform active:scale-95 sm:hover:scale-105">
           🚀 LAUNCH MISSION
         </button>
       </div>
 
-      <div class="text-gray-500 text-xs tracking-wider space-y-1">
-        <p>NASA-INSPIRED DESIGN • REAL-TIME WEATHER • CINEMATIC 3D GRAPHICS</p>
-        <p x-show="weather" class="text-nasa/70">
+      <div class="text-gray-500 text-[10px] sm:text-xs tracking-wider space-y-1 px-2">
+        <p class="hidden sm:block">NASA-INSPIRED DESIGN • REAL-TIME WEATHER • CINEMATIC 3D GRAPHICS</p>
+        <p class="sm:hidden">NASA DESIGN • WEATHER SYNC • 3D GRAPHICS</p>
+        <p x-show="weather" class="text-nasa/70 text-xs sm:text-sm">
           <span x-show="weather === 'clear'">☀️ CLEAR SKY MODE</span>
           <span x-show="weather === 'cloudy'">☁️ MISTY ATMOSPHERE</span>
           <span x-show="weather === 'rain'">🌧️ STORM MODE</span>
@@ -360,9 +377,9 @@
   </div>
 
   <!-- Auth Screen -->
-  <div x-show="screen === 'auth'" class="content-layer min-h-screen flex items-center justify-center p-4">
+  <div x-show="screen === 'auth'" class="content-layer min-h-screen flex items-center justify-center p-4 sm:p-6">
     <div class="max-w-md w-full">
-      <div class="text-center mb-8">
+      <div class="text-center mb-6 sm:mb-8">
         <div class="text-nasa text-sm tracking-widest mb-2">◆ MISSION CONTROL ◆</div>
         <h1 class="text-5xl font-bold tracking-wider mb-2">TIC TAC TOE</h1>
         <p class="text-gray-400 text-sm tracking-wide">TACTICAL GRID COMBAT SYSTEM</p>
@@ -720,37 +737,37 @@
     </div>
   </div>
   
-  <div x-show="screen === 'game'" class="content-layer min-h-screen p-4">
+  <div x-show="screen === 'game'" class="content-layer min-h-screen p-3 sm:p-4">
     <div class="max-w-4xl mx-auto">
-      <div class="text-center mb-6">
-        <div class="text-nasa text-sm tracking-widest mb-2 uppercase" x-text="gameStatus"></div>
-        <div class="flex justify-center gap-8 text-lg font-bold">
-          <div class="glass rounded px-4 py-2 border border-mars/50">
+      <div class="text-center mb-4 sm:mb-6">
+        <div class="text-nasa text-xs sm:text-sm tracking-widest mb-2 uppercase" x-text="gameStatus"></div>
+        <div class="flex justify-center gap-3 sm:gap-6 md:gap-8 text-sm sm:text-base md:text-lg font-bold">
+          <div class="glass rounded px-3 sm:px-4 py-1.5 sm:py-2 border border-mars/50">
             <span class="text-mars">X:</span> <span x-text="scores.X">0</span>
           </div>
-          <div class="glass rounded px-4 py-2 border border-gray-500/50">
+          <div class="glass rounded px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-500/50">
             <span class="text-gray-400">D:</span> <span x-text="scores.D">0</span>
           </div>
-          <div class="glass rounded px-4 py-2 border border-earth/50">
+          <div class="glass rounded px-3 sm:px-4 py-1.5 sm:py-2 border border-earth/50">
             <span class="text-earth">O:</span> <span x-text="scores.O">0</span>
           </div>
         </div>
       </div>
       
-      <div class="relative max-w-md mx-auto mb-6">
-        <div class="grid grid-cols-3 gap-3" id="game-board">
+      <div class="relative max-w-md mx-auto mb-4 sm:mb-6 px-2 sm:px-0">
+        <div class="grid grid-cols-3 gap-2 sm:gap-3" id="game-board">
           <template x-for="(cell, i) in board" :key="i">
             <button @click="makeMove(i)" 
                     :disabled="!canMove(i)"
                     :data-cell-index="i"
-                    class="aspect-square glass nasa-bracket rounded-lg text-6xl font-bold hover:bg-gray-800/50 disabled:cursor-not-allowed transition-all shadow-lg"
+                    class="aspect-square glass nasa-bracket rounded-lg text-4xl sm:text-5xl md:text-6xl font-bold active:bg-gray-800/50 sm:hover:bg-gray-800/50 disabled:cursor-not-allowed transition-all shadow-lg touch-manipulation"
                     :class="cell === 'X' ? 'text-mars border-mars/50' : cell === 'O' ? 'text-earth border-earth/50' : 'border-nasa/30'"
                     x-text="cell || ''">
             </button>
           </template>
         </div>
         <svg id="winning-line" class="absolute inset-0 pointer-events-none" style="width: 100%; height: 100%;">
-          <line id="win-line" x1="0" y1="0" x2="0" y2="0" stroke="url(#neonGradient)" stroke-width="6" stroke-linecap="round" style="filter: drop-shadow(0 0 10px currentColor);" />
+          <line id="win-line" x1="0" y1="0" x2="0" y2="0" stroke="url(#neonGradient)" stroke-width="4" stroke-linecap="round" style="filter: drop-shadow(0 0 10px currentColor);" class="sm:stroke-[6]" />
           <defs>
             <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />

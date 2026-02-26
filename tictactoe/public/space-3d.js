@@ -69,18 +69,31 @@
   };
   window.CinematicSpace = cinematic;
 
-  // Interactive Mouse Effects
+  // Interactive Mouse & Mobile Parallax Effects
   const mouse = { x: 0, y: 0 };
   const mouseInfluence = { x: 0, y: 0 };
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
   document.addEventListener('mousemove', (e) => {
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
   });
   
+  // Mobile device orientation parallax
+  if (isMobile && window.DeviceOrientationEvent) {
+    window.addEventListener('deviceorientation', (e) => {
+      if (e.beta !== null && e.gamma !== null) {
+        mouse.x = Math.max(-1, Math.min(1, e.gamma / 45));
+        mouse.y = Math.max(-1, Math.min(1, (e.beta - 45) / 45));
+      }
+    });
+  }
+  
   function updateMouseInfluence(dt) {
     const smooth = 1.0 - Math.pow(0.05, dt);
-    mouseInfluence.x += (mouse.x - mouseInfluence.x) * smooth * 5;
-    mouseInfluence.y += (mouse.y - mouseInfluence.y) * smooth * 5;
+    const multiplier = isMobile ? 3 : 5;
+    mouseInfluence.x += (mouse.x - mouseInfluence.x) * smooth * multiplier;
+    mouseInfluence.y += (mouse.y - mouseInfluence.y) * smooth * multiplier;
   }
   
   // Weather system
@@ -182,12 +195,13 @@
   }
   setInterval(syncBackgroundWeather, 2000);
   
-  // Starfield Layers
+  // Starfield Layers (mobile-optimized)
   function createStarLayer(count, size, range, colorFn) {
+    const actualCount = isMobile ? Math.floor(count * 0.5) : count;
     const geo = new THREE.BufferGeometry();
     const pos = [];
     const col = [];
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < actualCount; i++) {
       pos.push((Math.random() - 0.5) * range, (Math.random() - 0.5) * range, (Math.random() - 0.5) * range);
       const c = colorFn();
       col.push(c.r, c.g, c.b);
@@ -195,7 +209,7 @@
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     const mat = new THREE.PointsMaterial({
-      size: size, vertexColors: true, transparent: true, opacity: 0.6, sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false
+      size: isMobile ? size * 1.5 : size, vertexColors: true, transparent: true, opacity: 0.6, sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false
     });
     const mesh = new THREE.Points(geo, mat);
     scene.add(mesh);
@@ -248,12 +262,65 @@
     return mesh;
   }
   
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(12, 48, 48), new THREE.MeshBasicMaterial({ color: 0xFFD700 }));
-  sun.position.set(-100, 30, -150);
-  scene.add(sun);
+  // Realistic Sun with surface texture and corona
+  const sunCore = new THREE.Mesh(
+    new THREE.SphereGeometry(12, 64, 64),
+    new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        void main() {
+          vUv = uv;
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        
+        float noise(vec2 p) {
+          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+        
+        void main() {
+          vec2 uv = vUv * 8.0 + time * 0.1;
+          float n = noise(uv) * 0.5 + noise(uv * 2.0) * 0.25 + noise(uv * 4.0) * 0.125;
+          
+          vec3 sunColor = mix(vec3(1.0, 0.6, 0.0), vec3(1.0, 0.9, 0.2), n);
+          float edge = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.0);
+          sunColor += edge * vec3(1.0, 0.4, 0.0) * 0.5;
+          
+          gl_FragColor = vec4(sunColor, 1.0);
+        }
+      `
+    })
+  );
+  sunCore.position.set(-100, 30, -150);
+  scene.add(sunCore);
+  
+  // Corona layers
   const sunGlow = new THREE.Group();
-  for(let i=0; i<3; i++) sunGlow.add(new THREE.Mesh(new THREE.SphereGeometry(14+i*4, 32, 32), new THREE.MeshBasicMaterial({ color: i===0?0xFFAA00:0xFF8800, transparent: true, opacity: 0.12-i*0.03, side: THREE.BackSide, blending: THREE.AdditiveBlending, depthWrite: false })));
-  sun.add(sunGlow);
+  for(let i=0; i<5; i++) {
+    const glowMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(12 + i*3, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: i < 2 ? 0xFFAA00 : 0xFF6600,
+        transparent: true,
+        opacity: (0.15 - i*0.025) * (i < 2 ? 1.2 : 0.8),
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      })
+    );
+    sunGlow.add(glowMesh);
+  }
+  sunCore.add(sunGlow);
+  const sun = sunCore; // Keep reference
   
   const mercury = createPlanet(2.5, 0x8C7853, {x:-80, y:5, z:-40});
   planets.push({ mesh: mercury, speed: 0.0015, radius: 30, angle: 0, rotationSpeed: 0.004 });
@@ -349,6 +416,11 @@
     });
     
     nebula.rotation.y -= 0.00005 * scale;
+    
+    // Animate sun shader
+    if (sun.material.uniforms) {
+      sun.material.uniforms.time.value = currentTime * 0.0001;
+    }
     sun.rotation.y += 0.001 * scale;
     sunGlow.rotation.y -= 0.0015 * scale;
     sunGlow.rotation.z += 0.0008 * scale;
