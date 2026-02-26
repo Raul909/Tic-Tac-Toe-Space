@@ -15,15 +15,14 @@ Tic-Tac-Toe-/
 ├── screenshots/                 ← Put your images here
 │   ├── .gitkeep
 │   └── README.md               ← Instructions
-├── tictactoe/                  ← Your app code
-│   ├── server.js
-│   ├── public/
-│   ├── DEPLOYMENT.md           ← Kept (useful)
-│   ├── DATABASE_SETUP.md       ← Kept (useful)
-│   ├── TEST_RESULTS.md         ← Kept (useful)
-│   ├── PRODUCTION_READY.md     ← Kept (useful)
-│   └── FINAL_SUMMARY.md        ← Kept (useful)
-└── game-v2.html                ← Old file (can delete)
+└── tictactoe/                  ← Your app code
+    ├── server.js
+    ├── public/
+    ├── DEPLOYMENT.md           ← Kept (useful)
+    ├── DATABASE_SETUP.md       ← Kept (useful)
+    ├── TEST_RESULTS.md         ← Kept (useful)
+    ├── PRODUCTION_READY.md     ← Kept (useful)
+    └── FINAL_SUMMARY.md        ← Kept (useful)
 ```
 
 ## 🎯 What You Need to Do
