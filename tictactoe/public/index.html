@@ -430,6 +430,24 @@
         
         <div>
           <h3 class="text-nasa text-sm tracking-widest mb-4">🤖 TRAINING MODE</h3>
+          <div class="flex gap-2 mb-4">
+            <button @click="setDifficulty('easy')"
+                    :class="aiDifficulty === 'easy' ? 'bg-[#4dffdb] text-black border-[#4dffdb]' : 'bg-gray-800 text-[#4dffdb] border-gray-700'"
+                    class="flex-1 font-bold py-2 rounded border transition hover:bg-[#4dffdb]/20 text-xs tracking-wider">
+              RECRUIT
+            </button>
+            <button @click="setDifficulty('normal')"
+                    :class="aiDifficulty === 'normal' ? 'bg-[#00d4ff] text-black border-[#00d4ff]' : 'bg-gray-800 text-[#00d4ff] border-gray-700'"
+                    class="flex-1 font-bold py-2 rounded border transition hover:bg-[#00d4ff]/20 text-xs tracking-wider">
+              OFFICER
+            </button>
+            <button @click="setDifficulty('hard')"
+                    :class="aiDifficulty === 'hard' ? 'bg-[#ff6b35] text-black border-[#ff6b35]' : 'bg-gray-800 text-[#ff6b35] border-gray-700'"
+                    class="flex-1 font-bold py-2 rounded border transition hover:bg-[#ff6b35]/20 text-xs tracking-wider">
+              COMMANDER
+            </button>
+          </div>
+
           <button @click="startAI()" class="w-full bg-mars text-white font-bold py-4 rounded hover:bg-mars/90 transition tracking-wide">
             ENGAGE AI
           </button>
