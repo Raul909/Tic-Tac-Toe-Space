@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const rateLimiter = require('./rateLimiter');
 const mongoose = require('mongoose');
-const { checkWinner, generateRoomCode } = require('./utils');
+const { checkWinner, generateRoomCode, validateRegistration, validateRoomJoin } = require('./utils');
 
 // Load environment variables
 require('dotenv').config();
@@ -28,15 +28,17 @@ const io = new Server(server, {
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI;
-if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI)
-    .then(() => console.log('✅ Connected to MongoDB'))
-    .catch(err => {
-      console.error('❌ MongoDB connection error:', err.message);
-      console.log('⚠️  Falling back to file-based storage');
-    });
-} else {
-  console.log('⚠️  No MONGODB_URI found, using file-based storage');
+if (require.main === module) {
+  if (MONGODB_URI) {
+    mongoose.connect(MONGODB_URI)
+      .then(() => console.log('✅ Connected to MongoDB'))
+      .catch(err => {
+        console.error('❌ MongoDB connection error:', err.message);
+        console.log('⚠️  Falling back to file-based storage');
+      });
+  } else {
+    console.log('⚠️  No MONGODB_URI found, using file-based storage');
+  }
 }
 
 // User Schema for MongoDB
@@ -87,7 +89,7 @@ const apiLimiter = rateLimit({
 });
 
 // ── DATA PERSISTENCE ──────────────────────────────────────────────────
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -151,13 +153,9 @@ function getRoomForSocket(socketId) {
 // ── REST ENDPOINTS ────────────────────────────────────────────────────
 app.post('/api/register', authLimiter, async (req, res) => {
   const { username, password } = req.body || {};
-  if (!username?.trim() || !password) return res.json({ ok: false, error: 'Missing fields' });
-
-  const key = username.trim().toLowerCase();
-  if (key.length < 3) return res.json({ ok: false, error: 'Username too short (min 3 chars)' });
-  if (key.length > 16) return res.json({ ok: false, error: 'Username too long (max 16 chars)' });
-  if (!/^[a-z0-9_]+$/.test(key)) return res.json({ ok: false, error: 'Letters, numbers, underscores only' });
-  if (password.length < 8) return res.json({ ok: false, error: 'Password min 8 characters' });
+  const validation = validateRegistration(username, password);
+  if (!validation.ok) return res.json({ ok: false, error: validation.error });
+  const key = validation.key;
 
   const hash = await bcrypt.hash(password, 10);
 
@@ -194,6 +192,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
 
 app.post('/api/login', authLimiter, async (req, res) => {
   const { username, password } = req.body || {};
+  if (typeof username !== 'string' || typeof password !== 'string') return res.json({ ok: false, error: 'Invalid input' });
   if (!username || !password) return res.json({ ok: false, error: 'Missing fields' });
 
   const key = username.trim().toLowerCase();
@@ -529,12 +528,12 @@ io.on('connection', (socket) => {
     const key = socketUser.get(socket.id);
     if (!key) return socket.emit('error', 'Not authenticated');
 
-    const upperCode = code?.toUpperCase().trim();
+    if (typeof code !== 'string') return socket.emit('room:error', 'Invalid room code');
+    const upperCode = code.toUpperCase().trim();
     const room = rooms.get(upperCode);
-    if (!room) return socket.emit('room:error', 'Room not found');
-    if (room.status === 'playing') return socket.emit('room:error', 'Game in progress');
-    if (room.players.length >= 2) return socket.emit('room:error', 'Room is full');
-    if (room.players[0].socketId === socket.id) return socket.emit('room:error', 'You created this room');
+
+    const validation = validateRoomJoin(room, socket.id);
+    if (!validation.ok) return socket.emit('room:error', validation.error);
 
     leaveCurrentRoom(socket);
 
@@ -620,7 +619,8 @@ io.on('connection', (socket) => {
   // ── CHAT ──
   socket.on('chat:msg', ({ code, text }) => {
     const key = socketUser.get(socket.id);
-    if (!key || !text?.trim()) return;
+    if (typeof text !== 'string') return;
+    if (!key || !text.trim()) return;
     const clean = sanitize(text);
     if (!clean) return;
     io.to(code).emit('chat:msg', {
@@ -659,7 +659,11 @@ io.on('connection', (socket) => {
 // ── HEALTH CHECK ──────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 TicTacToe server running on port ${PORT}`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 TicTacToe server running on port ${PORT}`);
+  });
+}
+
+module.exports = { app, server };

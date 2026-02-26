@@ -177,7 +177,6 @@ If issues arise:
 2. Verify server is running on port 3000
 3. Check MongoDB connection
 4. Review NASA_REDESIGN_COMPLETE.md for details
-5. Restore backup if needed
 
 ---
 

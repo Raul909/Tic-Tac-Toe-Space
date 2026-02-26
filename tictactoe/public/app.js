@@ -397,13 +397,7 @@ function app() {
     },
     
     checkWin(player) {
-      const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-      for (const line of wins) {
-        if (line.every(i => this.board[i] === player)) {
-          return line;
-        }
-      }
-      return null;
+      return GameLogic.checkWin(this.board, player);
     },
     
     animateWinningLine(line) {
@@ -588,19 +582,16 @@ function app() {
     copyShareLink() {
       const shareText = `🎮 I just won at Tic Tac Toe Mission Control! 🏆\n\nFinal Score: X ${this.scores.X} - D ${this.scores.D} - O ${this.scores.O}\n\nPlay here: ${window.location.origin}`;
       
+      if (!navigator.clipboard) {
+        console.error('Clipboard API not supported');
+        return;
+      }
+
       navigator.clipboard.writeText(shareText).then(() => {
         this.shareCopied = true;
         setTimeout(() => this.shareCopied = false, 3000);
-      }).catch(() => {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = shareText;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        this.shareCopied = true;
-        setTimeout(() => this.shareCopied = false, 3000);
+      }).catch((err) => {
+        console.error('Failed to copy text: ', err);
       });
     }
   }
