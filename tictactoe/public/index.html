@@ -185,6 +185,19 @@
       }
     }
     
+    @keyframes titleGlow {
+      0%, 100% {
+        text-shadow: 0 0 20px rgba(0, 212, 255, 0.8), 0 0 40px rgba(0, 212, 255, 0.4);
+      }
+      50% {
+        text-shadow: 0 0 30px rgba(0, 212, 255, 1), 0 0 60px rgba(0, 212, 255, 0.6), 0 0 80px rgba(77, 255, 219, 0.4);
+      }
+    }
+    
+    .title-glow {
+      animation: titleGlow 3s ease-in-out infinite;
+    }
+    
     .winning-cell {
       animation: winPulse 0.6s ease-in-out, winGlow 1s ease-in-out infinite !important;
       background: rgba(0, 212, 255, 0.3) !important;
@@ -329,11 +342,11 @@
   <canvas id="fw-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:99"></canvas>
   
   <!-- Home/Landing Screen -->
-  <div x-show="screen === 'home'" x-transition class="content-layer min-h-screen flex items-center justify-center p-4 sm:p-6">
+  <div x-show="screen === 'home'" style="display: none;" class="content-layer min-h-screen flex items-center justify-center p-4 sm:p-6">
     <div class="max-w-4xl w-full text-center">
       <div class="mb-6 sm:mb-8">
         <div class="text-nasa text-xs sm:text-sm tracking-widest mb-3 sm:mb-4 animate-pulse">◆ MISSION CONTROL ◆</div>
-        <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-wider mb-3 sm:mb-4 px-2" style="background: linear-gradient(to right, #00d4ff, #4dffdb, #ff6b35); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: #00d4ff;">
+        <h1 class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-wider mb-3 sm:mb-4 px-2 text-nasa title-glow">
           TIC TAC TOE
         </h1>
         <p class="text-lg sm:text-xl md:text-2xl text-gray-300 tracking-wide mb-2 px-2">TACTICAL GRID COMBAT SYSTEM</p>
@@ -481,8 +494,16 @@
         <div>
           <div class="text-nasa text-xs tracking-widest">◆ MISSION CONTROL ◆</div>
           <div class="text-3xl font-bold tracking-wide" x-text="user.username"></div>
+          <div class="text-xs text-gray-400 mt-1">
+            <span class="text-nasa" x-text="user.rank"></span> • 
+            <span x-text="user.stats.wins + ' Wins'"></span> • 
+            <span x-text="'Streak: ' + user.stats.winStreak"></span>
+          </div>
         </div>
         <div class="flex gap-2">
+          <button @click="showProfile = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">👤 PROFILE</button>
+          <button @click="showStats = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">📊 STATS</button>
+          <button @click="showAchievements = true" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">🏆 BADGES</button>
           <button @click="openSpaceGallery()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">🌌 SPACE</button>
           <button @click="logout()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-bold">LOGOUT</button>
         </div>
@@ -497,6 +518,9 @@
         </div>
         <div class="glass rounded px-6 py-3 border border-nasa/50">
           <span class="text-nasa text-xs tracking-wider">L-</span><span class="font-bold text-lg" x-text="String(user.stats.losses).padStart(2, '0')">00</span>
+        </div>
+        <div class="glass rounded px-6 py-3 border border-earth/50">
+          <span class="text-earth text-xs tracking-wider">BEST STREAK-</span><span class="font-bold text-lg" x-text="user.stats.bestStreak">0</span>
         </div>
       </div>
       
@@ -849,6 +873,149 @@
         <button @click="leaveGame()" class="flex-1 bg-gray-800 py-3 rounded hover:bg-gray-700 transition">
           ABORT
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div x-show="showProfile" @click.self="showProfile = false" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="glass nasa-bracket rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">👤 PROFILE CUSTOMIZATION</h2>
+        <button @click="showProfile = false" class="text-gray-400 hover:text-white text-2xl">×</button>
+      </div>
+      
+      <div class="space-y-6">
+        <div>
+          <h3 class="text-nasa text-sm tracking-widest mb-3">AVATAR</h3>
+          <div class="grid grid-cols-5 gap-3">
+            <template x-for="avatar in avatars">
+              <button @click="updateProfile('avatar', avatar)" 
+                      :class="user.profile.avatar === avatar ? 'border-nasa bg-nasa/20' : 'border-gray-700'"
+                      class="aspect-square glass rounded-lg border-2 text-4xl hover:border-nasa/50 transition">
+                <span x-text="avatar === 'astronaut' ? '👨‍🚀' : avatar === 'alien' ? '👽' : avatar === 'robot' ? '🤖' : avatar === 'satellite' ? '🛰️' : '☄️'"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="text-nasa text-sm tracking-widest mb-3">GAME SYMBOL</h3>
+          <div class="grid grid-cols-5 gap-3">
+            <template x-for="symbol in symbols">
+              <button @click="updateProfile('symbol', symbol)" 
+                      :class="user.profile.symbol === symbol ? 'border-nasa bg-nasa/20' : 'border-gray-700'"
+                      class="aspect-square glass rounded-lg border-2 text-3xl hover:border-nasa/50 transition">
+                <span x-text="symbol === 'default' ? 'X/O' : symbol === 'star' ? '⭐' : symbol === 'planet' ? '🪐' : symbol === 'rocket' ? '🚀' : '🌌'"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="text-nasa text-sm tracking-widest mb-3">BOARD THEME</h3>
+          <div class="grid grid-cols-5 gap-3">
+            <template x-for="theme in themes">
+              <button @click="updateProfile('theme', theme); boardTheme = theme" 
+                      :class="user.profile.theme === theme ? 'border-nasa bg-nasa/20' : 'border-gray-700'"
+                      class="glass rounded-lg border-2 p-3 hover:border-nasa/50 transition">
+                <div class="text-xs font-bold uppercase" x-text="theme"></div>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Achievements Modal -->
+  <div x-show="showAchievements" @click.self="showAchievements = false" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="glass nasa-bracket rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">🏆 ACHIEVEMENT BADGES</h2>
+        <button @click="showAchievements = false" class="text-gray-400 hover:text-white text-2xl">×</button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <template x-for="ach in achievements">
+          <div :class="ach.unlocked ? 'border-nasa bg-nasa/10' : 'border-gray-700 opacity-50'" 
+               class="glass rounded-lg border-2 p-4">
+            <div class="flex items-start gap-4">
+              <div class="text-5xl" x-text="ach.icon"></div>
+              <div class="flex-1">
+                <div class="font-bold text-lg" x-text="ach.name"></div>
+                <div class="text-xs text-gray-400 mb-2" x-text="ach.desc"></div>
+                <div x-show="ach.target && !ach.unlocked" class="text-xs text-nasa">
+                  Progress: <span x-text="ach.progress || 0"></span>/<span x-text="ach.target"></span>
+                </div>
+                <div x-show="ach.unlocked" class="text-xs text-nasa">✓ UNLOCKED</div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Dashboard -->
+  <div x-show="showStats" @click.self="showStats = false" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="glass nasa-bracket rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">📊 STATISTICS DASHBOARD</h2>
+        <button @click="showStats = false" class="text-gray-400 hover:text-white text-2xl">×</button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="glass rounded-lg p-4 border border-nasa/50">
+          <div class="text-nasa text-xs tracking-wider mb-1">TOTAL GAMES</div>
+          <div class="text-3xl font-bold" x-text="user.stats.gamesPlayed">0</div>
+        </div>
+        <div class="glass rounded-lg p-4 border border-earth/50">
+          <div class="text-earth text-xs tracking-wider mb-1">WIN RATE</div>
+          <div class="text-3xl font-bold" x-text="user.stats.gamesPlayed > 0 ? Math.round((user.stats.wins / user.stats.gamesPlayed) * 100) + '%' : '0%'">0%</div>
+        </div>
+        <div class="glass rounded-lg p-4 border border-mars/50">
+          <div class="text-mars text-xs tracking-wider mb-1">BEST STREAK</div>
+          <div class="text-3xl font-bold" x-text="user.stats.bestStreak">0</div>
+        </div>
+      </div>
+      
+      <div class="glass rounded-lg p-4 mb-4">
+        <h3 class="text-nasa text-sm tracking-widest mb-3">RANK PROGRESSION</h3>
+        <div class="text-center">
+          <div class="text-5xl mb-2">
+            <span x-show="user.rank === 'Cadet'">🎖️</span>
+            <span x-show="user.rank === 'Astronaut'">👨‍🚀</span>
+            <span x-show="user.rank === 'Navigator'">🧭</span>
+            <span x-show="user.rank === 'Space Pilot'">✈️</span>
+            <span x-show="user.rank === 'Star Captain'">⭐</span>
+            <span x-show="user.rank === 'Galactic Commander'">👑</span>
+          </div>
+          <div class="text-2xl font-bold text-nasa" x-text="user.rank">Cadet</div>
+          <div class="text-xs text-gray-400 mt-2">
+            <span x-show="user.stats.wins < 5">Next: Astronaut (5 wins)</span>
+            <span x-show="user.stats.wins >= 5 && user.stats.wins < 10">Next: Navigator (10 wins)</span>
+            <span x-show="user.stats.wins >= 10 && user.stats.wins < 25">Next: Space Pilot (25 wins)</span>
+            <span x-show="user.stats.wins >= 25 && user.stats.wins < 50">Next: Star Captain (50 wins)</span>
+            <span x-show="user.stats.wins >= 50 && user.stats.wins < 100">Next: Galactic Commander (100 wins)</span>
+            <span x-show="user.stats.wins >= 100">Maximum Rank Achieved!</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass rounded-lg p-4">
+        <h3 class="text-nasa text-sm tracking-widest mb-3">RECENT GAMES</h3>
+        <div class="space-y-2 max-h-60 overflow-y-auto">
+          <template x-for="(game, i) in gameHistory.slice(-10).reverse()">
+            <div class="flex justify-between items-center p-2 bg-gray-800/50 rounded">
+              <span x-text="game.draw ? '🤝 Draw' : (game.winner === mySymbol ? '🏆 Victory' : '❌ Defeat')"></span>
+              <span class="text-xs text-gray-400" x-text="Math.round(game.duration) + 's'"></span>
+            </div>
+          </template>
+          <div x-show="gameHistory.length === 0" class="text-center text-gray-500 py-4">
+            No games played yet
+          </div>
+        </div>
       </div>
     </div>
   </div>

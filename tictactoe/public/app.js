@@ -4,8 +4,53 @@ function app() {
     screen: 'home',
     authTab: 'login',
     socket: null,
-    user: { username: '', stats: { wins: 0, draws: 0, losses: 0 } },
+    user: { 
+      username: '', 
+      stats: { wins: 0, draws: 0, losses: 0, gamesPlayed: 0, winStreak: 0, bestStreak: 0 },
+      achievements: [],
+      profile: { avatar: 'astronaut', symbol: 'default', theme: 'space', banner: 'nebula' },
+      elo: 1000,
+      rank: 'Cadet'
+    },
     aiDifficulty: 'normal',
+    
+    // Profile & Customization
+    showProfile: false,
+    showAchievements: false,
+    showStats: false,
+    avatars: ['astronaut', 'alien', 'robot', 'satellite', 'comet'],
+    symbols: ['default', 'star', 'planet', 'rocket', 'galaxy'],
+    themes: ['space', 'mars', 'moon', 'jupiter', 'nebula'],
+    banners: ['nebula', 'galaxy', 'aurora', 'supernova', 'blackhole'],
+    
+    // Achievements
+    achievements: [
+      { id: 'first_orbit', name: 'First Orbit', desc: 'Win your first game', icon: '🛸', unlocked: false },
+      { id: 'constellation_master', name: 'Constellation Master', desc: 'Win 10 games', icon: '✨', unlocked: false, progress: 0, target: 10 },
+      { id: 'black_hole', name: 'Black Hole', desc: 'Win without opponent scoring', icon: '🕳️', unlocked: false },
+      { id: 'supernova', name: 'Supernova', desc: 'Win 5 games in a row', icon: '💥', unlocked: false, progress: 0, target: 5 },
+      { id: 'speed_demon', name: 'Speed Demon', desc: 'Win a blitz match under 30s', icon: '⚡', unlocked: false },
+      { id: 'explorer', name: 'Space Explorer', desc: 'Visit all space environments', icon: '🌌', unlocked: false, progress: 0, target: 5 }
+    ],
+    
+    // Game Modes
+    gameMode: 'classic', // classic, blitz, ranked, educational
+    boardSize: 3, // 3, 4, 5
+    boardTheme: 'space',
+    timeLimit: 0,
+    seriesMode: false,
+    seriesScore: { player: 0, opponent: 0, target: 3 },
+    
+    // Statistics
+    cellHeatmap: Array(9).fill(0),
+    gameHistory: [],
+    avgGameDuration: 0,
+    
+    // Educational Mode
+    educationalMode: false,
+    spaceQuiz: null,
+    quizScore: 0,
+    explorerRank: 'Cadet',
     
     // Auth
     loginForm: { username: '', password: '' },
@@ -76,6 +121,9 @@ function app() {
       this.$watch('spaceSpeed', value => {
         if (window.SpaceGallery) window.SpaceGallery.speed = parseFloat(value);
       });
+      
+      // Load saved stats and achievements
+      this.loadStats();
     },
 
     initWeatherSync() {
@@ -443,6 +491,7 @@ function app() {
       this.board = Array(9).fill(null);
       this.currentTurn = 'X';
       this.gameActive = true;
+      this.gameStartTime = Date.now();
       this.scores = { X: 0, O: 0, D: 0 };
       this.setScreen('game');
       this.updateGameStatus();
@@ -584,19 +633,136 @@ function app() {
       this.gameActive = false;
       this.gameOver = true;
       
+      // Track statistics
+      this.user.stats.gamesPlayed++;
+      const gameEndTime = Date.now();
+      const gameDuration = (gameEndTime - (this.gameStartTime || gameEndTime)) / 1000;
+      this.gameHistory.push({ winner, draw, duration: gameDuration, board: [...this.board], timestamp: gameEndTime });
+      
       if (draw) {
         window.SoundManager.play('draw'); this.gameOverEmoji = '🤝';
         this.gameOverTitle = 'STANDOFF';
         this.gameOverSubtitle = 'MISSION DRAW';
+        this.user.stats.draws++;
+        this.user.stats.winStreak = 0;
       } else if (winner === this.mySymbol || (this.mode === 'ai' && winner === 'X')) {
         window.SoundManager.play('win'); this.gameOverEmoji = '🏆';
         this.gameOverTitle = 'MISSION COMPLETE';
         this.gameOverSubtitle = 'VICTORY ACHIEVED';
+        this.user.stats.wins++;
+        this.user.stats.winStreak++;
+        this.user.stats.bestStreak = Math.max(this.user.stats.bestStreak, this.user.stats.winStreak);
+        this.checkAchievements(winner, draw);
       } else {
         window.SoundManager.play('lose'); this.gameOverEmoji = '❌';
         this.gameOverTitle = 'MISSION FAILED';
         this.gameOverSubtitle = this.mode === 'ai' ? 'AI VICTORY' : 'DEFEAT';
+        this.user.stats.losses++;
+        this.user.stats.winStreak = 0;
       }
+      
+      this.updateRank();
+      this.saveStats();
+    },
+
+    checkAchievements(winner, draw) {
+      const newAchievements = [];
+      
+      // First Orbit
+      if (this.user.stats.wins === 1 && !this.achievements[0].unlocked) {
+        this.achievements[0].unlocked = true;
+        newAchievements.push(this.achievements[0]);
+      }
+      
+      // Constellation Master
+      if (this.user.stats.wins >= 10 && !this.achievements[1].unlocked) {
+        this.achievements[1].unlocked = true;
+        this.achievements[1].progress = this.user.stats.wins;
+        newAchievements.push(this.achievements[1]);
+      } else if (this.user.stats.wins < 10) {
+        this.achievements[1].progress = this.user.stats.wins;
+      }
+      
+      // Black Hole (opponent didn't score)
+      const opponentSymbol = this.mySymbol === 'X' ? 'O' : 'X';
+      if (!this.board.includes(opponentSymbol) && !this.achievements[2].unlocked) {
+        this.achievements[2].unlocked = true;
+        newAchievements.push(this.achievements[2]);
+      }
+      
+      // Supernova
+      if (this.user.stats.winStreak >= 5 && !this.achievements[3].unlocked) {
+        this.achievements[3].unlocked = true;
+        newAchievements.push(this.achievements[3]);
+      } else {
+        this.achievements[3].progress = this.user.stats.winStreak;
+      }
+      
+      // Show achievement notifications
+      if (newAchievements.length > 0) {
+        this.showAchievementNotification(newAchievements);
+      }
+    },
+
+    showAchievementNotification(achievements) {
+      achievements.forEach((ach, i) => {
+        setTimeout(() => {
+          const notif = document.createElement('div');
+          notif.className = 'fixed top-20 right-4 glass nasa-bracket rounded-lg p-4 z-50 animate-bounce';
+          notif.innerHTML = `
+            <div class="text-nasa font-bold mb-1">🏆 ACHIEVEMENT UNLOCKED!</div>
+            <div class="flex items-center gap-3">
+              <div class="text-4xl">${ach.icon}</div>
+              <div>
+                <div class="font-bold">${ach.name}</div>
+                <div class="text-xs text-gray-400">${ach.desc}</div>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(notif);
+          setTimeout(() => notif.remove(), 4000);
+        }, i * 500);
+      });
+    },
+
+    updateRank() {
+      const wins = this.user.stats.wins;
+      if (wins >= 100) this.explorerRank = 'Galactic Commander';
+      else if (wins >= 50) this.explorerRank = 'Star Captain';
+      else if (wins >= 25) this.explorerRank = 'Space Pilot';
+      else if (wins >= 10) this.explorerRank = 'Navigator';
+      else if (wins >= 5) this.explorerRank = 'Astronaut';
+      else this.explorerRank = 'Cadet';
+      
+      this.user.rank = this.explorerRank;
+    },
+
+    saveStats() {
+      localStorage.setItem('userStats', JSON.stringify({
+        stats: this.user.stats,
+        achievements: this.achievements,
+        profile: this.user.profile,
+        rank: this.user.rank,
+        gameHistory: this.gameHistory.slice(-50) // Keep last 50 games
+      }));
+    },
+
+    loadStats() {
+      const saved = localStorage.getItem('userStats');
+      if (saved) {
+        const data = JSON.parse(saved);
+        this.user.stats = data.stats || this.user.stats;
+        this.achievements = data.achievements || this.achievements;
+        this.user.profile = data.profile || this.user.profile;
+        this.user.rank = data.rank || this.user.rank;
+        this.gameHistory = data.gameHistory || [];
+        this.explorerRank = this.user.rank;
+      }
+    },
+
+    updateProfile(field, value) {
+      this.user.profile[field] = value;
+      this.saveStats();
     },
     
     rematch() {
