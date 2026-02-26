@@ -28,15 +28,17 @@ const io = new Server(server, {
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI;
-if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI)
-    .then(() => console.log('✅ Connected to MongoDB'))
-    .catch(err => {
-      console.error('❌ MongoDB connection error:', err.message);
-      console.log('⚠️  Falling back to file-based storage');
-    });
-} else {
-  console.log('⚠️  No MONGODB_URI found, using file-based storage');
+if (require.main === module) {
+  if (MONGODB_URI) {
+    mongoose.connect(MONGODB_URI)
+      .then(() => console.log('✅ Connected to MongoDB'))
+      .catch(err => {
+        console.error('❌ MongoDB connection error:', err.message);
+        console.log('⚠️  Falling back to file-based storage');
+      });
+  } else {
+    console.log('⚠️  No MONGODB_URI found, using file-based storage');
+  }
 }
 
 // User Schema for MongoDB
@@ -87,7 +89,7 @@ const apiLimiter = rateLimit({
 });
 
 // ── DATA PERSISTENCE ──────────────────────────────────────────────────
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -655,7 +657,11 @@ io.on('connection', (socket) => {
 // ── HEALTH CHECK ──────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 TicTacToe server running on port ${PORT}`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 TicTacToe server running on port ${PORT}`);
+  });
+}
+
+module.exports = { app, server };
