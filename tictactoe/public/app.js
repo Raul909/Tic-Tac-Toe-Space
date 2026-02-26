@@ -134,13 +134,17 @@ function app() {
     
     // Cinematic Helper
     setScreen(screenName) {
+      console.log('📺 setScreen called:', screenName, 'current:', this.screen);
       if (this.screen === screenName) return; 
       this.screen = screenName;
+      console.log('✅ Screen changed to:', this.screen);
       
       // Auto-login if going to auth screen and token exists
       if (screenName === 'auth') {
         const token = localStorage.getItem('token');
+        console.log('🔑 Token check:', token ? 'Found' : 'Not found');
         if (token && !this.socket) {
+          console.log('🔌 Auto-connecting with token...');
           this.connectSocket(token);
         }
       }
@@ -151,10 +155,12 @@ function app() {
     },
 
     init() {
+      console.log('🚀 App initializing... screen:', this.screen);
       // Don't auto-connect - let user see landing page first
       this.initSpaceGallery();
       this.initGoogleSignIn();
       this.initWeatherSync();
+      console.log('✅ Init complete, screen:', this.screen);
       
       // Watch for zoom and speed changes
       this.$watch('spaceZoom', value => {
