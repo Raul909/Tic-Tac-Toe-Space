@@ -80,8 +80,20 @@ function app() {
       "There are more stars in the universe than grains of sand on all Earth's beaches.",
       "A neutron star is so dense that a teaspoon of it would weigh 6 billion tons!",
       "The Milky Way galaxy is on a collision course with Andromeda galaxy.",
-      "Light from the Sun takes 8 minutes and 20 seconds to reach Earth."
+      "Light from the Sun takes 8 minutes and 20 seconds to reach Earth.",
+      "The footprints on the Moon will last for millions of years due to no wind or water.",
+      "One million Earths could fit inside the Sun.",
+      "Venus rotates backwards compared to other planets.",
+      "A year on Mercury is just 88 Earth days.",
+      "The coldest place in the universe is the Boomerang Nebula at -272°C.",
+      "Black holes can spin at nearly the speed of light.",
+      "The universe is expanding faster than the speed of light.",
+      "There are more than 100 billion galaxies in the observable universe.",
+      "Neutron stars can spin 600 times per second.",
+      "The largest known star is UY Scuti, 1,700 times larger than the Sun."
     ],
+    spaceFactsAPI: [],
+    spaceFactLastFetch: null,
     
     // Blitz Mode
     timeRemaining: 60,
@@ -167,6 +179,9 @@ function app() {
       
       // Load accessibility settings
       this.loadAccessibilitySettings();
+      
+      // Fetch space facts from API
+      this.fetchSpaceFacts();
       
       console.log('✅ Init complete, screen:', this.screen);
       
@@ -898,8 +913,50 @@ function app() {
       }
     },
 
+    async fetchSpaceFacts() {
+      // Check if we fetched today
+      const today = new Date().toDateString();
+      const lastFetch = localStorage.getItem('spaceFactsDate');
+      
+      if (lastFetch === today) {
+        // Load from localStorage
+        const cached = localStorage.getItem('spaceFactsAPI');
+        if (cached) {
+          this.spaceFactsAPI = JSON.parse(cached);
+          console.log('✅ Loaded', this.spaceFactsAPI.length, 'space facts from cache');
+          return;
+        }
+      }
+      
+      // Fetch new facts from NASA API
+      try {
+        const response = await fetch('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&count=15');
+        const data = await response.json();
+        
+        // Extract explanations as facts
+        this.spaceFactsAPI = data
+          .filter(item => item.explanation)
+          .map(item => {
+            // Get first 2-3 sentences
+            const sentences = item.explanation.match(/[^.!?]+[.!?]+/g) || [];
+            return sentences.slice(0, 2).join(' ').trim();
+          })
+          .filter(fact => fact.length > 50 && fact.length < 300);
+        
+        // Save to localStorage
+        localStorage.setItem('spaceFactsAPI', JSON.stringify(this.spaceFactsAPI));
+        localStorage.setItem('spaceFactsDate', today);
+        
+        console.log('✅ Fetched', this.spaceFactsAPI.length, 'new space facts from NASA');
+      } catch (error) {
+        console.log('⚠️ Could not fetch NASA facts, using defaults');
+      }
+    },
+    
     showRandomSpaceFact() {
-      this.spaceFact = this.spaceFacts[Math.floor(Math.random() * this.spaceFacts.length)];
+      // Combine default facts with API facts
+      const allFacts = [...this.spaceFacts, ...this.spaceFactsAPI];
+      this.spaceFact = allFacts[Math.floor(Math.random() * allFacts.length)];
     },
 
     // Social Features
