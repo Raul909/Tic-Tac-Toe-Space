@@ -48,6 +48,10 @@ function app() {
     spaceSpeed: 1,
     selectedObject: null,
     
+    // Weather & UI Presets
+    weather: 'clear',
+    weatherPreset: 'default',
+    
     // Cinematic Helper
     setScreen(screenName) {
       if (this.screen === screenName) return; this.screen = screenName;
@@ -63,6 +67,7 @@ function app() {
       }
       this.initSpaceGallery();
       this.initGoogleSignIn();
+      this.initWeatherSync();
       
       // Watch for zoom and speed changes
       this.$watch('spaceZoom', value => {
@@ -71,6 +76,53 @@ function app() {
       this.$watch('spaceSpeed', value => {
         if (window.SpaceGallery) window.SpaceGallery.speed = parseFloat(value);
       });
+    },
+
+    initWeatherSync() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            this.fetchWeather(pos.coords.latitude, pos.coords.longitude);
+          },
+          () => this.applyWeatherPreset('clear')
+        );
+      } else {
+        this.applyWeatherPreset('clear');
+      }
+    },
+
+    async fetchWeather(lat, lon) {
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const code = data.current.weather_code;
+        
+        let weather = 'clear';
+        if (code >= 71 && code <= 77) weather = 'snow';
+        else if ((code >= 51 && code <= 67) || (code >= 80 && code <= 99)) weather = 'rain';
+        else if (code >= 1 && code <= 48) weather = 'cloudy';
+        
+        this.applyWeatherPreset(weather);
+      } catch (e) {
+        this.applyWeatherPreset('clear');
+      }
+    },
+
+    applyWeatherPreset(weather) {
+      this.weather = weather;
+      const presets = {
+        clear: { name: 'default', fog: 0.0003, starDensity: 1, planetGlow: 1 },
+        cloudy: { name: 'misty', fog: 0.0008, starDensity: 0.6, planetGlow: 0.7 },
+        rain: { name: 'storm', fog: 0.0012, starDensity: 0.4, planetGlow: 0.5 },
+        snow: { name: 'frozen', fog: 0.0006, starDensity: 0.8, planetGlow: 0.9 }
+      };
+      
+      this.weatherPreset = presets[weather].name;
+      if (window.CinematicSpace) {
+        window.CinematicSpace.applyWeatherPreset(presets[weather]);
+      }
+    },
     },
     
     initGoogleSignIn() {

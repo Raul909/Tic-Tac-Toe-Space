@@ -347,8 +347,14 @@
         </button>
       </div>
 
-      <div class="text-gray-500 text-xs tracking-wider">
+      <div class="text-gray-500 text-xs tracking-wider space-y-1">
         <p>NASA-INSPIRED DESIGN • REAL-TIME WEATHER • CINEMATIC 3D GRAPHICS</p>
+        <p x-show="weather" class="text-nasa/70">
+          <span x-show="weather === 'clear'">☀️ CLEAR SKY MODE</span>
+          <span x-show="weather === 'cloudy'">☁️ MISTY ATMOSPHERE</span>
+          <span x-show="weather === 'rain'">🌧️ STORM MODE</span>
+          <span x-show="weather === 'snow'">❄️ FROZEN SPACE</span>
+        </p>
       </div>
     </div>
   </div>

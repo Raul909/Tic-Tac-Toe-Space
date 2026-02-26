@@ -1,7 +1,7 @@
 // Three.js 3D Space Background with Cinematic Lighting and Warp Effects
 (function() {
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x000208, 0.0012);
+  scene.fog = new THREE.FogExp2(0x000208, 0.0003);
   
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 4000);
   const renderer = new THREE.WebGLRenderer({ 
@@ -22,6 +22,9 @@
   renderer.outputEncoding = THREE.sRGBEncoding;
   camera.position.set(0, 25, 90);
   
+  // Weather Preset System
+  let currentPreset = { fog: 0.0003, starDensity: 1, planetGlow: 1 };
+  
   // Cinematic Controller
   const cinematic = {
     warpFactor: 0,
@@ -31,6 +34,37 @@
     triggerWarp: (duration = 1000) => {
       cinematic.targetWarp = 1;
       setTimeout(() => { cinematic.targetWarp = 0; }, duration);
+    },
+    applyWeatherPreset: (preset) => {
+      currentPreset = preset;
+      scene.fog.density = preset.fog;
+      
+      // Update star visibility
+      if (stars) {
+        stars.material.opacity = 0.6 * preset.starDensity;
+      }
+      
+      // Update planet glows
+      planets.forEach(p => {
+        if (p.children[0]) {
+          p.children[0].material.opacity = 0.12 * preset.planetGlow;
+        }
+      });
+      
+      // Apply color tints
+      if (preset.name === 'storm') {
+        scene.fog.color.setHex(0x000510);
+        renderer.toneMappingExposure = 1.0;
+      } else if (preset.name === 'frozen') {
+        scene.fog.color.setHex(0x000820);
+        renderer.toneMappingExposure = 1.4;
+      } else if (preset.name === 'misty') {
+        scene.fog.color.setHex(0x000308);
+        renderer.toneMappingExposure = 1.1;
+      } else {
+        scene.fog.color.setHex(0x000208);
+        renderer.toneMappingExposure = 1.3;
+      }
     }
   };
   window.CinematicSpace = cinematic;
@@ -161,7 +195,7 @@
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     const mat = new THREE.PointsMaterial({
-      size: size, vertexColors: true, transparent: true, opacity: 0.9, sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false
+      size: size, vertexColors: true, transparent: true, opacity: 0.6, sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false
     });
     const mesh = new THREE.Points(geo, mat);
     scene.add(mesh);
@@ -173,6 +207,7 @@
     createStarLayer(5000, 2.5, 3000, () => new THREE.Color(0xffffff)),
     createStarLayer(20000, 0.8, 4000, () => new THREE.Color(0x445566))
   ];
+  const stars = starLayers[0]; // Reference for weather presets
   
   // Nebula
   const nebulaGeo = new THREE.BufferGeometry();
