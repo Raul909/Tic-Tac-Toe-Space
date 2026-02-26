@@ -62,6 +62,15 @@ const useDB = () => mongoose.connection.readyState === 1;
 
 app.use(express.json());
 app.use(cookieParser());
+// Config endpoint for env vars
+app.get('/config.js', (req, res) => {
+  res.type('application/javascript');
+  res.send(`
+    window.FACEBOOK_APP_ID = '${process.env.FACEBOOK_APP_ID || ''}';
+    window.GOOGLE_CLIENT_ID = '${process.env.GOOGLE_CLIENT_ID || ''}';
+  `);
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Rate limiting

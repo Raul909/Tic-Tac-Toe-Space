@@ -67,7 +67,7 @@ function app() {
       // Load Facebook SDK
       window.fbAsyncInit = function() {
         FB.init({
-          appId: 'YOUR_FACEBOOK_APP_ID',
+          appId: window.FACEBOOK_APP_ID || 'YOUR_FACEBOOK_APP_ID',
           cookie: true,
           xfbml: true,
           version: 'v18.0'
@@ -224,7 +224,7 @@ function app() {
       // Initialize Google Sign-In
       if (window.google) {
         window.google.accounts.id.initialize({
-          client_id: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
+          client_id: window.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
           callback: (response) => this.handleGoogleCallback(response)
         });
         
