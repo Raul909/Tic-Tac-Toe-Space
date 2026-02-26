@@ -51,6 +51,23 @@ function app() {
     spaceQuiz: null,
     quizScore: 0,
     explorerRank: 'Cadet',
+    spaceFact: '',
+    spaceFacts: [
+      "The Sun accounts for 99.86% of the mass in our solar system!",
+      "A day on Venus is longer than its year - it takes 243 Earth days to rotate once!",
+      "Jupiter's Great Red Spot is a storm that has been raging for over 400 years.",
+      "Saturn's rings are made of billions of pieces of ice and rock.",
+      "Mars has the largest volcano in the solar system - Olympus Mons, 3x taller than Mt. Everest!",
+      "Neptune has winds that blow at over 1,200 mph - the fastest in the solar system!",
+      "There are more stars in the universe than grains of sand on all Earth's beaches.",
+      "A neutron star is so dense that a teaspoon of it would weigh 6 billion tons!",
+      "The Milky Way galaxy is on a collision course with Andromeda galaxy.",
+      "Light from the Sun takes 8 minutes and 20 seconds to reach Earth."
+    ],
+    
+    // Blitz Mode
+    timeRemaining: 60,
+    timerInterval: null,
     
     // Auth
     loginForm: { username: '', password: '' },
@@ -486,13 +503,24 @@ function app() {
 
     startAI() {
       this.clearWinningCells();
+      this.stopBlitzTimer();
       this.mode = 'ai';
       this.mySymbol = 'X';
-      this.board = Array(9).fill(null);
+      const size = this.boardSize * this.boardSize;
+      this.board = Array(size).fill(null);
       this.currentTurn = 'X';
       this.gameActive = true;
       this.gameStartTime = Date.now();
       this.scores = { X: 0, O: 0, D: 0 };
+      
+      if (this.gameMode === 'blitz') {
+        this.startBlitzTimer();
+      }
+      
+      if (this.gameMode === 'educational') {
+        this.showRandomSpaceFact();
+      }
+      
       this.setScreen('game');
       this.updateGameStatus();
     },
@@ -764,14 +792,58 @@ function app() {
       this.user.profile[field] = value;
       this.saveStats();
     },
+
+    getThemeStyle() {
+      const themes = {
+        space: 'background: radial-gradient(circle, rgba(0,5,16,0.9) 0%, rgba(0,20,40,0.95) 100%);',
+        mars: 'background: radial-gradient(circle, rgba(139,69,19,0.3) 0%, rgba(205,92,92,0.2) 100%);',
+        moon: 'background: radial-gradient(circle, rgba(200,200,200,0.2) 0%, rgba(150,150,150,0.1) 100%);',
+        jupiter: 'background: radial-gradient(circle, rgba(200,143,58,0.3) 0%, rgba(139,90,43,0.2) 100%);',
+        nebula: 'background: radial-gradient(circle, rgba(138,43,226,0.3) 0%, rgba(75,0,130,0.2) 100%);'
+      };
+      return themes[this.boardTheme] || themes.space;
+    },
+
+    startBlitzTimer() {
+      this.timeRemaining = 60;
+      this.timerInterval = setInterval(() => {
+        this.timeRemaining--;
+        if (this.timeRemaining <= 0) {
+          clearInterval(this.timerInterval);
+          this.showGameOver(this.currentTurn === 'X' ? 'O' : 'X', false);
+        }
+      }, 1000);
+    },
+
+    stopBlitzTimer() {
+      if (this.timerInterval) {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+      }
+    },
+
+    showRandomSpaceFact() {
+      this.spaceFact = this.spaceFacts[Math.floor(Math.random() * this.spaceFacts.length)];
+    },
     
     rematch() {
       this.clearWinningCells();
+      this.stopBlitzTimer();
       this.gameOver = false;
       if (this.mode === 'ai') {
-        this.board = Array(9).fill(null);
+        const size = this.boardSize * this.boardSize;
+        this.board = Array(size).fill(null);
         this.currentTurn = 'X';
         this.gameActive = true;
+        this.gameStartTime = Date.now();
+        
+        if (this.gameMode === 'blitz') {
+          this.startBlitzTimer();
+        }
+        if (this.gameMode === 'educational') {
+          this.showRandomSpaceFact();
+        }
+        
         this.updateGameStatus();
       } else {
         this.socket.emit('game:rematch', { code: this.roomCode });
@@ -780,6 +852,7 @@ function app() {
     
     leaveGame() {
       this.clearWinningCells();
+      this.stopBlitzTimer();
       this.gameOver = false;
       if (this.mode === 'online' && this.roomCode) {
         this.socket.emit('room:leave', { code: this.roomCode });

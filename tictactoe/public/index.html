@@ -549,6 +549,38 @@
         </div>
         
         <div>
+          <h3 class="text-nasa text-sm tracking-widest mb-4">⚙️ GAME SETTINGS</h3>
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-xs text-gray-400 mb-2 block">BOARD SIZE</label>
+              <select x-model="boardSize" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-nasa focus:outline-none">
+                <option value="3">3x3 Classic</option>
+                <option value="4">4x4 Advanced</option>
+                <option value="5">5x5 Expert</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 mb-2 block">GAME MODE</label>
+              <select x-model="gameMode" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 focus:border-nasa focus:outline-none">
+                <option value="classic">Classic</option>
+                <option value="blitz">⚡ Blitz (60s)</option>
+                <option value="educational">🎓 Educational</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 mb-2 block">BOARD THEME</label>
+            <div class="grid grid-cols-5 gap-2">
+              <button @click="boardTheme = 'space'" :class="boardTheme === 'space' ? 'border-nasa bg-nasa/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-nasa/50 transition">🌌 Space</button>
+              <button @click="boardTheme = 'mars'" :class="boardTheme === 'mars' ? 'border-mars bg-mars/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-mars/50 transition">🔴 Mars</button>
+              <button @click="boardTheme = 'moon'" :class="boardTheme === 'moon' ? 'border-gray-400 bg-gray-400/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-gray-400/50 transition">🌙 Moon</button>
+              <button @click="boardTheme = 'jupiter'" :class="boardTheme === 'jupiter' ? 'border-earth bg-earth/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-earth/50 transition">🪐 Jupiter</button>
+              <button @click="boardTheme = 'nebula'" :class="boardTheme === 'nebula' ? 'border-purple-500 bg-purple-500/20' : 'border-gray-700'" class="glass rounded p-2 border-2 text-xs hover:border-purple-500/50 transition">💫 Nebula</button>
+            </div>
+          </div>
+        </div>
+        
+        <div>
           <h3 class="text-nasa text-sm tracking-widest mb-4">🤖 TRAINING MODE</h3>
           <div class="flex gap-2 mb-4">
             <button @click="setDifficulty('easy')"
@@ -776,7 +808,10 @@
   <div x-show="screen === 'game'" class="content-layer min-h-screen p-3 sm:p-4">
     <div class="max-w-4xl mx-auto">
       <div class="text-center mb-4 sm:mb-6">
-        <div class="text-nasa text-xs sm:text-sm tracking-widest mb-2 uppercase" x-text="gameStatus"></div>
+        <div class="flex justify-between items-center mb-2">
+          <div class="text-nasa text-xs sm:text-sm tracking-widest uppercase" x-text="gameStatus"></div>
+          <div x-show="gameMode === 'blitz' && gameActive" class="text-mars font-bold text-lg" x-text="'⏱️ ' + timeRemaining + 's'"></div>
+        </div>
         <div class="flex justify-center gap-3 sm:gap-6 md:gap-8 text-sm sm:text-base md:text-lg font-bold">
           <div class="glass rounded px-3 sm:px-4 py-1.5 sm:py-2 border border-mars/50">
             <span class="text-mars">X:</span> <span x-text="scores.X">0</span>
@@ -791,13 +826,19 @@
       </div>
       
       <div class="relative max-w-md mx-auto mb-4 sm:mb-6 px-2 sm:px-0">
-        <div class="grid grid-cols-3 gap-2 sm:gap-3" id="game-board">
+        <div :class="'grid gap-2 sm:gap-3 grid-cols-' + boardSize" 
+             :style="getThemeStyle()"
+             id="game-board" 
+             class="rounded-lg p-2">
           <template x-for="(cell, i) in board" :key="i">
             <button @click="makeMove(i)" 
                     :disabled="!canMove(i)"
                     :data-cell-index="i"
-                    class="aspect-square glass nasa-bracket rounded-lg text-4xl sm:text-5xl md:text-6xl font-bold active:bg-gray-800/50 sm:hover:bg-gray-800/50 disabled:cursor-not-allowed transition-all shadow-lg touch-manipulation"
-                    :class="cell === 'X' ? 'text-mars border-mars/50' : cell === 'O' ? 'text-earth border-earth/50' : 'border-nasa/30'"
+                    :class="[
+                      'aspect-square glass nasa-bracket rounded-lg font-bold active:bg-gray-800/50 sm:hover:bg-gray-800/50 disabled:cursor-not-allowed transition-all shadow-lg touch-manipulation',
+                      boardSize === 3 ? 'text-4xl sm:text-5xl md:text-6xl' : boardSize === 4 ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl',
+                      cell === 'X' ? 'text-mars border-mars/50' : cell === 'O' ? 'text-earth border-earth/50' : 'border-nasa/30'
+                    ]"
                     x-text="cell || ''">
             </button>
           </template>
@@ -812,6 +853,12 @@
             </linearGradient>
           </defs>
         </svg>
+      </div>
+      
+      <!-- Educational Mode Space Fact -->
+      <div x-show="gameMode === 'educational' && !gameActive && spaceFact" class="glass rounded-lg p-4 mb-4 max-w-md mx-auto border border-nasa/50">
+        <div class="text-nasa text-xs tracking-widest mb-2">🌟 SPACE FACT</div>
+        <div class="text-sm" x-text="spaceFact"></div>
       </div>
       
       <div class="text-center">
