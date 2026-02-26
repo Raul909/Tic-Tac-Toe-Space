@@ -149,7 +149,7 @@ If issues arise, restore the backup:
 
 ```bash
 cd "/var/home/raul/Documents/Tic Tac Toe/tictactoe/public"
-cp index.html.backup index.html
+cp ../backups/index.html.backup index.html
 rm nasa-theme.css
 ```
 

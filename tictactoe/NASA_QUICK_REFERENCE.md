@@ -66,7 +66,7 @@
 2. `nasa-solar-system.js` - Solar system animation (not yet integrated)
 3. `NASA_REDESIGN_COMPLETE.md` - Full documentation
 4. `START_SERVER.sh` - Convenient server launcher
-5. `index.html.backup` - Original file backup
+5. `../backups/index.html.backup` - Original file backup (moved from public)
 
 ### Unchanged
 - All JavaScript game logic
@@ -158,7 +158,7 @@ W-00  D-00  L-00
 
 ```bash
 cd "/var/home/raul/Documents/Tic Tac Toe/tictactoe/public"
-cp index.html.backup index.html
+cp ../backups/index.html.backup index.html
 rm nasa-theme.css nasa-solar-system.js
 ```
 
