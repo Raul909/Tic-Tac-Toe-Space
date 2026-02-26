@@ -8,7 +8,7 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D16-brightgreen?style=for-the-badge&logo=node.js)](https://nodejs.org/)
 [![Three.js](https://img.shields.io/badge/Three.js-3D-blue?style=for-the-badge)](https://threejs.org/)
 
-[🚀 Live Demo](https://tictactoe-multiplayer-kx9u.onrender.com/)
+[🚀 Play Now](https://tictactoe-multiplayer-kx9u.onrender.com/)
 
 </div>
 
@@ -134,31 +134,6 @@ The app syncs with your real location to display weather effects:
 **Frontend**: Alpine.js, Tailwind CSS, Three.js, Exo 2 Font
 **Auth**: Google OAuth, Facebook OAuth, JWT
 **3D**: Three.js, OrbitControls, PBR materials, Post-processing
-
----
-
-## 📦 Deployment
-
-### Deploy to Render
-
-1. Push to GitHub
-2. Connect to [Render](https://render.com)
-3. Render auto-detects `render.yaml`
-4. Set environment variables (optional):
-   - `MONGODB_URI` - MongoDB connection string (Optional - defaults to local file)
-   - `GOOGLE_CLIENT_ID` - Google OAuth
-   - `FACEBOOK_APP_ID` - Facebook OAuth
-5. Deploy!
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for details.
-
----
-
-## 🔐 Optional Setup
-
-- **MongoDB**: [MONGODB_SETUP.md](./MONGODB_SETUP.md)
-- **Google OAuth**: [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md)
-- **Facebook OAuth**: [FACEBOOK_OAUTH_SETUP.md](./FACEBOOK_OAUTH_SETUP.md)
 
 ---
 
