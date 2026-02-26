@@ -161,6 +161,13 @@ function app() {
       this.initSpaceGallery();
       this.initGoogleSignIn();
       this.initWeatherSync();
+      
+      // Load saved stats and achievements
+      this.loadStats();
+      
+      // Load accessibility settings
+      this.loadAccessibilitySettings();
+      
       console.log('✅ Init complete, screen:', this.screen);
       
       // Watch for zoom and speed changes
@@ -170,9 +177,6 @@ function app() {
       this.$watch('spaceSpeed', value => {
         if (window.SpaceGallery) window.SpaceGallery.speed = parseFloat(value);
       });
-      
-      // Load saved stats and achievements
-      this.loadStats();
     },
 
     initWeatherSync() {
@@ -979,6 +983,27 @@ function app() {
     },
 
     // Accessibility
+    loadAccessibilitySettings() {
+      // Load high contrast
+      const highContrast = localStorage.getItem('highContrast');
+      if (highContrast === 'true') {
+        this.highContrast = true;
+        document.body.classList.add('high-contrast');
+      }
+      
+      // Load colorblind mode
+      const colorblindMode = localStorage.getItem('colorblindMode');
+      if (colorblindMode === 'true') {
+        this.colorblindMode = true;
+        document.body.classList.add('colorblind');
+      }
+      
+      // Load sound pack
+      if (this.user.profile.soundPack && window.SoundManager) {
+        window.SoundManager.changePack(this.user.profile.soundPack);
+      }
+    },
+    
     toggleHighContrast() {
       this.highContrast = !this.highContrast;
       document.body.classList.toggle('high-contrast', this.highContrast);
@@ -993,6 +1018,7 @@ function app() {
 
     enableKeyboardNav() {
       this.keyboardNav = true;
+      localStorage.setItem('keyboardNav', 'true');
       document.addEventListener('keydown', (e) => {
         if (!this.gameActive) return;
         const key = parseInt(e.key);
