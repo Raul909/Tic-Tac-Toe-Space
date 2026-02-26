@@ -120,7 +120,9 @@ const sessions = new Map(); // token -> userKey
 const socketUser = new Map(); // socketId -> userKey
 const userSocket = new Map(); // userKey -> socketId
 const rooms = new Map();
-const socketRoom = new Map(); // roomCode -> roomObj
+const socketRoom = new Map(); // socketId -> roomCode
+const userRoom = new Map(); // userKey -> roomCode (NEW: support reconnection)
+const disconnectTimeouts = new Map(); // userKey -> timeoutId (NEW: grace period)
 const tournaments = new Map();
 
 function leaveCurrentRoom(socket) {
@@ -131,6 +133,9 @@ function leaveCurrentRoom(socket) {
   if (room) {
     const idx = room.players.findIndex(p => p.socketId === socket.id);
     if (idx !== -1) {
+      const p = room.players[idx];
+      if (p.key) userRoom.delete(p.key);
+
       socket.leave(code);
       room.players.splice(idx, 1);
       if (room.players.length === 0) {
@@ -145,12 +150,24 @@ function leaveCurrentRoom(socket) {
   socketRoom.delete(socket.id);
 }
 
-function getRoomForSocket(socketId) {
-  const code = socketRoom.get(socketId);
-  if (!code) return null;
+function handlePlayerLeave(code, key) {
   const room = rooms.get(code);
-  if (!room) return null;
-  return { code, room };
+  if (!room) return;
+
+  const idx = room.players.findIndex(p => p.key === key);
+  if (idx !== -1) {
+    room.players.splice(idx, 1);
+    userRoom.delete(key);
+    disconnectTimeouts.delete(key);
+
+    if (room.players.length === 0) {
+      rooms.delete(code);
+    } else {
+      room.status = 'waiting';
+      delete room.rematchVotes;
+      io.to(code).emit('game:opponent-left');
+    }
+  }
 }
 
 // ── REST ENDPOINTS ────────────────────────────────────────────────────
@@ -412,6 +429,40 @@ io.on('connection', (socket) => {
     userSocket.set(key, socket.id);
     const { wins, losses, draws, displayName } = users[key];
     socket.emit('auth:ok', { username: displayName, stats: { wins, losses, draws } });
+
+    // Reconnection logic
+    const existingRoomCode = userRoom.get(key);
+    if (existingRoomCode) {
+      // Clear any pending disconnect timeout
+      if (disconnectTimeouts.has(key)) {
+        clearTimeout(disconnectTimeouts.get(key));
+        disconnectTimeouts.delete(key);
+      }
+
+      const room = rooms.get(existingRoomCode);
+      if (room) {
+        // Update player socket
+        const player = room.players.find(p => p.key === key);
+        if (player) {
+          player.socketId = socket.id;
+          socketRoom.set(socket.id, existingRoomCode);
+          socket.join(existingRoomCode);
+
+          // Emit rejoin event with full game state
+          socket.emit('game:rejoin', {
+            code: existingRoomCode,
+            board: room.board,
+            currentTurn: room.currentTurn,
+            scores: room.scores,
+            players: room.players.map(p => ({ name: p.name, symbol: p.symbol })),
+            mySymbol: player.symbol,
+            room: room // Include full room for robust handling
+          });
+
+          socket.to(existingRoomCode).emit('game:opponent-reconnected', { name: displayName });
+        }
+      }
+    }
   });
 
   // Helper to sanitize text
@@ -439,6 +490,7 @@ io.on('connection', (socket) => {
     };
     rooms.set(code, room);
     socketRoom.set(socket.id, code);
+    userRoom.set(key, code); // Track user room
     socket.join(code);
     socket.emit('room:created', { code, symbol: 'X' });
   });
@@ -460,6 +512,7 @@ io.on('connection', (socket) => {
     room.players.push({ socketId: socket.id, key, name: users[key].displayName, symbol: 'O' });
     room.status = 'playing';
     socketRoom.set(socket.id, upperCode);
+    userRoom.set(key, upperCode); // Track user room
     socket.join(upperCode);
     socket.emit('room:joined', { code: upperCode, symbol: 'O' });
 
@@ -597,26 +650,30 @@ io.on('connection', (socket) => {
   });
 
   // ── DISCONNECT ──
-  // ── DISCONNECT ──
   socket.on('disconnect', () => {
     rateLimiter.cleanup(socket.id);
     const key = socketUser.get(socket.id);
     if (key) {
+      // Don't delete userSocket yet, but socketRoom is no longer valid for this ID
       userSocket.delete(key);
       socketUser.delete(socket.id);
 
       const code = socketRoom.get(socket.id);
       if (code) {
+        socketRoom.delete(socket.id); // Remove socket->room mapping
+
         const room = rooms.get(code);
         if (room) {
-          socket.to(code).emit('game:opponent-left');
-          // Remove all players from socketRoom since room is deleted
-          for (const p of room.players) {
-            socketRoom.delete(p.socketId);
-          }
-          rooms.delete(code);
-        } else {
-          socketRoom.delete(socket.id);
+          // Grace Period: Don't destroy immediately
+          // Notify opponent that player disconnected (optional)
+          socket.to(code).emit('game:opponent-disconnected', { key });
+
+          // Set timeout to actually leave
+          const timeout = setTimeout(() => {
+            handlePlayerLeave(code, key);
+          }, 30000); // 30 seconds
+
+          disconnectTimeouts.set(key, timeout);
         }
       }
     }
@@ -668,6 +725,11 @@ function createMatchRoom(t, matchIndex) {
   };
 
   rooms.set(code, room);
+  // Add users to userRoom for this match room as well?
+  // Wait, if they are in tournament, they are technically in two rooms context?
+  // No, createMatchRoom creates a new game room. They should be "in" this room.
+  userRoom.set(p1.key, code);
+  userRoom.set(p2.key, code);
 
   // Force sockets to join room
   const s1 = io.sockets.sockets.get(p1.socketId);
