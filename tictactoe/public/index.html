@@ -472,14 +472,14 @@
         
         <form x-show="authTab === 'login'" @submit.prevent="login()" class="space-y-4">
           <div>
-            <label class="block text-xs text-nasa mb-1 tracking-widest">CALLSIGN</label>
-            <input x-model="loginForm.username" type="text" 
+            <label for="login-username" class="block text-xs text-nasa mb-1 tracking-widest">CALLSIGN</label>
+            <input id="login-username" name="username" x-model="loginForm.username" type="text" 
                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none transition"
                    placeholder="Enter callsign">
           </div>
           <div>
-            <label class="block text-xs text-nasa mb-1 tracking-widest">ACCESS CODE</label>
-            <input x-model="loginForm.password" type="password" 
+            <label for="login-password" class="block text-xs text-nasa mb-1 tracking-widest">ACCESS CODE</label>
+            <input id="login-password" name="password" x-model="loginForm.password" type="password" 
                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none transition"
                    placeholder="••••••••">
           </div>
@@ -493,14 +493,14 @@
         
         <form x-show="authTab === 'register'" @submit.prevent="register()" class="space-y-4">
           <div>
-            <label class="block text-xs text-nasa mb-1 tracking-widest">CALLSIGN <span class="text-gray-500">(3-16 chars)</span></label>
-            <input x-model="registerForm.username" type="text" 
+            <label for="register-username" class="block text-xs text-nasa mb-1 tracking-widest">CALLSIGN <span class="text-gray-500">(3-16 chars)</span></label>
+            <input id="register-username" name="username" x-model="registerForm.username" type="text" 
                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none transition"
                    placeholder="Choose callsign">
           </div>
           <div>
-            <label class="block text-xs text-nasa mb-1 tracking-widest">ACCESS CODE <span class="text-gray-500">(min 8 chars)</span></label>
-            <input x-model="registerForm.password" type="password" 
+            <label for="register-password" class="block text-xs text-nasa mb-1 tracking-widest">ACCESS CODE <span class="text-gray-500">(min 8 chars)</span></label>
+            <input id="register-password" name="password" x-model="registerForm.password" type="password" 
                    class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 focus:border-nasa focus:outline-none transition"
                    placeholder="Set access code">
           </div>
@@ -562,7 +562,7 @@
               + LAUNCH ROOM
             </button>
             <div class="flex-1 flex gap-2">
-              <input x-model="joinCode" type="text" maxlength="4" placeholder="CODE"
+              <input id="join-code" name="roomCode" x-model="joinCode" type="text" maxlength="4" placeholder="CODE"
                      class="flex-1 bg-gray-800 border border-gray-700 rounded px-4 uppercase text-center focus:border-nasa focus:outline-none transition">
               <button @click="joinRoom()" class="bg-gray-800 px-6 rounded hover:bg-gray-700 transition font-bold">DOCK →</button>
             </div>

@@ -219,7 +219,6 @@ function app() {
         window.CinematicSpace.applyWeatherPreset(presets[weather]);
       }
     },
-    },
     
     initGoogleSignIn() {
       // Load Google Sign-In script
@@ -677,7 +676,6 @@ function app() {
         svgLine.style.transition = 'stroke-dashoffset 0.6s ease-out';
         svgLine.style.strokeDashoffset = '0';
       });
-    },
     },
     
     updateGameStatus() {
