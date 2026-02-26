@@ -5,6 +5,7 @@ function app() {
     authTab: 'login',
     socket: null,
     user: { username: '', stats: { wins: 0, draws: 0, losses: 0 } },
+    aiDifficulty: 'normal',
     
     // Auth
     loginForm: { username: '', password: '' },
@@ -377,6 +378,11 @@ function app() {
       navigator.clipboard.writeText(this.roomCode);
     },
     
+    setDifficulty(level) {
+      this.aiDifficulty = level;
+      if (window.SoundManager) window.SoundManager.play('click');
+    },
+
     startAI() {
       this.mode = 'ai';
       this.mySymbol = 'X';
@@ -419,7 +425,7 @@ function app() {
     },
     
     aiMove() {
-      const move = this.getBestMove();
+      const move = GameLogic.getBestMove(this.board, this.aiDifficulty);
       if (move !== -1) {
         this.board[move] = 'O';
         const winLine = this.checkWin('O');
@@ -436,13 +442,6 @@ function app() {
         }
         this.currentTurn = 'X';
       }
-    },
-    
-    getBestMove() {
-      for (let i = 0; i < 9; i++) {
-        if (!this.board[i]) return i;
-      }
-      return -1;
     },
     
     checkWin(player) {
