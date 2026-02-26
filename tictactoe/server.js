@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 const cookieParser = require('cookie-parser');
 const rateLimiter = require('./rateLimiter');
 const mongoose = require('mongoose');
-const { checkWinner, generateRoomCode, validateRegistration } = require('./utils');
+const { checkWinner, generateRoomCode, validateRegistration, validateRoomJoin } = require('./utils');
 const { handleAuthUser } = require('./auth-utils');
 
 // Load environment variables
