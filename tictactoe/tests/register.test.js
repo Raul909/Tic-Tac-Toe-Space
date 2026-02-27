@@ -2,15 +2,21 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 // Setup environment BEFORE requiring server
-const TEST_DB_PATH = path.join(__dirname, 'test-users.json');
-process.env.TEST_USERS_FILE = TEST_DB_PATH;
-// Force file-based DB by ensuring MONGODB_URI is empty
-process.env.MONGODB_URI = '';
+const TEST_DIR = path.join(os.tmpdir(), 'tictactoe-register-legacy-test-' + Date.now());
+process.env.DATA_DIR = TEST_DIR;
+const TEST_DB_PATH = path.join(TEST_DIR, 'users.json');
 
 // Ensure clean state
-if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
+if (fs.existsSync(TEST_DIR)) {
+  fs.rmSync(TEST_DIR, { recursive: true, force: true });
+}
+fs.mkdirSync(TEST_DIR, { recursive: true });
+
+// Force file-based DB by ensuring MONGODB_URI is empty
+process.env.MONGODB_URI = '';
 
 const { app, server } = require('../server');
 
@@ -28,7 +34,11 @@ test('Registration API Integration Tests', async (t) => {
 
   t.after(() => {
     server.close();
-    if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
+    try {
+      if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true, force: true });
+    } catch (e) {
+      // Ignore cleanup errors
+    }
   });
 
   await t.test('should register a new user successfully', async () => {
