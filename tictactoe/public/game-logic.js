@@ -6,7 +6,7 @@
     // Browser globals (root is window)
     root.GameLogic = factory();
   }
-}(typeof self !== 'undefined' ? self : this, function() {
+}(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this), function() {
 
   const WINS = [
     [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
