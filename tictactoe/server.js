@@ -52,6 +52,7 @@ const UserSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
+  UserSchema.index({ wins: -1 });
   displayName: { type: String, required: true },
   hash: { type: String, required: true },
   wins: { type: Number, default: 0 },
@@ -342,16 +343,32 @@ app.post('/api/auth/facebook', async (req, res) => {
 });
 
 // Leaderboard endpoint
-app.get('/api/leaderboard', apiLimiter, (req, res) => {
+app.get('/api/leaderboard', apiLimiter, async (req, res) => {
   const now = Date.now();
   if (cachedLeaderboard && (now - lastLeaderboardUpdate < LEADERBOARD_CACHE_TTL)) {
     return res.json(cachedLeaderboard);
   }
 
-  const board = Object.values(users)
-    .map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }))
-    .sort((a, b) => b.wins - a.wins)
-    .slice(0, 10);
+  let board;
+  if (useDB()) {
+    try {
+      const topUsers = await User.find({}, 'displayName wins losses draws').sort({ wins: -1 }).limit(10).lean();
+      board = topUsers.map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }));
+    } catch (err) {
+      console.error('Leaderboard DB error:', err);
+      // Fallback
+      board = Object.values(users)
+        .map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }))
+        .sort((a, b) => b.wins - a.wins)
+        .slice(0, 10);
+    }
+  } else {
+    // In-memory fallback
+    board = Object.values(users)
+      .map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }))
+      .sort((a, b) => b.wins - a.wins)
+      .slice(0, 10);
+  }
 
   cachedLeaderboard = board;
   lastLeaderboardUpdate = now;
