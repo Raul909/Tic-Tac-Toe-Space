@@ -52,7 +52,6 @@ const UserSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
-  UserSchema.index({ wins: -1 });
   displayName: { type: String, required: true },
   hash: { type: String, required: true },
   wins: { type: Number, default: 0 },
@@ -155,7 +154,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
     saveUsers();
     
     const token = uuidv4();
-    sessions.set(token, key);
+    sessions.set(token, { key, createdAt: Date.now() });
     res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
     return res.json({ ok: true, token, username, stats: { wins: 0, losses: 0, draws: 0 } });
   }
@@ -176,7 +175,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
       // Mirror into memory so socket auth works without a DB round-trip
       users[key] = { displayName: dbUser.displayName, hash, wins: 0, losses: 0, draws: 0, createdAt: Date.now() };
       const token = uuidv4();
-      sessions.set(token, key);
+      sessions.set(token, { key, createdAt: Date.now() });
       res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
       return res.json({ ok: true, token, username: dbUser.displayName, stats: { wins: 0, losses: 0, draws: 0 } });
     } catch (err) {
@@ -192,7 +191,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
   saveUsers();
 
   const token = uuidv4();
-  sessions.set(token, key);
+  sessions.set(token, { key, createdAt: Date.now() });
   res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
   const { wins, losses, draws } = users[key];
   res.json({ ok: true, token, username: users[key].displayName, stats: { wins, losses, draws } });
@@ -215,7 +214,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
       // Mirror into memory for socket auth
       users[key] = { displayName: dbUser.displayName, hash: dbUser.hash, wins: dbUser.wins, losses: dbUser.losses, draws: dbUser.draws, createdAt: dbUser.createdAt };
       const token = uuidv4();
-      sessions.set(token, key);
+      sessions.set(token, { key, createdAt: Date.now() });
       res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
       return res.json({ ok: true, token, username: dbUser.displayName, stats: { wins: dbUser.wins, losses: dbUser.losses, draws: dbUser.draws } });
     } catch (err) {
@@ -231,7 +230,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
   if (!match) return res.json({ ok: false, error: 'Incorrect password' });
 
   const token = uuidv4();
-  sessions.set(token, key);
+  sessions.set(token, { key, createdAt: Date.now() });
   res.cookie('session', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', maxAge: 7 * 24 * 60 * 60 * 1000 });
   const { wins, losses, draws } = user;
   res.json({ ok: true, token, username: user.displayName, stats: { wins, losses, draws } });
@@ -404,4 +403,50 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, server };
+
+// ── PERIODIC CLEANUP ──────────────────────────────────────────────────
+function cleanupExpiredData() {
+  const now = Date.now();
+  const ONE_HOUR = 60 * 60 * 1000;
+  const ONE_DAY = 24 * ONE_HOUR;
+  const SEVEN_DAYS = 7 * ONE_DAY;
+
+  let usersChanged = false;
+
+  // Cleanup Sessions (TTL: 7 days)
+  for (const [token, session] of sessions.entries()) {
+    if (now - session.createdAt > SEVEN_DAYS) {
+      sessions.delete(token);
+    }
+  }
+
+  // Cleanup Guest Users (TTL: 24 hours)
+  for (const [key, user] of Object.entries(users)) {
+    if (user.isGuest && user.createdAt && (now - user.createdAt > ONE_DAY)) {
+      delete users[key];
+      usersChanged = true;
+    }
+  }
+
+  // Cleanup Rooms (TTL: 24 hours)
+  for (const [code, room] of rooms.entries()) {
+    if (room.createdAt && (now - room.createdAt > ONE_DAY)) {
+      rooms.delete(code);
+    }
+  }
+
+  // Cleanup Tournaments (TTL: 24 hours)
+  for (const [code, t] of tournaments.entries()) {
+    if (t.createdAt && (now - t.createdAt > ONE_DAY)) {
+      tournaments.delete(code);
+    }
+  }
+
+  if (usersChanged) {
+    saveUsers();
+  }
+}
+
+// Run cleanup every hour
+setInterval(cleanupExpiredData, 60 * 60 * 1000);
+module.exports = { app, server, cleanupExpiredData };

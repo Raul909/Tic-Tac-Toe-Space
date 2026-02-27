@@ -74,7 +74,7 @@ async function handleAuthUser({
 
     // Create session
     const token = uuidv4();
-    sessions.set(token, key);
+    sessions.set(token, { key, createdAt: Date.now() });
 
     res.cookie('session', token, {
       httpOnly: true,

@@ -43,7 +43,7 @@ function createMatchRoom(t, matchIndex, context) {
     status: 'playing',
     scores: { X: 0, O: 0, D: 0 },
     tournamentId: t.code,
-    matchId: match.id
+    matchId: match.id, createdAt: Date.now()
   };
 
   rooms.set(code, room);
@@ -158,7 +158,7 @@ const tournamentHandler = (socket, context) => {
       code,
       players: [{ socketId: socket.id, key, name: users[key].displayName }],
       matches: [],
-      status: 'waiting'
+      status: 'waiting', createdAt: Date.now()
     };
     tournaments.set(code, t);
     socketRoom.set(socket.id, code);

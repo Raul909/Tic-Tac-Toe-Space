@@ -34,7 +34,7 @@ test('handleAuthUser', async (t) => {
     assert.strictEqual(saveUsers.mock.calls.length, 1);
 
     // Verify session
-    assert.strictEqual(sessions.get('mock-token'), 'test_12345');
+    assert.strictEqual(sessions.get('mock-token').key, 'test_12345');
     assert.strictEqual(res.cookie.mock.calls.length, 1);
     assert.strictEqual(res.json.mock.calls.length, 1);
     assert.deepStrictEqual(res.json.mock.calls[0].arguments[0], {

@@ -14,7 +14,8 @@ module.exports = (socket, context) => {
   } = context;
 
   socket.on('auth', ({ token }) => {
-    const key = sessions.get(token);
+    const session = sessions.get(token);
+    const key = session ? session.key : null;
     if (!key || !users[key]) {
       socket.emit('auth:error', 'Session expired, please log in again');
       return;

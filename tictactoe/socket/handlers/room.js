@@ -27,7 +27,7 @@ module.exports = (socket, context) => {
       board: Array(9).fill(null),
       currentTurn: 'X',
       status: 'waiting',
-      scores: { X: 0, O: 0, D: 0 }
+      scores: { X: 0, O: 0, D: 0 }, createdAt: Date.now()
     };
     rooms.set(code, room);
     socketRoom.set(socket.id, code);

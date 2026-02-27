@@ -1,0 +1,61 @@
+
+up to date, audited 125 packages in 661ms
+
+20 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+> tictactoe-multiplayer@1.0.0 test
+> node --test
+
+TAP version 13
+# Subtest: handleAuthUser
+    # Subtest: should create new user and session (file-based)
+    not ok 1 - should create new user and session (file-based)
+      ---
+      duration_ms: 3.681844
+      type: 'test'
+      location: '/app/tictactoe/auth-utils.test.js:6:11'
+      failureType: 'testCodeFailure'
+      error: |-
+        Expected values to be strictly equal:
+        + actual - expected
+
+        + {
+        +   createdAt: 1772226008875,
+        +   key: 'test_12345'
+        + }
+        - 'test_12345'
+
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: 'test_12345'
+      actual:
+        key: 'test_12345'
+        createdAt: 1772226008875
+      operator: 'strictEqual'
+      stack: |-
+        TestContext.<anonymous> (/app/tictactoe/auth-utils.test.js:37:12)
+        async Test.run (node:internal/test_runner/test:1054:7)
+        async TestContext.<anonymous> (/app/tictactoe/auth-utils.test.js:6:3)
+        async Test.run (node:internal/test_runner/test:1054:7)
+        async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+      ...
+    1..1
+not ok 1 - handleAuthUser
+  ---
+  duration_ms: 4.780886
+  type: 'test'
+  location: '/app/tictactoe/auth-utils.test.js:5:1'
+  failureType: 'subtestsFailed'
+  error: '1 subtest failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# [dotenv@17.3.1] injecting env (0) from .env -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+# Subtest: Cleanup Logic correctly removes expired items
+ok 2 - Cleanup Logic correctly removes expired items
+  ---
+  duration_ms: 400.777814
+  type: 'test'
+  ...
