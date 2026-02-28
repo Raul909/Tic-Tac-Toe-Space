@@ -26,6 +26,7 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
     credentials: true
   }
+});
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -36,6 +37,7 @@ if (require.main === module) {
       .catch(err => {
         console.error('❌ MongoDB connection error:', err.message);
         console.log('⚠️  Falling back to file-based storage');
+      });
   } else {
     console.log('⚠️  No MONGODB_URI found, using file-based storage');
   }
@@ -56,7 +58,8 @@ const UserSchema = new mongoose.Schema({
   losses: { type: Number, default: 0 },
   draws: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
-
+});
+UserSchema.index({ wins: -1 });
 
 const User = mongoose.model('User', UserSchema);
 
@@ -72,6 +75,7 @@ app.get('/config.js', (req, res) => {
     window.FACEBOOK_APP_ID = '${process.env.FACEBOOK_APP_ID || ''}';
     window.GOOGLE_CLIENT_ID = '${process.env.GOOGLE_CLIENT_ID || ''}';
   `);
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -80,10 +84,12 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { ok: false, error: 'Too many attempts, try again later' }
+});
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 30
+});
 
 // ── DATA PERSISTENCE ──────────────────────────────────────────────────
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
@@ -174,6 +180,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
   const token = uuidv4();
   sessions.set(token, key);
   const { wins, losses, draws } = users[key];
+});
 
 app.post('/api/login', authLimiter, async (req, res) => {
   const { username, password } = req.body || {};
@@ -201,11 +208,13 @@ app.post('/api/login', authLimiter, async (req, res) => {
   const token = uuidv4();
   sessions.set(token, key);
   const { wins, losses, draws } = user;
+});
 
 app.post('/api/logout', (req, res) => {
   const token = req.cookies.session;
   if (token) sessions.delete(token);
   res.clearCookie('session');
+});
 
 // Google OAuth Login
 app.post('/api/auth/google', async (req, res) => {
@@ -237,14 +246,18 @@ app.post('/api/auth/google', async (req, res) => {
             userData: { displayName: name, email, providerId: googleId, key, providerName: "google" },
             userStore: { User, users, saveUsers, useDB },
             sessionStore: { sessions, uuidv4 }
+          });
         } catch (e) {
           console.error('Google auth error:', e);
         }
+      });
     }).on('error', (e) => {
       console.error('Google token verification error:', e);
+    });
   } catch (e) {
     console.error('Google OAuth error:', e);
   }
+});
 
 // Facebook OAuth Login
 app.post('/api/auth/facebook', async (req, res) => {
@@ -278,14 +291,18 @@ app.post('/api/auth/facebook', async (req, res) => {
             userData: { displayName: name, email, providerId: fbId, key, providerName: "facebook" },
             userStore: { User, users, saveUsers, useDB },
             sessionStore: { sessions, uuidv4 }
+          });
         } catch (e) {
           console.error('Facebook auth error:', e);
         }
+      });
     }).on('error', (e) => {
       console.error('Facebook token verification error:', e);
+    });
   } catch (e) {
     console.error('Facebook OAuth error:', e);
   }
+});
 
 // Leaderboard endpoint
 app.get('/api/leaderboard', apiLimiter, async (req, res) => {
@@ -318,6 +335,7 @@ app.get('/api/leaderboard', apiLimiter, async (req, res) => {
   cachedLeaderboard = board;
   lastLeaderboardUpdate = now;
   res.json(board);
+});
 
 // ── SOCKET.IO ─────────────────────────────────────────────────────────
 
@@ -345,6 +363,7 @@ if (require.main === module) {
   const PORT = process.env.PORT || 3000;
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 TicTacToe server running on port ${PORT}`);
+  });
 }
 
 module.exports = { app, server };
