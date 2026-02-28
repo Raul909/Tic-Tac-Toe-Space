@@ -1,4 +1,4 @@
-const { WINS } = require('./public/game-logic');
+const { WINS, checkWin } = require('./public/game-logic');
 
 /**
  * Checks if there's a winner or a draw on the board.
@@ -6,13 +6,13 @@ const { WINS } = require('./public/game-logic');
  * @returns {Object|null} - Result object or null.
  */
 function checkWinner(board) {
-  for (const line of WINS) {
-    const [a, b, c] = line;
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-      return { winner: board[a], line };
-    }
-  }
-  if (board.every(Boolean)) return { draw: true, winner: null };
+  const winX = checkWin(board, 'X');
+  if (winX) return { winner: 'X', line: winX };
+
+  const winO = checkWin(board, 'O');
+  if (winO) return { winner: 'O', line: winO };
+
+  if (board.every(cell => cell !== null)) return { draw: true, winner: null };
   return null;
 }
 
