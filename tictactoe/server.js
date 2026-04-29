@@ -101,6 +101,46 @@ let cachedLeaderboard = null;
 let lastLeaderboardUpdate = 0;
 const LEADERBOARD_CACHE_TTL = 60 * 1000; // 60 seconds
 
+/**
+ * Optimized in-memory leaderboard generation (O(N) time, O(1) extra space)
+ */
+function getInMemoryLeaderboard(userMap) {
+  const board = [];
+  for (const key in userMap) {
+    const u = userMap[key];
+    const wins = u.wins || 0;
+    // Only consider if it could be in top 10
+    if (board.length < 10 || wins > (board[board.length - 1]?.wins || -1)) {
+      board.push({ name: u.displayName, wins, losses: u.losses || 0, draws: u.draws || 0 });
+      board.sort((a, b) => b.wins - a.wins);
+      if (board.length > 10) board.pop();
+    }
+  }
+  return board;
+}
+
+/**
+ * Updates the cached leaderboard in real-time when a user's stats change
+ */
+function syncLeaderboard(user) {
+  if (!cachedLeaderboard) return;
+  const wins = user.wins || 0;
+  const index = cachedLeaderboard.findIndex(u => u.name === user.displayName);
+
+  if (index !== -1) {
+    // Update existing entry
+    cachedLeaderboard[index].wins = wins;
+    cachedLeaderboard[index].losses = user.losses || 0;
+    cachedLeaderboard[index].draws = user.draws || 0;
+    cachedLeaderboard.sort((a, b) => b.wins - a.wins);
+  } else if (cachedLeaderboard.length < 10 || wins > (cachedLeaderboard[cachedLeaderboard.length - 1]?.wins || -1)) {
+    // Add new entry if it qualifies
+    cachedLeaderboard.push({ name: user.displayName, wins, losses: user.losses || 0, draws: user.draws || 0 });
+    cachedLeaderboard.sort((a, b) => b.wins - a.wins);
+    if (cachedLeaderboard.length > 10) cachedLeaderboard.pop();
+  }
+}
+
 try {
   if (fs.existsSync(USERS_FILE)) {
     users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
@@ -128,14 +168,20 @@ const tournaments = new Map();
 app.post('/api/register', authLimiter, async (req, res) => {
   const { username, password, isGuest } = req.body || {};
   
+  if (typeof username !== 'string' || typeof password !== 'string') {
+    return res.status(400).json({ ok: false, error: 'Invalid input: username and password must be strings' });
+  }
+
   // Guest accounts have relaxed validation
   if (isGuest) {
     if (!username || !username.startsWith('Guest_')) {
+      return res.status(400).json({ ok: false, error: 'Invalid guest username' });
     }
     const key = username.toLowerCase();
     
     // Check if guest ID already exists
     if (users[key]) {
+      return res.status(400).json({ ok: false, error: 'Guest ID already exists' });
     }
     
     const hash = await bcrypt.hash(password, 10);
@@ -152,6 +198,20 @@ app.post('/api/register', authLimiter, async (req, res) => {
     
     const token = uuidv4();
     sessions.set(token, key);
+
+    res.cookie('session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    return res.json({
+      ok: true,
+      token,
+      username: username,
+      stats: { wins: 0, losses: 0, draws: 0 }
+    });
   }
   
   // Regular account validation
@@ -163,10 +223,40 @@ app.post('/api/register', authLimiter, async (req, res) => {
   if (useDB()) {
     // ── MongoDB path ──
     try {
+      let dbUser = await User.findOne({ username: key });
+      if (dbUser) {
+        return res.status(400).json({ ok: false, error: 'Username already taken' });
+      }
+
+      dbUser = await User.create({
+        username: key,
+        displayName: username.trim(),
+        hash,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        createdAt: new Date()
+      });
+
       // Mirror into memory so socket auth works without a DB round-trip
-      users[key] = { displayName: dbUser.displayName, hash, wins: 0, losses: 0, draws: 0, createdAt: Date.now() };
+      users[key] = { displayName: dbUser.displayName, hash, wins: 0, losses: 0, draws: 0, createdAt: dbUser.createdAt };
+
       const token = uuidv4();
       sessions.set(token, key);
+
+      res.cookie('session', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+      });
+
+      return res.json({
+        ok: true,
+        token,
+        username: dbUser.displayName,
+        stats: { wins: 0, losses: 0, draws: 0 }
+      });
     } catch (err) {
       console.error('Register DB error:', err.message);
       // fall through to file-based
@@ -174,27 +264,71 @@ app.post('/api/register', authLimiter, async (req, res) => {
   }
 
   // ── File-based fallback ──
+  if (users[key]) {
+    return res.status(400).json({ ok: false, error: 'Username already taken' });
+  }
+
   users[key] = { displayName: username.trim(), hash, wins: 0, losses: 0, draws: 0, createdAt: Date.now() };
   saveUsers();
 
   const token = uuidv4();
   sessions.set(token, key);
-  const { wins, losses, draws } = users[key];
+
+  res.cookie('session', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
+  const { displayName, wins, losses, draws } = users[key];
+  res.json({
+    ok: true,
+    token,
+    username: displayName,
+    stats: { wins, losses, draws }
+  });
 });
 
 app.post('/api/login', authLimiter, async (req, res) => {
   const { username, password } = req.body || {};
+
+  if (typeof username !== 'string' || typeof password !== 'string') {
+    return res.status(400).json({ ok: false, error: 'Invalid input: username and password must be strings' });
+  }
 
   const key = username.trim().toLowerCase();
 
   if (useDB()) {
     // ── MongoDB path ──
     try {
-      const match = await bcrypt.compare(password, dbUser.hash);
-      // Mirror into memory for socket auth
-      users[key] = { displayName: dbUser.displayName, hash: dbUser.hash, wins: dbUser.wins, losses: dbUser.losses, draws: dbUser.draws, createdAt: dbUser.createdAt };
-      const token = uuidv4();
-      sessions.set(token, key);
+      const dbUser = await User.findOne({ username: key });
+      if (dbUser) {
+        const match = await bcrypt.compare(password, dbUser.hash);
+        if (match) {
+          // Mirror into memory for socket auth
+          users[key] = { displayName: dbUser.displayName, hash: dbUser.hash, wins: dbUser.wins, losses: dbUser.losses, draws: dbUser.draws, createdAt: dbUser.createdAt };
+
+          const token = uuidv4();
+          sessions.set(token, key);
+
+          res.cookie('session', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+          });
+
+          return res.json({
+            ok: true,
+            token,
+            username: dbUser.displayName,
+            stats: { wins: dbUser.wins, losses: dbUser.losses, draws: dbUser.draws }
+          });
+        } else {
+          return res.status(401).json({ ok: false, error: 'Invalid credentials' });
+        }
+      }
     } catch (err) {
       console.error('Login DB error:', err.message);
       // fall through to file-based
@@ -203,11 +337,32 @@ app.post('/api/login', authLimiter, async (req, res) => {
 
   // ── File-based fallback ──
   const user = users[key];
+  if (!user) {
+    return res.status(401).json({ ok: false, error: 'Invalid credentials' });
+  }
+
   const match = await bcrypt.compare(password, user.hash);
+  if (!match) {
+    return res.status(401).json({ ok: false, error: 'Invalid credentials' });
+  }
 
   const token = uuidv4();
   sessions.set(token, key);
-  const { wins, losses, draws } = user;
+
+  res.cookie('session', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
+  const { displayName, wins, losses, draws } = user;
+  res.json({
+    ok: true,
+    token,
+    username: displayName,
+    stats: { wins, losses, draws }
+  });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -319,17 +474,11 @@ app.get('/api/leaderboard', apiLimiter, async (req, res) => {
     } catch (err) {
       console.error('Leaderboard DB error:', err);
       // Fallback
-      board = Object.values(users)
-        .map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }))
-        .sort((a, b) => b.wins - a.wins)
-        .slice(0, 10);
+      board = getInMemoryLeaderboard(users);
     }
   } else {
     // In-memory fallback
-    board = Object.values(users)
-      .map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }))
-      .sort((a, b) => b.wins - a.wins)
-      .slice(0, 10);
+    board = getInMemoryLeaderboard(users);
   }
 
   cachedLeaderboard = board;
@@ -351,6 +500,7 @@ const context = {
   disconnectTimeouts,
   tournaments,
   saveUsers,
+  syncLeaderboard,
   // io will be added in setupSocket
 };
 

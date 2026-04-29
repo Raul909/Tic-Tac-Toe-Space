@@ -118,6 +118,25 @@ function app() {
     tournamentStatus: '',
     tournamentChampion: '',
     
+    // DOM Cache
+    domCache: {},
+    _getEl(id) {
+      if (!this.domCache[id]) {
+        this.domCache[id] = document.getElementById(id);
+      }
+      return this.domCache[id];
+    },
+    _getCell(index) {
+      const key = `cell-${index}`;
+      if (!this.domCache[key]) {
+        this.domCache[key] = document.querySelector(`[data-cell-index="${index}"]`);
+      }
+      return this.domCache[key];
+    },
+    clearDomCache() {
+      this.domCache = {};
+    },
+
     // Game
     roomCode: '',
     mySymbol: '',
@@ -165,17 +184,13 @@ function app() {
     
     // Cinematic Helper
     setScreen(screenName) {
-      console.log('📺 setScreen called:', screenName, 'current:', this.screen);
       if (this.screen === screenName) return; 
       this.screen = screenName;
-      console.log('✅ Screen changed to:', this.screen);
       
       // Auto-login if going to auth screen and token exists
       if (screenName === 'auth') {
         const token = localStorage.getItem('token');
-        console.log('🔑 Token check:', token ? 'Found' : 'Not found');
         if (token && !this.socket) {
-          console.log('🔌 Auto-connecting with token...');
           this.connectSocket(token);
         }
       }
@@ -186,12 +201,6 @@ function app() {
     },
 
     init() {
-      console.log('🚀 App initializing... screen:', this.screen);
-
-      // DOM Cache Management
-      this.$watch('board', () => this.clearDomCache());
-      this.$watch('boardSize', () => this.clearDomCache());
-
       // Don't auto-connect - let user see landing page first
       this.initSpaceGallery();
       this.initGoogleSignIn();
@@ -205,8 +214,6 @@ function app() {
       
       // Fetch space facts from API
       this.fetchSpaceFacts();
-      
-      console.log('✅ Init complete, screen:', this.screen);
       
       // Watch for zoom and speed changes
       this.$watch('spaceZoom', value => {
@@ -379,8 +386,8 @@ function app() {
         }
       });
       
-      this.socket.on('game:rematch-request', ({ from }) => {
-        console.log(`${from} wants a rematch`);
+      this.socket.on('game:rematch-request', () => {
+        // Handle rematch request UI if needed
       });
       
       this.socket.on('game:opponent-left', () => {
@@ -474,8 +481,8 @@ function app() {
     async guestLogin() {
       this.guestLoading = true;
       try {
-        // Generate guest ID like PUBG/CODM: Guest_XXXX
-        const guestId = 'Guest_' + Math.random().toString(36).substring(2, 6).toUpperCase();
+        // Generate guest ID like PUBG/CODM: Guest_XXXX (4 digits)
+        const guestId = 'Guest_' + Math.floor(1000 + Math.random() * 9000);
         const guestPassword = Math.random().toString(36).substring(2, 15);
         
         // Auto-register guest account
@@ -959,7 +966,6 @@ function app() {
         const cached = localStorage.getItem('spaceFactsAPI');
         if (cached) {
           this.spaceFactsAPI = JSON.parse(cached);
-          console.log('✅ Loaded', this.spaceFactsAPI.length, 'space facts from cache');
           return;
         }
       }
@@ -982,10 +988,8 @@ function app() {
         // Save to localStorage
         localStorage.setItem('spaceFactsAPI', JSON.stringify(this.spaceFactsAPI));
         localStorage.setItem('spaceFactsDate', today);
-        
-        console.log('✅ Fetched', this.spaceFactsAPI.length, 'new space facts from NASA');
       } catch (error) {
-        console.log('⚠️ Could not fetch NASA facts, using defaults');
+        // Could not fetch NASA facts, fallback to defaults
       }
     },
     
