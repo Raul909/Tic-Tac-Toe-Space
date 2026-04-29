@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const { WINS, checkWin } = require('./public/game-logic');
 
 /**
@@ -25,7 +26,7 @@ function generateRoomCode(roomsMap) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code;
   do {
-    code = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    code = Array.from({ length: 4 }, () => chars[crypto.randomInt(0, chars.length)]).join('');
   } while (roomsMap.has(code));
   return code;
 }

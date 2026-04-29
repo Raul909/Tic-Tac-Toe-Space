@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
+const crypto = require('node:crypto');
 const { generateRoomCode, checkWinner, validateRegistration, validateRoomJoin } = require('./utils');
 
 test('generateRoomCode', async (t) => {
@@ -23,13 +24,14 @@ test('generateRoomCode', async (t) => {
     const rooms = new Map();
     rooms.set('AAAA', {});
 
-    // Mock Math.random to return 0 for the first 4 calls (generating 'AAAA')
-    // then return 1/32 for the next 4 calls (generating 'BBBB')
+    // Mock crypto.randomInt
+    // First 4 calls return 0 (index for 'A')
+    // Next 4 calls return 1 (index for 'B')
     let calls = 0;
-    t.mock.method(Math, 'random', () => {
+    t.mock.method(crypto, 'randomInt', () => {
+      const val = calls < 4 ? 0 : 1;
       calls++;
-      if (calls <= 4) return 0;
-      return 1/32;
+      return val;
     });
 
     const code = generateRoomCode(rooms);
