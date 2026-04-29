@@ -3,17 +3,17 @@ const { WINS, checkWin } = require('./public/game-logic');
 
 /**
  * Checks if there's a winner or a draw on the board.
- * @param {Array} board - The game board array.
- * @returns {Object|null} - Result object or null.
+ * Pass `lastPlayer` (the one who just moved) to avoid checking both symbols.
+ * Pass `moveCount` to skip the board.every() draw scan.
+ * @param {Array} board
+ * @param {string} lastPlayer - 'X' or 'O'
+ * @param {number} moveCount - total moves made so far (including this one)
+ * @returns {Object|null}
  */
-function checkWinner(board) {
-  const winX = checkWin(board, 'X');
-  if (winX) return { winner: 'X', line: winX };
-
-  const winO = checkWin(board, 'O');
-  if (winO) return { winner: 'O', line: winO };
-
-  if (board.every(cell => cell !== null)) return { draw: true, winner: null };
+function checkWinner(board, lastPlayer, moveCount) {
+  const win = checkWin(board, lastPlayer);
+  if (win) return { winner: lastPlayer, line: win };
+  if (moveCount === 9) return { draw: true, winner: null };
   return null;
 }
 

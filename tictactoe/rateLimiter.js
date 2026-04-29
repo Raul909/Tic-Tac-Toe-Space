@@ -1,73 +1,52 @@
 // Rate Limiter for Socket.IO events
 
+// Fixed event index map — avoids object key lookup and GC from {} resets
+const EVENT_INDEX = {
+  'room:create': 0,
+  'chat:msg':    1,
+  'game:move':   2,
+  'room:join':   3,
+};
+const SPECIFIC_LIMITS = [1, 5, 5, 2]; // indexed by EVENT_INDEX
+const SLOT_COUNT = SPECIFIC_LIMITS.length;
+
 class RateLimiter {
-    constructor() {
-        this.clientLimits = new Map();
+  constructor() {
+    this.clientLimits = new Map();
+    this.WINDOW_MS    = 1000;
+    this.GLOBAL_LIMIT = 10;
+  }
 
-        // Configuration
-        this.WINDOW_MS = 1000; // 1 second window
-        this.GLOBAL_LIMIT = 10; // Max events per second per socket
+  check(socketId, eventName) {
+    const now = Date.now();
+    let client = this.clientLimits.get(socketId);
 
-        // Specific limits per event type
-        this.SPECIFIC_LIMITS = {
-            'room:create': 1, // Max 1 room creation per second
-            'chat:msg': 5,    // Max 5 chat messages per second
-            'game:move': 5,   // Max 5 moves per second
-            'room:join': 2    // Max 2 join attempts per second
-        };
+    if (!client) {
+      client = { windowStart: now, count: 0, specific: new Int8Array(SLOT_COUNT) };
+      this.clientLimits.set(socketId, client);
     }
 
-    /**
-     * Check if an event from a socket is allowed
-     * @param {string} socketId - The socket ID
-     * @param {string} eventName - The event name
-     * @returns {boolean} - True if allowed, false if rate limited
-     */
-    check(socketId, eventName) {
-        const now = Date.now();
-        let client = this.clientLimits.get(socketId);
-
-        if (!client) {
-            client = {
-                windowStart: now,
-                count: 0,
-                specificCounts: {}
-            };
-            this.clientLimits.set(socketId, client);
-        }
-
-        // Reset window if expired
-        if (now - client.windowStart > this.WINDOW_MS) {
-            client.windowStart = now;
-            client.count = 0;
-            client.specificCounts = {};
-        }
-
-        // Check global limit
-        if (client.count >= this.GLOBAL_LIMIT) {
-            return false;
-        }
-
-        // Check specific limit
-        if (this.SPECIFIC_LIMITS[eventName]) {
-             const currentSpecific = client.specificCounts[eventName] || 0;
-             if (currentSpecific >= this.SPECIFIC_LIMITS[eventName]) {
-                 return false;
-             }
-             client.specificCounts[eventName] = currentSpecific + 1;
-        }
-
-        client.count++;
-        return true;
+    if (now - client.windowStart > this.WINDOW_MS) {
+      client.windowStart = now;
+      client.count = 0;
+      client.specific.fill(0); // O(SLOT_COUNT=4), no GC
     }
 
-    /**
-     * Cleanup resources when a socket disconnects
-     * @param {string} socketId
-     */
-    cleanup(socketId) {
-        this.clientLimits.delete(socketId);
+    if (client.count >= this.GLOBAL_LIMIT) return false;
+
+    const slot = EVENT_INDEX[eventName];
+    if (slot !== undefined) {
+      if (client.specific[slot] >= SPECIFIC_LIMITS[slot]) return false;
+      client.specific[slot]++;
     }
+
+    client.count++;
+    return true;
+  }
+
+  cleanup(socketId) {
+    this.clientLimits.delete(socketId);
+  }
 }
 
 const instance = new RateLimiter();

@@ -21,28 +21,31 @@ module.exports = (socket, context) => {
     const room = rooms.get(code);
     if (!room || room.status !== 'playing') return;
 
-    const player = room.players.find(p => p.socketId === socket.id);
-    if (!player) return socket.emit('game:error', 'Not in this room');
+    // Direct index lookup — room always has exactly 2 players
+    const pIdx = room.players[0].socketId === socket.id ? 0 : 1;
+    const player = room.players[pIdx];
+    if (!player || player.socketId !== socket.id) return socket.emit('game:error', 'Not in this room');
     if (player.symbol !== room.currentTurn) return socket.emit('game:error', 'Not your turn');
-    // Validate index is integer in range
     if (!Number.isInteger(index) || index < 0 || index > 8) return socket.emit('game:error', 'Invalid move');
     if (room.board[index] !== null) return socket.emit('game:error', 'Cell taken');
 
     room.board[index] = player.symbol;
+    room.moveCount = (room.moveCount || 0) + 1;
     io.to(code).emit('game:move', { index, symbol: player.symbol });
 
-    const result = checkWinner(room.board);
+    const result = checkWinner(room.board, player.symbol, room.moveCount);
     if (result) {
       room.status = 'done';
       if (result.winner) {
         room.scores[result.winner]++;
-        const winPlayer = room.players.find(p => p.symbol === result.winner);
-        const losePlayer = room.players.find(p => p.symbol !== result.winner);
+        // Direct index: winner is pIdx, loser is 1-pIdx
+        const loseIdx = 1 - pIdx;
+        const winPlayer = player;
+        const losePlayer = room.players[loseIdx];
 
-        if (winPlayer && users[winPlayer.key]) {
+        if (users[winPlayer.key]) {
           users[winPlayer.key].wins++;
           if (typeof context.syncLeaderboard === 'function') context.syncLeaderboard(users[winPlayer.key]);
-          // Async queue write — non-blocking
           if (queue) queue.publish({ type: 'stat', key: winPlayer.key, ...users[winPlayer.key] });
           else saveUsers();
         }
@@ -88,6 +91,7 @@ module.exports = (socket, context) => {
     if (room.rematchVotes.size >= 2) {
       room.players.forEach(p => { p.symbol = p.symbol === 'X' ? 'O' : 'X'; });
       room.board = Array(9).fill(null);
+      room.moveCount = 0;
       room.currentTurn = 'X';
       room.status = 'playing';
       delete room.rematchVotes;

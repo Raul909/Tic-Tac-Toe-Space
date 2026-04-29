@@ -25,6 +25,7 @@ module.exports = (socket, context) => {
       code,
       players: [{ socketId: socket.id, key, name: users[key].displayName, symbol: 'X' }],
       board: Array(9).fill(null),
+      moveCount: 0,
       currentTurn: 'X',
       status: 'waiting',
       scores: { X: 0, O: 0, D: 0 }
