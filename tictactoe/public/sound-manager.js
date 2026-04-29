@@ -24,7 +24,6 @@ class SoundManager {
 
   changePack(pack) {
     this.currentPack = pack;
-    console.log('Sound pack changed to:', pack);
   }
 
   play(type) {

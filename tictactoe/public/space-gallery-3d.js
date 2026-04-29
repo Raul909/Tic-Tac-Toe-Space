@@ -138,7 +138,6 @@
             this.fetchWeather();
           },
           (error) => {
-            console.log('Location access denied, using default weather');
             this.setDefaultWeather();
           }
         );
