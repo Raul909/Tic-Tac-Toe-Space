@@ -50,36 +50,52 @@
     tie: 0
   };
 
-  function minimax(board, depth, isMaximizing) {
+  function minimax(board, depth, isMaximizing, alpha = -Infinity, beta = Infinity, memo = null) {
+    const boardKey = board.join(',') + isMaximizing;
+    if (memo && memo.has(boardKey)) return memo.get(boardKey);
+
     const result = checkWinner(board);
     if (result !== null) {
-      // Adjust score by depth to prefer faster wins / slower losses
-      if (result === 'O') return scores.O - depth;
-      if (result === 'X') return scores.X + depth;
-      return scores.tie;
+      const score = result === 'O' ? scores.O - depth : (result === 'X' ? scores.X + depth : scores.tie);
+      if (memo) memo.set(boardKey, score);
+      return score;
     }
 
     if (isMaximizing) {
       let bestScore = -Infinity;
+      let pruned = false;
       for (let i = 0; i < 9; i++) {
         if (board[i] === null) {
           board[i] = 'O';
-          let score = minimax(board, depth + 1, false);
+          let score = minimax(board, depth + 1, false, alpha, beta, memo);
           board[i] = null;
           bestScore = Math.max(score, bestScore);
+          alpha = Math.max(alpha, bestScore);
+          if (beta <= alpha) {
+            pruned = true;
+            break;
+          }
         }
       }
+      if (memo && !pruned) memo.set(boardKey, bestScore);
       return bestScore;
     } else {
       let bestScore = Infinity;
+      let pruned = false;
       for (let i = 0; i < 9; i++) {
         if (board[i] === null) {
-          board[i] = 'X'; // Assume user plays optimally to minimize AI score
-          let score = minimax(board, depth + 1, true);
+          board[i] = 'X';
+          let score = minimax(board, depth + 1, true, alpha, beta, memo);
           board[i] = null;
           bestScore = Math.min(score, bestScore);
+          beta = Math.min(beta, bestScore);
+          if (beta <= alpha) {
+            pruned = true;
+            break;
+          }
         }
       }
+      if (memo && !pruned) memo.set(boardKey, bestScore);
       return bestScore;
     }
   }
@@ -117,14 +133,19 @@
     // Optimization: If board is empty, pick center (4)
     if (availMoves.length === 9) return 4;
 
+    const memo = new Map();
+    let alpha = -Infinity;
+    let beta = Infinity;
+
     for (let i = 0; i < 9; i++) {
       if (board[i] === null) {
         board[i] = 'O';
-        let score = minimax(board, 0, false);
+        let score = minimax(board, 0, false, alpha, beta, memo);
         board[i] = null;
         if (score > bestScore) {
           bestScore = score;
           move = i;
+          alpha = Math.max(alpha, bestScore);
         }
       }
     }
