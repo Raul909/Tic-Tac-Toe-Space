@@ -70,4 +70,6 @@ class RateLimiter {
     }
 }
 
-module.exports = new RateLimiter();
+const instance = new RateLimiter();
+instance.RateLimiter = RateLimiter;
+module.exports = instance;
