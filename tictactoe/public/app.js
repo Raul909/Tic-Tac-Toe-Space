@@ -118,6 +118,25 @@ function app() {
     tournamentStatus: '',
     tournamentChampion: '',
     
+    // DOM Cache
+    domCache: {},
+    _getEl(id) {
+      if (!this.domCache[id]) {
+        this.domCache[id] = document.getElementById(id);
+      }
+      return this.domCache[id];
+    },
+    _getCell(index) {
+      const key = `cell-${index}`;
+      if (!this.domCache[key]) {
+        this.domCache[key] = document.querySelector(`[data-cell-index="${index}"]`);
+      }
+      return this.domCache[key];
+    },
+    clearDomCache() {
+      this.domCache = {};
+    },
+
     // Game
     roomCode: '',
     mySymbol: '',
@@ -169,6 +188,10 @@ function app() {
 
     init() {
       console.log('🚀 App initializing... screen:', this.screen);
+
+      this.$watch('board', () => this.clearDomCache());
+      this.$watch('boardSize', () => this.clearDomCache());
+
       // Don't auto-connect - let user see landing page first
       this.initSpaceGallery();
       this.initGoogleSignIn();
@@ -686,10 +709,10 @@ function app() {
         cell.classList.remove('winning-cell');
         cell.style.animation = '';
       });
-      const svg = document.getElementById('winning-line');
+      const svg = this._getEl('winning-line');
       if (svg) {
         svg.classList.remove('active');
-        const line = document.getElementById('win-line');
+        const line = this._getEl('win-line');
         if (line) {
           line.setAttribute('x1', '0');
           line.setAttribute('y1', '0');
@@ -702,7 +725,7 @@ function app() {
     animateWinningLine(line) {
       line.forEach((index, i) => {
         setTimeout(() => {
-          const cell = document.querySelector(`[data-cell-index="${index}"]`);
+          const cell = this._getCell(index);
           if (cell) {
             cell.classList.add('winning-cell');
             cell.style.animation = 'winPulse 0.6s ease-in-out';
@@ -714,12 +737,12 @@ function app() {
     },
 
     drawWinningLine(line) {
-      const board = document.getElementById('game-board');
-      const svg = document.getElementById('winning-line');
-      const svgLine = document.getElementById('win-line');
+      const board = this._getEl('game-board');
+      const svg = this._getEl('winning-line');
+      const svgLine = this._getEl('win-line');
       if (!board || !svg || !svgLine) return;
 
-      const cells = line.map(i => document.querySelector(`[data-cell-index="${i}"]`));
+      const cells = line.map(i => this._getCell(i));
       if (!cells[0] || !cells[2]) return;
 
       const boardRect = board.getBoundingClientRect();
