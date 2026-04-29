@@ -166,17 +166,13 @@ function app() {
     
     // Cinematic Helper
     setScreen(screenName) {
-      console.log('📺 setScreen called:', screenName, 'current:', this.screen);
       if (this.screen === screenName) return; 
       this.screen = screenName;
-      console.log('✅ Screen changed to:', this.screen);
       
       // Auto-login if going to auth screen and token exists
       if (screenName === 'auth') {
         const token = localStorage.getItem('token');
-        console.log('🔑 Token check:', token ? 'Found' : 'Not found');
         if (token && !this.socket) {
-          console.log('🔌 Auto-connecting with token...');
           this.connectSocket(token);
         }
       }
@@ -187,11 +183,6 @@ function app() {
     },
 
     init() {
-      console.log('🚀 App initializing... screen:', this.screen);
-
-      this.$watch('board', () => this.clearDomCache());
-      this.$watch('boardSize', () => this.clearDomCache());
-
       // Don't auto-connect - let user see landing page first
       this.initSpaceGallery();
       this.initGoogleSignIn();
@@ -205,8 +196,6 @@ function app() {
       
       // Fetch space facts from API
       this.fetchSpaceFacts();
-      
-      console.log('✅ Init complete, screen:', this.screen);
       
       // Watch for zoom and speed changes
       this.$watch('spaceZoom', value => {
@@ -379,8 +368,8 @@ function app() {
         }
       });
       
-      this.socket.on('game:rematch-request', ({ from }) => {
-        console.log(`${from} wants a rematch`);
+      this.socket.on('game:rematch-request', () => {
+        // Handle rematch request UI if needed
       });
       
       this.socket.on('game:opponent-left', () => {
@@ -959,7 +948,6 @@ function app() {
         const cached = localStorage.getItem('spaceFactsAPI');
         if (cached) {
           this.spaceFactsAPI = JSON.parse(cached);
-          console.log('✅ Loaded', this.spaceFactsAPI.length, 'space facts from cache');
           return;
         }
       }
@@ -982,10 +970,8 @@ function app() {
         // Save to localStorage
         localStorage.setItem('spaceFactsAPI', JSON.stringify(this.spaceFactsAPI));
         localStorage.setItem('spaceFactsDate', today);
-        
-        console.log('✅ Fetched', this.spaceFactsAPI.length, 'new space facts from NASA');
       } catch (error) {
-        console.log('⚠️ Could not fetch NASA facts, using defaults');
+        // Could not fetch NASA facts, fallback to defaults
       }
     },
     
