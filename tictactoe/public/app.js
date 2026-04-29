@@ -151,6 +151,8 @@ function app() {
     gameOverEmoji: '',
     mode: '',
     shareCopied: false,
+    rematchRequested: false,
+    rematchFrom: '',
     muted: false,
     toggleMute() { this.muted = window.SoundManager.toggleMute(); },
     
@@ -376,8 +378,9 @@ function app() {
         }
       });
       
-      this.socket.on('game:rematch-request', () => {
-        // Handle rematch request UI if needed
+      this.socket.on('game:rematch-request', ({ from }) => {
+        this.rematchRequested = true;
+        this.rematchFrom = from || 'Opponent';
       });
       
       this.socket.on('game:opponent-left', () => {
@@ -1149,6 +1152,8 @@ function app() {
       this.clearWinningCells();
       this.stopBlitzTimer();
       this.gameOver = false;
+      this.rematchRequested = false;
+      this.rematchFrom = '';
       if (this.mode === 'ai') {
         const size = this.boardSize * this.boardSize;
         this.board = Array(size).fill(null);

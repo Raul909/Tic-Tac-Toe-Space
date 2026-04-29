@@ -4,3 +4,10 @@ test-results/
 tictactoe/test-results/
 playwright-report/
 tictactoe/playwright-report/
+# Added by code-review-graph
+.code-review-graph/
+# AI agent config files
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.kiro/
