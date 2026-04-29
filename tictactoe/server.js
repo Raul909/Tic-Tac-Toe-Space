@@ -101,6 +101,46 @@ let cachedLeaderboard = null;
 let lastLeaderboardUpdate = 0;
 const LEADERBOARD_CACHE_TTL = 60 * 1000; // 60 seconds
 
+/**
+ * Optimized in-memory leaderboard generation (O(N) time, O(1) extra space)
+ */
+function getInMemoryLeaderboard(userMap) {
+  const board = [];
+  for (const key in userMap) {
+    const u = userMap[key];
+    const wins = u.wins || 0;
+    // Only consider if it could be in top 10
+    if (board.length < 10 || wins > (board[board.length - 1]?.wins || -1)) {
+      board.push({ name: u.displayName, wins, losses: u.losses || 0, draws: u.draws || 0 });
+      board.sort((a, b) => b.wins - a.wins);
+      if (board.length > 10) board.pop();
+    }
+  }
+  return board;
+}
+
+/**
+ * Updates the cached leaderboard in real-time when a user's stats change
+ */
+function syncLeaderboard(user) {
+  if (!cachedLeaderboard) return;
+  const wins = user.wins || 0;
+  const index = cachedLeaderboard.findIndex(u => u.name === user.displayName);
+
+  if (index !== -1) {
+    // Update existing entry
+    cachedLeaderboard[index].wins = wins;
+    cachedLeaderboard[index].losses = user.losses || 0;
+    cachedLeaderboard[index].draws = user.draws || 0;
+    cachedLeaderboard.sort((a, b) => b.wins - a.wins);
+  } else if (cachedLeaderboard.length < 10 || wins > (cachedLeaderboard[cachedLeaderboard.length - 1]?.wins || -1)) {
+    // Add new entry if it qualifies
+    cachedLeaderboard.push({ name: user.displayName, wins, losses: user.losses || 0, draws: user.draws || 0 });
+    cachedLeaderboard.sort((a, b) => b.wins - a.wins);
+    if (cachedLeaderboard.length > 10) cachedLeaderboard.pop();
+  }
+}
+
 try {
   if (fs.existsSync(USERS_FILE)) {
     users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
@@ -319,17 +359,11 @@ app.get('/api/leaderboard', apiLimiter, async (req, res) => {
     } catch (err) {
       console.error('Leaderboard DB error:', err);
       // Fallback
-      board = Object.values(users)
-        .map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }))
-        .sort((a, b) => b.wins - a.wins)
-        .slice(0, 10);
+      board = getInMemoryLeaderboard(users);
     }
   } else {
     // In-memory fallback
-    board = Object.values(users)
-      .map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }))
-      .sort((a, b) => b.wins - a.wins)
-      .slice(0, 10);
+    board = getInMemoryLeaderboard(users);
   }
 
   cachedLeaderboard = board;
@@ -351,6 +385,7 @@ const context = {
   disconnectTimeouts,
   tournaments,
   saveUsers,
+  syncLeaderboard,
   // io will be added in setupSocket
 };
 

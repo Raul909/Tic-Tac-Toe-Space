@@ -36,15 +36,28 @@ module.exports = (socket, context) => {
         room.scores[result.winner]++;
         const winPlayer = room.players.find(p => p.symbol === result.winner);
         const losePlayer = room.players.find(p => p.symbol !== result.winner);
-        if (winPlayer && users[winPlayer.key]) { users[winPlayer.key].wins++; saveUsers(); }
-        if (losePlayer && users[losePlayer.key]) { users[losePlayer.key].losses++; saveUsers(); }
+        if (winPlayer && users[winPlayer.key]) {
+          users[winPlayer.key].wins++;
+          saveUsers();
+          if (typeof context.syncLeaderboard === 'function') context.syncLeaderboard(users[winPlayer.key]);
+        }
+        if (losePlayer && users[losePlayer.key]) {
+          users[losePlayer.key].losses++;
+          saveUsers();
+          if (typeof context.syncLeaderboard === 'function') context.syncLeaderboard(users[losePlayer.key]);
+        }
         io.to(code).emit('game:over', { winner: result.winner, line: result.line, scores: room.scores });
         if (typeof handleTournamentResult === 'function') {
             handleTournamentResult(room, { winner: result.winner });
         }
       } else {
         room.scores.D++;
-        room.players.forEach(p => { if (users[p.key]) users[p.key].draws++; });
+        room.players.forEach(p => {
+          if (users[p.key]) {
+            users[p.key].draws++;
+            if (typeof context.syncLeaderboard === 'function') context.syncLeaderboard(users[p.key]);
+          }
+        });
         saveUsers();
         io.to(code).emit('game:over', { winner: null, draw: true, scores: room.scores });
         if (typeof handleTournamentResult === 'function') {
