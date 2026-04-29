@@ -451,8 +451,8 @@ function app() {
     async guestLogin() {
       this.guestLoading = true;
       try {
-        // Generate guest ID like PUBG/CODM: Guest_XXXX
-        const guestId = 'Guest_' + Math.random().toString(36).substring(2, 6).toUpperCase();
+        // Generate guest ID like PUBG/CODM: Guest_XXXX (4 digits)
+        const guestId = 'Guest_' + Math.floor(1000 + Math.random() * 9000);
         const guestPassword = Math.random().toString(36).substring(2, 15);
         
         // Auto-register guest account
