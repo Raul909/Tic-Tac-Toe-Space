@@ -149,6 +149,22 @@
     
     async fetchWeather() {
       try {
+        const lat = Math.round(this.userLocation.lat * 10) / 10;
+        const lon = Math.round(this.userLocation.lon * 10) / 10;
+        const cacheKey = `weather_cache_${lat}_${lon}`;
+        const cachedData = localStorage.getItem(cacheKey);
+
+        if (cachedData) {
+          const parsed = JSON.parse(cachedData);
+          const now = Date.now();
+          // Cache valid for 30 minutes
+          if (now - parsed.timestamp < 30 * 60 * 1000) {
+            console.log('Using cached weather data');
+            this.applyWeatherCode(parsed.weather_code);
+            return;
+          }
+        }
+
         // Using Open-Meteo API (free, no API key needed)
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${this.userLocation.lat}&longitude=${this.userLocation.lon}&current=temperature_2m,weather_code&timezone=auto`;
         const response = await fetch(url);
@@ -157,23 +173,33 @@
         // Weather codes: 0=clear, 1-3=cloudy, 45-48=fog, 51-67=rain, 71-77=snow, 80-99=rain/thunderstorm
         const code = data.current.weather_code;
         
-        if (code === 0) {
-          this.currentWeather = 'clear';
-        } else if (code >= 1 && code <= 3) {
-          this.currentWeather = 'cloudy';
-        } else if (code >= 51 && code <= 67 || code >= 80 && code <= 99) {
-          this.currentWeather = 'rain';
-        } else if (code >= 71 && code <= 77) {
-          this.currentWeather = 'snow';
-        } else {
-          this.currentWeather = 'cloudy';
-        }
-        
-        this.addWeatherEffect();
+        // Cache the result
+        localStorage.setItem(cacheKey, JSON.stringify({
+          weather_code: code,
+          timestamp: Date.now()
+        }));
+
+        this.applyWeatherCode(code);
       } catch (error) {
         console.error('Weather fetch failed:', error);
         this.setDefaultWeather();
       }
+    },
+
+    applyWeatherCode(code) {
+      if (code === 0) {
+        this.currentWeather = 'clear';
+      } else if (code >= 1 && code <= 3) {
+        this.currentWeather = 'cloudy';
+      } else if (code >= 51 && code <= 67 || code >= 80 && code <= 99) {
+        this.currentWeather = 'rain';
+      } else if (code >= 71 && code <= 77) {
+        this.currentWeather = 'snow';
+      } else {
+        this.currentWeather = 'cloudy';
+      }
+
+      this.addWeatherEffect();
     },
     
     setDefaultWeather() {
