@@ -11,6 +11,8 @@ const mongoose = require('mongoose');
 const { validateRegistration } = require('./utils');
 const { handleAuthUser } = require('./auth-utils');
 const { setupSocket } = require('./socket');
+const redisClient = require('./redis');
+const queue = require('./queue');
 
 // Load environment variables
 require('dotenv').config();
@@ -28,11 +30,13 @@ const io = new Server(server, {
   }
 });
 
-// MongoDB Connection
+// MongoDB Connection (with read preference for replica-set / sharded cluster)
 const MONGODB_URI = process.env.MONGODB_URI;
 if (require.main === module) {
   if (MONGODB_URI) {
-    mongoose.connect(MONGODB_URI)
+    mongoose.connect(MONGODB_URI, {
+      readPreference: 'secondaryPreferred', // read from secondaries to spread load
+    })
       .then(() => console.log('✅ Connected to MongoDB'))
       .catch(err => {
         console.error('❌ MongoDB connection error:', err.message);
@@ -41,9 +45,23 @@ if (require.main === module) {
   } else {
     console.log('⚠️  No MONGODB_URI found, using file-based storage');
   }
+
+  // Redis + queue startup (non-blocking)
+  redisClient.connect().catch(() => {});
+  queue.connect(async (msg) => {
+    if (msg.type !== 'stat') return;
+    const { key, wins, losses, draws } = msg;
+    if (useDB()) {
+      await User.updateOne({ username: key }, { $set: { wins, losses, draws } });
+    } else {
+      if (users[key]) { users[key].wins = wins; users[key].losses = losses; users[key].draws = draws; }
+      saveUsers();
+    }
+    await redisClient.invalidateLeaderboard();
+  }).catch(() => {});
 }
 
-// User Schema for MongoDB
+// User Schema for MongoDB (username is the shard key for horizontal scaling)
 const UserSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -60,6 +78,8 @@ const UserSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 UserSchema.index({ wins: -1 });
+// Compound index for sharded leaderboard queries
+UserSchema.index({ wins: -1, username: 1 });
 
 const User = mongoose.model('User', UserSchema);
 
@@ -155,7 +175,7 @@ function saveUsers() {
 }
 
 // ── IN-MEMORY SESSIONS & ROOMS ────────────────────────────────────────
-const sessions = new Map(); // token -> userKey
+const sessions = new Map(); // token -> userKey (in-memory fallback)
 const socketUser = new Map(); // socketId -> userKey
 const userSocket = new Map(); // userKey -> socketId
 const rooms = new Map();
@@ -163,6 +183,21 @@ const socketRoom = new Map(); // socketId -> roomCode
 const userRoom = new Map(); // userKey -> roomCode (NEW: support reconnection)
 const disconnectTimeouts = new Map(); // userKey -> timeoutId (NEW: grace period)
 const tournaments = new Map();
+
+// Session helpers — Redis-first, in-memory fallback
+async function sessionSet(token, key) {
+  sessions.set(token, key);
+  await redisClient.setSession(token, key).catch(() => {});
+}
+async function sessionGet(token) {
+  const cached = await redisClient.getSession(token).catch(() => null);
+  if (cached) return cached;
+  return sessions.get(token) || null;
+}
+async function sessionDel(token) {
+  sessions.delete(token);
+  await redisClient.delSession(token).catch(() => {});
+}
 
 // ── REST ENDPOINTS ────────────────────────────────────────────────────
 app.post('/api/register', authLimiter, async (req, res) => {
@@ -197,7 +232,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
     saveUsers();
     
     const token = uuidv4();
-    sessions.set(token, key);
+    await sessionSet(token, key);
 
     res.cookie('session', token, {
       httpOnly: true,
@@ -216,6 +251,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
   
   // Regular account validation
   const validation = validateRegistration(username, password);
+  if (!validation.ok) return res.status(400).json({ ok: false, error: validation.error });
   const key = validation.key;
 
   const hash = await bcrypt.hash(password, 10);
@@ -242,7 +278,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
       users[key] = { displayName: dbUser.displayName, hash, wins: 0, losses: 0, draws: 0, createdAt: dbUser.createdAt };
 
       const token = uuidv4();
-      sessions.set(token, key);
+      await sessionSet(token, key);
 
       res.cookie('session', token, {
         httpOnly: true,
@@ -272,7 +308,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
   saveUsers();
 
   const token = uuidv4();
-  sessions.set(token, key);
+  await sessionSet(token, key);
 
   res.cookie('session', token, {
     httpOnly: true,
@@ -310,7 +346,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
           users[key] = { displayName: dbUser.displayName, hash: dbUser.hash, wins: dbUser.wins, losses: dbUser.losses, draws: dbUser.draws, createdAt: dbUser.createdAt };
 
           const token = uuidv4();
-          sessions.set(token, key);
+          await sessionSet(token, key);
 
           res.cookie('session', token, {
             httpOnly: true,
@@ -347,7 +383,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
   }
 
   const token = uuidv4();
-  sessions.set(token, key);
+  await sessionSet(token, key);
 
   res.cookie('session', token, {
     httpOnly: true,
@@ -365,9 +401,9 @@ app.post('/api/login', authLimiter, async (req, res) => {
   });
 });
 
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', async (req, res) => {
   const token = req.cookies.session;
-  if (token) sessions.delete(token);
+  if (token) await sessionDel(token);
   res.clearCookie('session');
 });
 
@@ -400,7 +436,7 @@ app.post('/api/auth/google', async (req, res) => {
             res,
             userData: { displayName: name, email, providerId: googleId, key, providerName: "google" },
             userStore: { User, users, saveUsers, useDB },
-            sessionStore: { sessions, uuidv4 }
+            sessionStore: { sessions, sessionSet, uuidv4 }
           });
         } catch (e) {
           console.error('Google auth error:', e);
@@ -445,7 +481,7 @@ app.post('/api/auth/facebook', async (req, res) => {
             res,
             userData: { displayName: name, email, providerId: fbId, key, providerName: "facebook" },
             userStore: { User, users, saveUsers, useDB },
-            sessionStore: { sessions, uuidv4 }
+            sessionStore: { sessions, sessionSet, uuidv4 }
           });
         } catch (e) {
           console.error('Facebook auth error:', e);
@@ -461,6 +497,11 @@ app.post('/api/auth/facebook', async (req, res) => {
 
 // Leaderboard endpoint
 app.get('/api/leaderboard', apiLimiter, async (req, res) => {
+  // Try Redis cache first
+  const cached = await redisClient.getCachedLeaderboard().catch(() => null);
+  if (cached) return res.json(cached);
+
+  // In-memory TTL fallback
   const now = Date.now();
   if (cachedLeaderboard && (now - lastLeaderboardUpdate < LEADERBOARD_CACHE_TTL)) {
     return res.json(cachedLeaderboard);
@@ -473,16 +514,15 @@ app.get('/api/leaderboard', apiLimiter, async (req, res) => {
       board = topUsers.map(u => ({ name: u.displayName, wins: u.wins, losses: u.losses, draws: u.draws }));
     } catch (err) {
       console.error('Leaderboard DB error:', err);
-      // Fallback
       board = getInMemoryLeaderboard(users);
     }
   } else {
-    // In-memory fallback
     board = getInMemoryLeaderboard(users);
   }
 
   cachedLeaderboard = board;
   lastLeaderboardUpdate = now;
+  await redisClient.setCachedLeaderboard(board).catch(() => {});
   res.json(board);
 });
 
@@ -492,6 +532,7 @@ app.get('/api/leaderboard', apiLimiter, async (req, res) => {
 const context = {
   users,
   sessions,
+  sessionGet,
   socketUser,
   userSocket,
   rooms,
@@ -501,6 +542,7 @@ const context = {
   tournaments,
   saveUsers,
   syncLeaderboard,
+  queue,
   // io will be added in setupSocket
 };
 

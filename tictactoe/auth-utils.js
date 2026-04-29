@@ -4,13 +4,13 @@
  * @param {Object} params.res - The Express response object.
  * @param {Object} params.userData - User data { displayName, email, providerId, key, providerName }.
  * @param {Object} params.userStore - { User, users, saveUsers, useDB }.
- * @param {Object} params.sessionStore - { sessions, uuidv4 }.
+ * @param {Object} params.sessionStore - { sessions, sessionSet, uuidv4 }.
  */
 async function handleAuthUser({
   res,
   userData: { displayName, email, providerId, key, providerName },
   userStore: { User, users, saveUsers, useDB },
-  sessionStore: { sessions, uuidv4 }
+  sessionStore: { sessions, sessionSet, uuidv4 }
 }) {
   try {
     let user;
@@ -74,7 +74,11 @@ async function handleAuthUser({
 
     // Create session
     const token = uuidv4();
-    sessions.set(token, key);
+    if (sessionSet) {
+      await sessionSet(token, key);
+    } else {
+      sessions.set(token, key);
+    }
 
     res.cookie('session', token, {
       httpOnly: true,

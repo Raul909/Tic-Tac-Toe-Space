@@ -291,6 +291,7 @@ function app() {
     },
     
     connectSocket(token) {
+      if (this.socket) { this.socket.disconnect(); this.socket = null; }
       this.socket = io({ autoConnect: true, reconnectionAttempts: 5, withCredentials: true });
       
       this.socket.on('connect', () => {
@@ -300,11 +301,12 @@ function app() {
       this.socket.on('auth:ok', (data) => {
         window.SoundManager.play('start');
         this.user = { username: data.username, stats: data.stats };
-      if (this.mode === 'tournament') {
-        this.exitTournament();
-      } else {
-        this.setScreen('lobby');
-      }
+        if (data.rejoining) return; // game:rejoin will handle navigation
+        if (this.mode === 'tournament') {
+          this.exitTournament();
+        } else {
+          this.setScreen('lobby');
+        }
       });
       
       this.socket.on('game:rejoin', (data) => { this.roomCode = data.code; this.board = data.board; this.currentTurn = data.currentTurn; this.scores = data.scores; this.mySymbol = data.mySymbol; this.gameActive = true; this.mode = (data.room && data.room.tournamentId) ? 'tournament' : 'online'; this.setScreen('game'); this.updateGameStatus(); this.clearWinningCells(); if (window.SoundManager) window.SoundManager.play('start'); this.lobbyError = ''; }); this.socket.on('game:opponent-disconnected', ({ key }) => { this.lobbyError = 'Opponent disconnected. Waiting for reconnection...'; }); this.socket.on('game:opponent-reconnected', ({ name }) => { this.lobbyError = ''; if (window.SoundManager) window.SoundManager.play('start'); }); this.socket.on('auth:error', () => {

@@ -1,7 +1,7 @@
 const { checkWinner } = require('../../utils');
 
 /**
- * Game logic socket handler
+ * Game logic socket handler — stat writes go through the async queue.
  */
 module.exports = (socket, context) => {
   const {
@@ -10,7 +10,8 @@ module.exports = (socket, context) => {
     rooms,
     saveUsers,
     io,
-    handleTournamentResult // This will need to be passed in or imported if it's a module
+    queue,
+    handleTournamentResult
   } = context;
 
   // ── MAKE MOVE ──
@@ -36,19 +37,24 @@ module.exports = (socket, context) => {
         room.scores[result.winner]++;
         const winPlayer = room.players.find(p => p.symbol === result.winner);
         const losePlayer = room.players.find(p => p.symbol !== result.winner);
+
         if (winPlayer && users[winPlayer.key]) {
           users[winPlayer.key].wins++;
-          saveUsers();
           if (typeof context.syncLeaderboard === 'function') context.syncLeaderboard(users[winPlayer.key]);
+          // Async queue write — non-blocking
+          if (queue) queue.publish({ type: 'stat', key: winPlayer.key, ...users[winPlayer.key] });
+          else saveUsers();
         }
         if (losePlayer && users[losePlayer.key]) {
           users[losePlayer.key].losses++;
-          saveUsers();
           if (typeof context.syncLeaderboard === 'function') context.syncLeaderboard(users[losePlayer.key]);
+          if (queue) queue.publish({ type: 'stat', key: losePlayer.key, ...users[losePlayer.key] });
+          else saveUsers();
         }
+
         io.to(code).emit('game:over', { winner: result.winner, line: result.line, scores: room.scores });
         if (typeof handleTournamentResult === 'function') {
-            handleTournamentResult(room, { winner: result.winner });
+          handleTournamentResult(room, { winner: result.winner });
         }
       } else {
         room.scores.D++;
@@ -56,12 +62,13 @@ module.exports = (socket, context) => {
           if (users[p.key]) {
             users[p.key].draws++;
             if (typeof context.syncLeaderboard === 'function') context.syncLeaderboard(users[p.key]);
+            if (queue) queue.publish({ type: 'stat', key: p.key, ...users[p.key] });
           }
         });
-        saveUsers();
+        if (!queue) saveUsers();
         io.to(code).emit('game:over', { winner: null, draw: true, scores: room.scores });
         if (typeof handleTournamentResult === 'function') {
-            handleTournamentResult(room, { draw: true });
+          handleTournamentResult(room, { draw: true });
         }
       }
     } else {
@@ -78,7 +85,6 @@ module.exports = (socket, context) => {
     room.rematchVotes.add(socket.id);
 
     if (room.rematchVotes.size >= 2) {
-      // Swap symbols for fairness
       room.players.forEach(p => { p.symbol = p.symbol === 'X' ? 'O' : 'X'; });
       room.board = Array(9).fill(null);
       room.currentTurn = 'X';
