@@ -171,6 +171,10 @@ let saveTimer;
 function saveUsers() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
+    try {
+      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(USERS_FILE, JSON.stringify(users), 'utf8');
+    } catch (e) { console.error('saveUsers error:', e.message); }
   }, 1000);
 }
 

@@ -16,6 +16,7 @@ test('Chat Handler', async (t) => {
 
     const context = {
       socketUser: new Map([['socket1', 'user1']]),
+      socketRoom: new Map([['socket1', 'ROOM']]),
       users: { 'user1': { displayName: 'User One' } },
       io: {
         to: () => ({ emit: emitMock })
@@ -46,6 +47,7 @@ test('Chat Handler', async (t) => {
 
     const context = {
       socketUser: new Map([['socket1', 'user1']]),
+      socketRoom: new Map([['socket1', 'ROOM']]),
       users: { 'user1': { displayName: 'User One' } },
       io: {
         to: () => ({ emit: emitMock })

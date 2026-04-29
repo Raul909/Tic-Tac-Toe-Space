@@ -67,7 +67,8 @@ test('Registration API Integration Tests', async (t) => {
 
     const data = await res.json();
     assert.strictEqual(data.ok, false);
-    assert.match(data.error, /Missing fields/);
+    // Server validates types first (password is undefined → not a string)
+    assert.match(data.error, /username and password must be strings|Missing fields/);
   });
 
   await t.test('should fail with short username', async () => {
