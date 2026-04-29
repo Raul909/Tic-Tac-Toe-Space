@@ -24,8 +24,9 @@ module.exports = (socket, context) => {
     const player = room.players.find(p => p.socketId === socket.id);
     if (!player) return socket.emit('game:error', 'Not in this room');
     if (player.symbol !== room.currentTurn) return socket.emit('game:error', 'Not your turn');
+    // Validate index is integer in range
+    if (!Number.isInteger(index) || index < 0 || index > 8) return socket.emit('game:error', 'Invalid move');
     if (room.board[index] !== null) return socket.emit('game:error', 'Cell taken');
-    if (index < 0 || index > 8) return;
 
     room.board[index] = player.symbol;
     io.to(code).emit('game:move', { index, symbol: player.symbol });

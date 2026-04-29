@@ -57,7 +57,7 @@ function validateRegistration(username, password) {
  */
 function validateRoomJoin(room, socketId) {
   if (!room) return { ok: false, error: 'Room not found' };
-  if (room.status === 'playing') return { ok: false, error: 'Game in progress' };
+  if (room.status === 'playing' || room.status === 'done') return { ok: false, error: 'Game in progress' };
   if (room.players.length >= 2) return { ok: false, error: 'Room is full' };
   if (room.players[0] && room.players[0].socketId === socketId) return { ok: false, error: 'You created this room' };
   return { ok: true };

@@ -424,6 +424,7 @@ app.post('/api/auth/google', async (req, res) => {
           const googleUser = JSON.parse(data);
           
           if (googleUser.error) {
+            return res.status(401).json({ ok: false, error: 'Invalid Google token' });
           }
           
           // Extract user info
@@ -454,6 +455,7 @@ app.post('/api/auth/google', async (req, res) => {
 app.post('/api/auth/facebook', async (req, res) => {
   const { accessToken, userID } = req.body;
   if (!accessToken || !userID) {
+    return res.status(400).json({ ok: false, error: 'Missing accessToken or userID' });
   }
 
   try {
@@ -469,6 +471,7 @@ app.post('/api/auth/facebook', async (req, res) => {
           const fbUser = JSON.parse(data);
           
           if (fbUser.error) {
+            return res.status(401).json({ ok: false, error: 'Invalid Facebook token' });
           }
           
           // Extract user info

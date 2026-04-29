@@ -10,6 +10,9 @@ module.exports = (socket, context) => {
     const key = socketUser.get(socket.id);
     if (typeof text !== 'string') return;
     if (!key || !text.trim()) return;
+    // Prevent chat to rooms the sender is not in
+    const { socketRoom } = context;
+    if (!socketRoom || socketRoom.get(socket.id) !== code) return;
     const clean = sanitize(text);
     if (!clean) return;
     io.to(code).emit('chat:msg', {

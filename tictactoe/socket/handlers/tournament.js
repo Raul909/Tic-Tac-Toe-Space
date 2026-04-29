@@ -58,7 +58,7 @@ function createMatchRoom(t, matchIndex, context) {
   const s2 = io.sockets.sockets.get(p2.socketId);
 
   if (s1) {
-    s1.leave(t.code); // Leave lobby channel? No, keep for updates.
+    // Do NOT leave t.code — players must stay in tournament channel to receive bracket updates
     s1.join(code);
     socketRoom.set(p1.socketId, code);
     s1.emit('room:joined', { code, symbol: 'X' });
@@ -89,22 +89,21 @@ function handleTournamentResult(room, result, context) {
   let winnerIndex = -1;
   if (result.winner) {
     const winnerPlayer = room.players.find(p => p.symbol === result.winner);
-    winnerIndex = t.players.findIndex(p => p.key === winnerPlayer.key);
+    if (winnerPlayer) winnerIndex = t.players.findIndex(p => p.key === winnerPlayer.key);
   } else {
-    // Draw -> Random
+    // Draw -> coin flip
     const coin = Math.random() > 0.5 ? 'X' : 'O';
     const winnerPlayer = room.players.find(p => p.symbol === coin);
-    winnerIndex = t.players.findIndex(p => p.key === winnerPlayer.key);
-    io.to(room.code).emit('chat:msg', { from: 'SYSTEM', text: 'Draw! Coin flip winner: ' + winnerPlayer.name, ts: Date.now() });
+    if (winnerPlayer) {
+      winnerIndex = t.players.findIndex(p => p.key === winnerPlayer.key);
+      io.to(room.code).emit('chat:msg', { from: 'SYSTEM', text: 'Draw! Coin flip winner: ' + winnerPlayer.name, ts: Date.now() });
+    }
   }
 
+  // Guard: if we couldn't resolve a winner, abort rather than corrupt bracket
+  if (winnerIndex === -1) return;
+
   match.winner = winnerIndex;
-
-  // Return players to lobby channel for updates
-  const mP1 = t.players[match.p1];
-  const mP2 = t.players[match.p2];
-  // Note: They are already in t.code channel.
-
   updateBracket(t, context);
 }
 

@@ -43,6 +43,10 @@ module.exports = (socket, context) => {
 
     if (typeof code !== 'string') return socket.emit('room:error', 'Invalid room code');
     const upperCode = code.toUpperCase().trim();
+
+    // Prevent joining your own room via a different socket
+    if (userRoom.get(key) === upperCode) return socket.emit('room:error', 'You created this room');
+
     const room = rooms.get(upperCode);
 
     const validation = validateRoomJoin(room, socket.id);
