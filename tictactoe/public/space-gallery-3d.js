@@ -682,39 +682,69 @@
     
     showDetails(data) {
       const details = document.getElementById('space-object-details');
-      if (!data) {
-        details.innerHTML = '';
-        return;
+      if (!details) return;
+      details.replaceChildren();
+
+      if (!data) return;
+
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'font-bold text-nasa mb-2';
+      nameDiv.textContent = data.name;
+      details.appendChild(nameDiv);
+      
+      const typeDiv = document.createElement('div');
+      typeDiv.className = 'text-xs text-gray-400 mb-2';
+      typeDiv.textContent = data.type || 'Constellation';
+      details.appendChild(typeDiv);
+      
+      const addDetail = (label, value) => {
+        const div = document.createElement('div');
+        div.textContent = `${label}: ${value}`;
+        details.appendChild(div);
+      };
+
+      if (data.temp) addDetail('Temp', data.temp);
+      if (data.mass) addDetail('Mass', data.mass);
+      if (data.distance !== undefined && this.currentTab === 'solar') {
+        addDetail('Distance', `${data.distance}M km`);
       }
-      
-      let html = `<div class="font-bold text-nasa mb-2">${data.name}</div>`;
-      html += `<div class="text-xs text-gray-400 mb-2">${data.type || 'Constellation'}</div>`;
-      if (data.temp) html += `<div>Temp: ${data.temp}</div>`;
-      if (data.mass) html += `<div>Mass: ${data.mass}</div>`;
-      if (data.distance !== undefined && this.currentTab === 'solar') html += `<div>Distance: ${data.distance}M km</div>`;
-      if (data.distance && this.currentTab !== 'solar' && this.currentTab !== 'constellations') html += `<div>Distance: ${data.distance} ly</div>`;
-      if (data.orbit) html += `<div>Orbit: ${data.orbit} years</div>`;
-      if (data.moons !== undefined) html += `<div>Moons: ${data.moons}</div>`;
-      if (data.size) html += `<div>Size: ${data.size} ly</div>`;
-      if (data.constellation) html += `<div>In: ${data.constellation}</div>`;
-      if (data.brightest) html += `<div>Brightest: ${data.brightest}</div>`;
-      if (data.stars) html += `<div>Stars: ${data.stars.length}</div>`;
-      
-      details.innerHTML = html;
+      if (data.distance && this.currentTab !== 'solar' && this.currentTab !== 'constellations') {
+        addDetail('Distance', `${data.distance} ly`);
+      }
+      if (data.orbit) addDetail('Orbit', `${data.orbit} years`);
+      if (data.moons !== undefined) addDetail('Moons', data.moons);
+      if (data.size) addDetail('Size', `${data.size} ly`);
+      if (data.constellation) addDetail('In', data.constellation);
+      if (data.brightest) addDetail('Brightest', data.brightest);
+      if (data.stars) addDetail('Stars', data.stars.length);
     },
     
     updateObjectsList() {
       const list = document.getElementById('space-objects-list');
+      if (!list) return;
+      list.replaceChildren();
+
       const data = this.currentTab === 'solar' ? this.solarSystem : 
                    this.currentTab === 'stars' ? this.nearbyStars : 
                    this.currentTab === 'constellations' ? this.constellations : this.nebulae;
       
-      list.innerHTML = data.map((o, i) => 
-        `<div class="space-object-item" onclick="window.SpaceGallery3D.selectObject(${i})">
-          <div class="font-bold">${o.name}</div>
-          <div class="text-xs text-gray-400">${o.type || (this.currentTab === 'constellations' ? 'Constellation' : '')}</div>
-        </div>`
-      ).join('');
+      data.forEach((o, i) => {
+        const item = document.createElement('div');
+        item.className = 'space-object-item';
+        item.addEventListener('click', () => this.selectObject(i));
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'font-bold';
+        nameDiv.textContent = o.name;
+        item.appendChild(nameDiv);
+
+        const typeDiv = document.createElement('div');
+        typeDiv.className = 'text-xs text-gray-400';
+        typeDiv.textContent = o.type || (this.currentTab === 'constellations' ? 'Constellation' : '');
+        item.appendChild(typeDiv);
+
+        list.appendChild(item);
+      });
     },
     
     animate() {
@@ -784,7 +814,8 @@
         this.controls.autoRotate = true;
       }
       this.selectedObj = null;
-      document.getElementById('space-object-details').innerHTML = '';
+      const details = document.getElementById('space-object-details');
+      if (details) details.replaceChildren();
       document.querySelectorAll('.space-object-item').forEach(el => el.classList.remove('active'));
     }
   };
