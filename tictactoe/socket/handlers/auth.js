@@ -27,37 +27,35 @@ module.exports = (socket, context) => {
     userSocket.set(key, socket.id);
     const { wins, losses, draws, displayName } = users[key];
 
-    // Reconnection logic
+    // Clear any pending disconnect timeout immediately on reconnect
+    if (disconnectTimeouts.has(key)) {
+      clearTimeout(disconnectTimeouts.get(key));
+      disconnectTimeouts.delete(key);
+    }
+
     const existingRoomCode = userRoom.get(key);
-    const hasActiveRoom = !!(existingRoomCode && rooms.get(existingRoomCode)?.players.find(p => p.key === key));
-    socket.emit('auth:ok', { username: displayName, stats: { wins, losses, draws }, rejoining: hasActiveRoom });
-    if (existingRoomCode) {
-      if (disconnectTimeouts.has(key)) {
-        clearTimeout(disconnectTimeouts.get(key));
-        disconnectTimeouts.delete(key);
-      }
+    const room = existingRoomCode ? rooms.get(existingRoomCode) : null;
+    const player = room ? room.players.find(p => p.key === key) : null;
+    const rejoining = !!(room && player);
 
-      const room = rooms.get(existingRoomCode);
-      if (room) {
-        const player = room.players.find(p => p.key === key);
-        if (player) {
-          player.socketId = socket.id;
-          socketRoom.set(socket.id, existingRoomCode);
-          socket.join(existingRoomCode);
+    socket.emit('auth:ok', { username: displayName, stats: { wins, losses, draws }, rejoining });
 
-          socket.emit('game:rejoin', {
-            code: existingRoomCode,
-            board: room.board,
-            currentTurn: room.currentTurn,
-            scores: room.scores,
-            players: room.players.map(p => ({ name: p.name, symbol: p.symbol })),
-            mySymbol: player.symbol,
-            room
-          });
+    if (rejoining) {
+      player.socketId = socket.id;
+      socketRoom.set(socket.id, existingRoomCode);
+      socket.join(existingRoomCode);
 
-          socket.to(existingRoomCode).emit('game:opponent-reconnected', { name: displayName });
-        }
-      }
+      socket.emit('game:rejoin', {
+        code: existingRoomCode,
+        board: room.board,
+        currentTurn: room.currentTurn,
+        scores: room.scores,
+        players: room.players.map(p => ({ name: p.name, symbol: p.symbol })),
+        mySymbol: player.symbol,
+        room
+      });
+
+      socket.to(existingRoomCode).emit('game:opponent-reconnected', { name: displayName });
     }
   });
 };

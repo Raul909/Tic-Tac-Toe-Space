@@ -23,18 +23,16 @@ module.exports = (socket, context) => {
 
       const code = socketRoom.get(socket.id);
       if (code) {
-        socketRoom.delete(socket.id); // Remove socket->room mapping
+        socketRoom.delete(socket.id);
 
         const room = rooms.get(code);
         if (room) {
-          // Grace Period: Don't destroy immediately
-          // Notify opponent that player disconnected (optional)
-          socket.to(code).emit('game:opponent-disconnected', { key });
+          const disconnectedName = users[key]?.displayName || key;
+          socket.to(code).emit('game:opponent-disconnected', { name: disconnectedName });
 
-          // Set timeout to actually leave
           const timeout = setTimeout(() => {
             handlePlayerLeave(code, key, context);
-          }, 30000); // 30 seconds
+          }, 30000);
 
           disconnectTimeouts.set(key, timeout);
         }

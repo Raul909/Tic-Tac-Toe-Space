@@ -292,7 +292,13 @@ function app() {
     
     connectSocket(token) {
       if (this.socket) { this.socket.disconnect(); this.socket = null; }
-      this.socket = io({ autoConnect: true, reconnectionAttempts: 5, withCredentials: true });
+      this.socket = io({
+        autoConnect: true,
+        reconnectionAttempts: 10,   // up to ~35s of retries — covers 30s server grace period
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        withCredentials: true
+      });
       
       this.socket.on('connect', () => {
         this.socket.emit('auth', { token });
@@ -309,7 +315,7 @@ function app() {
         }
       });
       
-      this.socket.on('game:rejoin', (data) => { this.roomCode = data.code; this.board = data.board; this.currentTurn = data.currentTurn; this.scores = data.scores; this.mySymbol = data.mySymbol; this.gameActive = true; this.mode = (data.room && data.room.tournamentId) ? 'tournament' : 'online'; this.setScreen('game'); this.updateGameStatus(); this.clearWinningCells(); if (window.SoundManager) window.SoundManager.play('start'); this.lobbyError = ''; }); this.socket.on('game:opponent-disconnected', ({ key }) => { this.lobbyError = 'Opponent disconnected. Waiting for reconnection...'; }); this.socket.on('game:opponent-reconnected', ({ name }) => { this.lobbyError = ''; if (window.SoundManager) window.SoundManager.play('start'); }); this.socket.on('auth:error', () => {
+      this.socket.on('game:rejoin', (data) => { this.roomCode = data.code; this.board = data.board; this.currentTurn = data.currentTurn; this.scores = data.scores; this.mySymbol = data.mySymbol; this.gameActive = true; this.mode = (data.room && data.room.tournamentId) ? 'tournament' : 'online'; this.setScreen('game'); this.updateGameStatus(); this.clearWinningCells(); if (window.SoundManager) window.SoundManager.play('start'); this.lobbyError = ''; }); this.socket.on('game:opponent-disconnected', ({ name }) => { this.lobbyError = `${name || 'Opponent'} disconnected. Waiting for reconnection...`; }); this.socket.on('game:opponent-reconnected', ({ name }) => { this.lobbyError = ''; if (window.SoundManager) window.SoundManager.play('start'); }); this.socket.on('auth:error', () => {
         localStorage.removeItem('token');
         this.setScreen('auth');
       });
