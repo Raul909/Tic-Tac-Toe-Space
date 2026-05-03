@@ -156,6 +156,24 @@ function app() {
     muted: false,
     toggleMute() { this.muted = window.SoundManager.toggleMute(); },
     
+    // DOM Cache
+    domCache: { elements: {}, cells: {} },
+    _getEl(id) {
+      if (!this.domCache.elements[id]) {
+        this.domCache.elements[id] = document.getElementById(id);
+      }
+      return this.domCache.elements[id];
+    },
+    _getCell(index) {
+      if (!this.domCache.cells[index]) {
+        this.domCache.cells[index] = document.querySelector(`[data-cell-index="${index}"]`);
+      }
+      return this.domCache.cells[index];
+    },
+    clearDomCache() {
+      this.domCache = { elements: {}, cells: {} };
+    },
+
     // Space Gallery
     spaceTab: 'solar',
     spaceZoom: 1,
