@@ -320,7 +320,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
     res.cookie('session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -366,7 +366,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
       res.cookie('session', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: 'none',
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
@@ -396,7 +396,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
   res.cookie('session', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
@@ -434,7 +434,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
           res.cookie('session', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: 'none',
             maxAge: 7 * 24 * 60 * 60 * 1000
           });
 
@@ -471,7 +471,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
   res.cookie('session', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
