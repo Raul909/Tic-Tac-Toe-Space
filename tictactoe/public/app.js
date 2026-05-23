@@ -1043,11 +1043,11 @@ function app() {
 
     getThemeStyle() {
       const themes = {
-        space: 'background: radial-gradient(circle, rgba(0,5,16,0.9) 0%, rgba(0,20,40,0.95) 100%);',
-        mars: 'background: radial-gradient(circle, rgba(139,69,19,0.3) 0%, rgba(205,92,92,0.2) 100%);',
-        moon: 'background: radial-gradient(circle, rgba(200,200,200,0.2) 0%, rgba(150,150,150,0.1) 100%);',
-        jupiter: 'background: radial-gradient(circle, rgba(200,143,58,0.3) 0%, rgba(139,90,43,0.2) 100%);',
-        nebula: 'background: radial-gradient(circle, rgba(138,43,226,0.3) 0%, rgba(75,0,130,0.2) 100%);'
+        space: 'background: radial-gradient(circle, rgba(0,0,0,0.95) 0%, rgba(0,2,8,0.99) 100%);',
+        mars: 'background: radial-gradient(circle, rgba(50,10,3,0.5) 0%, rgba(0,0,0,0.98) 100%);',
+        moon: 'background: radial-gradient(circle, rgba(25,25,25,0.6) 0%, rgba(0,0,0,0.99) 100%);',
+        jupiter: 'background: radial-gradient(circle, rgba(40,25,5,0.5) 0%, rgba(0,0,0,0.98) 100%);',
+        nebula: 'background: radial-gradient(circle, rgba(30,5,40,0.5) 0%, rgba(0,0,0,0.98) 100%);'
       };
       return themes[this.boardTheme] || themes.space;
     },
@@ -1515,6 +1515,7 @@ window.FW = (function() {
         x, y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
+        r: 1.5 + Math.random() * 1.5,
         life: 1,
         color
       });
@@ -1527,7 +1528,9 @@ window.FW = (function() {
     rockets.forEach((r, i) => {
       r.y -= 5;
       ctx.fillStyle = r.color;
-      ctx.fillRect(r.x, r.y, 3, 10);
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
       if (r.y < cv.height * 0.3) {
         explode(r.x, r.y, r.color);
         rockets.splice(i, 1);
@@ -1543,7 +1546,9 @@ window.FW = (function() {
       
       ctx.globalAlpha = p.life;
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x, p.y, 3, 3);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
     });
     ctx.globalAlpha = 1;
     

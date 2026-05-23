@@ -27,7 +27,7 @@
   --c-nasa:        #00d4ff;
   --c-earth:       #4dffdb;
   --c-mars:        #ff6b35;
-  --c-space:       #000510;
+  --c-space:       #000000;
   --c-purple:      #a855f7;
 
   /* Semantic aliases */
@@ -37,8 +37,8 @@
   --deep-space:    var(--c-space);
 
   /* Surface & border */
-  --hud-border:    rgba(0, 212, 255, 0.45);
-  --glass-bg:      rgba(0, 5, 16, 0.85);
+  --hud-border:    rgba(0, 212, 255, 0.3);
+  --glass-bg:      rgba(0, 0, 0, 0.98);
   --glass-blur:    15px;
 
   /* Transition presets — never use "transition: all" */
@@ -52,7 +52,7 @@
 /* ─────────────────────────────────────────────────────────────────────────
    2. FONT IMPORT
    ───────────────────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Space+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Press+Start+2P&family=Space+Mono&display=swap');
 
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -80,6 +80,21 @@ h1, h2, h3,
   letter-spacing: 0.15em;
   text-transform: uppercase;
   text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+}
+
+/* Retro Game Boy arcade font styles */
+.font-retro {
+  font-family: 'Press Start 2P', monospace !important;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+
+.font-retro-glow {
+  font-family: 'Press Start 2P', monospace !important;
+  letter-spacing: 0.08em;
+  text-shadow:
+    0 0 8px rgba(0, 212, 255, 0.6),
+    0 2px 0 rgba(0, 0, 0, 0.8);
 }
 
 /* GPU-acceleration hint for interactive elements */
@@ -936,3 +951,46 @@ body.colorblind .border-earth\/50 { border-color: rgba(255, 170, 0, 0.5)  !impor
 @media (max-width: 640px) {
   #three-canvas { transform: scale(1.1); }
 }
+
+/* =========================================================================
+   16. MAXIMUM DARK UI OVERRIDES
+   ========================================================================= */
+/* Override all Tailwind gray background utilities to enforce cinematic pure black */
+.bg-gray-900,
+.bg-gray-800,
+.bg-gray-700,
+.bg-slate-900,
+.bg-slate-800 {
+  background-color: #000000 !important;
+}
+
+/* Make sure text inputs, textareas, and select elements are pure black with cyan glow details */
+input, select, textarea {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: rgba(0, 212, 255, 0.25) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--c-nasa) !important;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.35) !important;
+}
+
+/* Ensure modal dialog custom backdrops are pitch black */
+.bg-black\/80 {
+  background-color: rgba(0, 0, 0, 0.98) !important;
+}
+
+/* Enforce dark-as-possible backgrounds for active list items */
+.space-object-item {
+  background: rgba(0, 0, 0, 0.98) !important;
+}
+
+.space-object-item:hover {
+  background: rgba(0, 212, 255, 0.08) !important;
+}
+
+.space-object-item.active {
+  background: rgba(0, 212, 255, 0.12) !important;
+}
+

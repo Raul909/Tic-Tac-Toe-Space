@@ -110,6 +110,8 @@
           return this.drawStarGlow();
         case 'nebula-gas-albedo':
           return this.drawNebulaGas();
+        case 'circle-particle-albedo':
+          return this.drawCircleParticle();
         default:
           if (type === 'bump') {
             ctx.fillStyle = '#808080';
@@ -650,56 +652,27 @@
 
     drawStarGlow() {
       const canvas = document.createElement('canvas');
-      canvas.width = 256; // High performance, gorgeous feathered volumetric rays
-      canvas.height = 256;
+      canvas.width = 512;
+      canvas.height = 512;
       const ctx = canvas.getContext('2d');
-      const cx = 128;
-      const cy = 128;
+      const cx = 256;
+      const cy = 256;
       
-      // 1. Soft radial base glow
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 80);
-      grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-      grad.addColorStop(0.12, 'rgba(255, 245, 220, 0.95)');
-      grad.addColorStop(0.35, 'rgba(255, 175, 45, 0.45)');
-      grad.addColorStop(0.65, 'rgba(255, 80, 10, 0.12)');
-      grad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
+      // Pure smooth radial gradient — photographic corona look
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx);
+      grad.addColorStop(0,    'rgba(255, 255, 255, 1.0)');
+      grad.addColorStop(0.06, 'rgba(255, 250, 240, 0.95)');
+      grad.addColorStop(0.15, 'rgba(255, 235, 200, 0.75)');
+      grad.addColorStop(0.30, 'rgba(255, 180, 80, 0.4)');
+      grad.addColorStop(0.48, 'rgba(255, 110, 20, 0.15)');
+      grad.addColorStop(0.70, 'rgba(200, 40, 5, 0.04)');
+      grad.addColorStop(1,    'rgba(0, 0, 0, 0.0)');
+      
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 256, 256);
-      
-      // Set a soft blur filter to make rays look cinematic and atmospheric
-      ctx.filter = 'blur(6px)';
-      
-      // 2. Volumetric Solar Rays (shafts of light extending dynamically)
-      const numRays = 24;
-      ctx.save();
-      ctx.translate(cx, cy);
-      
-      for (let i = 0; i < numRays; i++) {
-        const angle = (i / numRays) * Math.PI * 2 + Math.sin(i * 3.7) * 0.1;
-        const length = 45 + Math.abs(Math.sin(i * 12.3)) * 40;
-        const width = 0.15 + Math.abs(Math.cos(i * 7.4)) * 0.10; // feathered, wider sectors
-        
-        const rayGrad = ctx.createLinearGradient(0, 0, 0, length);
-        rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.40)');
-        rayGrad.addColorStop(0.2, 'rgba(255, 215, 100, 0.25)');
-        rayGrad.addColorStop(0.6, 'rgba(255, 100, 20, 0.08)');
-        rayGrad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
-        
-        ctx.fillStyle = rayGrad;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        const xLeft = Math.cos(angle - width) * length;
-        const yLeft = Math.sin(angle - width) * length;
-        const xRight = Math.cos(angle + width) * length;
-        const yRight = Math.sin(angle + width) * length;
-        ctx.lineTo(xLeft, yLeft);
-        ctx.lineTo(xRight, yRight);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
+      ctx.fillRect(0, 0, 512, 512);
       
       const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
       return texture;
     },
 
@@ -743,6 +716,23 @@
       }
       ctx.putImageData(imgData, 0, 0);
       const texture = new THREE.CanvasTexture(canvas);
+      return texture;
+    },
+
+    drawCircleParticle() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 32;
+      canvas.height = 32;
+      const ctx = canvas.getContext('2d');
+      const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+      gradient.addColorStop(0, 'rgba(255,255,255,1)');
+      gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+      gradient.addColorStop(0.5, 'rgba(255,255,255,0.3)');
+      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 32, 32);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
       return texture;
     },
 
@@ -1026,7 +1016,9 @@
         transparent: true,
         opacity: this.currentWeather === 'rain' ? 0.6 : this.currentWeather === 'cloudy' ? 0.25 : 0.8,
         blending: THREE.AdditiveBlending,
-        depthWrite: false
+        depthWrite: false,
+        map: TextureGenerator.generate('circle-particle', 'albedo'),
+        alphaTest: 0.01
       });
       
       material.onBeforeCompile = (shader) => {
@@ -1254,9 +1246,83 @@
       this.solarSystem.forEach((data, i) => {
         if (data.name === 'Sun') {
           const geometry = new THREE.SphereGeometry(data.radius, 48, 48);
-          const texture = TextureGenerator.generate('sun', 'albedo');
-          const material = new THREE.MeshBasicMaterial({ 
-            map: texture
+          const material = new THREE.ShaderMaterial({
+            uniforms: {
+              time: { value: 0 }
+            },
+            vertexShader: `
+              varying vec2 vUv;
+              varying vec3 vNormal;
+              varying vec3 vViewDir;
+              void main() {
+                vUv = uv;
+                vNormal = normalize(normalMatrix * normal);
+                vec4 worldPos = modelViewMatrix * vec4(position, 1.0);
+                vViewDir = normalize(-worldPos.xyz);
+                gl_Position = projectionMatrix * worldPos;
+              }
+            `,
+            fragmentShader: `
+              uniform float time;
+              varying vec2 vUv;
+              varying vec3 vNormal;
+              varying vec3 vViewDir;
+              
+              float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+              }
+              
+              float noise(vec2 p) {
+                vec2 ip = floor(p);
+                vec2 fp = fract(p);
+                fp = fp * fp * (3.0 - 2.0 * fp);
+                float n00 = hash(ip);
+                float n10 = hash(ip + vec2(1.0, 0.0));
+                float n01 = hash(ip + vec2(0.0, 1.0));
+                float n11 = hash(ip + vec2(1.0, 1.0));
+                return mix(mix(n00, n10, fp.x), mix(n01, n11, fp.x), fp.y);
+              }
+              
+              float fbm(vec2 p) {
+                float v = 0.0;
+                float a = 0.5;
+                for (int i = 0; i < 6; i++) {
+                  v += a * noise(p);
+                  p *= 2.1;
+                  a *= 0.48;
+                }
+                return v;
+              }
+              
+              void main() {
+                vec2 uv = vUv * 8.0;
+                float speed = time * 0.12;
+                
+                float n1 = fbm(uv + vec2(speed * 0.7, speed * 0.3));
+                float n2 = fbm(uv * 1.3 - vec2(speed * 0.2, speed * 0.8) + vec2(n1 * 2.0));
+                float n3 = fbm(uv * 0.7 + vec2(n2 * 1.5, speed * 0.15));
+                float combined = n1 * 0.4 + n2 * 0.4 + n3 * 0.2;
+                
+                float granules = fbm(uv * 3.5 + vec2(speed * 0.05));
+                float spots = smoothstep(0.55, 0.7, granules) * 0.35;
+                
+                vec3 darkSpot = vec3(0.75, 0.15, 0.0);
+                vec3 midTone  = vec3(1.0, 0.55, 0.05);
+                vec3 hotSpot  = vec3(1.0, 0.92, 0.35);
+                vec3 baseColor = mix(darkSpot, midTone, combined);
+                baseColor = mix(baseColor, hotSpot, smoothstep(0.55, 0.85, combined));
+                baseColor -= spots;
+                
+                float NdV = dot(vNormal, vViewDir);
+                float limb = 1.0 - pow(1.0 - max(0.0, NdV), 0.6);
+                baseColor *= (0.35 + 0.65 * limb);
+                
+                float edge = pow(1.0 - max(0.0, NdV), 4.0);
+                vec3 edgeGlow = vec3(1.0, 0.45, 0.0) * edge * 1.2;
+                
+                gl_FragColor = vec4(baseColor + edgeGlow, 1.0);
+              }
+            `
           });
           const sun = new THREE.Mesh(geometry, material);
           sun.userData = { ...data, id: i };
@@ -2074,9 +2140,12 @@
 
         // Animate space explorer Sun's corona organically matching the backdrop
         if (obj.userData.name === 'Sun') {
+          const currentTime = performance.now();
+          if (obj.material && obj.material.uniforms && obj.material.uniforms.time) {
+            obj.material.uniforms.time.value = currentTime * 0.0001;
+          }
           const sunCoronaRay = obj.getObjectByName('sunCoronaRay');
           if (sunCoronaRay) {
-            const currentTime = performance.now();
             const rayPulse = 1.0 + Math.sin(currentTime * 0.0015) * 0.05;
             sunCoronaRay.scale.set(obj.userData.radius * 2.2 * rayPulse, obj.userData.radius * 2.2 * rayPulse, 1);
             sunCoronaRay.material.rotation = Math.sin(currentTime * 0.0002) * 0.08;

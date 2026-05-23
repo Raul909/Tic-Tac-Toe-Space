@@ -22,6 +22,24 @@
   renderer.outputEncoding = THREE.sRGBEncoding;
   camera.position.set(0, 25, 90);
   
+  // Create circular texture for round stars
+  function createCircleTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+    gradient.addColorStop(0.5, 'rgba(255,255,255,0.3)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 32, 32);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+  
   // Weather Preset System
   let currentPreset = { fog: 0.0003, starDensity: 1, planetGlow: 1 };
   
@@ -143,7 +161,10 @@
       color: currentBgWeather === 'rain' ? 0x4A90E2 : currentBgWeather === 'cloudy' ? 0x666666 : 0xFFFFFF,
       transparent: true,
       opacity: currentBgWeather === 'rain' ? 0.4 : 0.2,
-      blending: THREE.AdditiveBlending, depthWrite: false
+      blending: THREE.AdditiveBlending, 
+      depthWrite: false,
+      map: createCircleTexture(),
+      alphaTest: 0.01
     });
 
     // Optimization: Shader-based movement to offload CPU
@@ -230,37 +251,19 @@
     return mesh;
   }
   
-  // Create circular texture for round stars
-  function createCircleTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext('2d');
-    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    gradient.addColorStop(0, 'rgba(255,255,255,1)');
-    gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
-    gradient.addColorStop(0.5, 'rgba(255,255,255,0.3)');
-    gradient.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 32, 32);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    return texture;
-  }
-  
   const starLayers = [
-    createStarLayer(25000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), false),
-    createStarLayer(8000, 1.6, 3000, () => new THREE.Color(0xffffff), false),
-    createStarLayer(30000, 0.6, 4500, () => new THREE.Color(0x445566), false),
+    createStarLayer(25000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), true),
+    createStarLayer(8000, 1.6, 3000, () => new THREE.Color(0xffffff), true),
+    createStarLayer(30000, 0.6, 4500, () => new THREE.Color(0x445566), true),
     createStarLayer(4000, 2.4, 2500, () => {
       const r = Math.random();
       if (r < 0.25) return new THREE.Color(0xff9977); // Orange/Red giants
       if (r < 0.50) return new THREE.Color(0x88ddff); // Blue supergiants
       if (r < 0.75) return new THREE.Color(0xffe484); // Yellow dwarfs
       return new THREE.Color(0xffb7ff); // Purple stars
-    }, false),
+    }, true),
     // 5th Ultra-Dense Deep-Space Star Layer for massive background realism
-    createStarLayer(35000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), false)
+    createStarLayer(35000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), true)
   ];
   const stars = starLayers[0]; // Reference for weather presets
   
@@ -727,7 +730,7 @@
     return mesh;
   }
   
-  // Realistic Sun with surface texture and corona
+  // Realistic Sun with high-quality procedural surface
   const sunCore = new THREE.Mesh(
     new THREE.SphereGeometry(12, 64, 64),
     new THREE.ShaderMaterial({
@@ -737,51 +740,77 @@
       vertexShader: `
         varying vec2 vUv;
         varying vec3 vNormal;
+        varying vec3 vViewDir;
         void main() {
           vUv = uv;
           vNormal = normalize(normalMatrix * normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          vec4 worldPos = modelViewMatrix * vec4(position, 1.0);
+          vViewDir = normalize(-worldPos.xyz);
+          gl_Position = projectionMatrix * worldPos;
         }
       `,
       fragmentShader: `
         uniform float time;
         varying vec2 vUv;
         varying vec3 vNormal;
+        varying vec3 vViewDir;
+        
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
         
         float noise(vec2 p) {
           vec2 ip = floor(p);
           vec2 fp = fract(p);
           fp = fp * fp * (3.0 - 2.0 * fp);
-          
-          float n00 = fract(sin(dot(ip, vec2(127.1, 311.7))) * 43758.5453123);
-          float n10 = fract(sin(dot(ip + vec2(1.0, 0.0), vec2(127.1, 311.7))) * 43758.5453123);
-          float n01 = fract(sin(dot(ip + vec2(0.0, 1.0), vec2(127.1, 311.7))) * 43758.5453123);
-          float n11 = fract(sin(dot(ip + vec2(1.0, 1.0), vec2(127.1, 311.7))) * 43758.5453123);
-          
+          float n00 = hash(ip);
+          float n10 = hash(ip + vec2(1.0, 0.0));
+          float n01 = hash(ip + vec2(0.0, 1.0));
+          float n11 = hash(ip + vec2(1.0, 1.0));
           return mix(mix(n00, n10, fp.x), mix(n01, n11, fp.x), fp.y);
         }
         
         float fbm(vec2 p) {
           float v = 0.0;
           float a = 0.5;
-          for (int i = 0; i < 4; i++) {
+          for (int i = 0; i < 6; i++) {
             v += a * noise(p);
-            p *= 2.0;
-            a *= 0.5;
+            p *= 2.1;
+            a *= 0.48;
           }
           return v;
         }
         
         void main() {
-          vec2 uv = vUv * 6.0;
-          float speed = time * 0.18;
-          float n1 = fbm(uv + vec2(speed, speed * 0.5));
-          float n2 = fbm(uv - vec2(speed * 0.3, speed) + vec2(n1 * 1.5));
+          vec2 uv = vUv * 8.0;
+          float speed = time * 0.12;
           
-          vec3 baseColor = mix(vec3(0.95, 0.25, 0.0), vec3(1.0, 0.85, 0.1), n2);
+          // Multi-layered turbulent plasma surface
+          float n1 = fbm(uv + vec2(speed * 0.7, speed * 0.3));
+          float n2 = fbm(uv * 1.3 - vec2(speed * 0.2, speed * 0.8) + vec2(n1 * 2.0));
+          float n3 = fbm(uv * 0.7 + vec2(n2 * 1.5, speed * 0.15));
+          float combined = n1 * 0.4 + n2 * 0.4 + n3 * 0.2;
           
-          float edge = pow(1.0 - max(0.0, dot(vNormal, vec3(0.0, 0.0, 1.0))), 3.0);
-          vec3 edgeGlow = vec3(1.0, 0.3, 0.0) * edge * 1.8;
+          // Solar granulation spots
+          float granules = fbm(uv * 3.5 + vec2(speed * 0.05));
+          float spots = smoothstep(0.55, 0.7, granules) * 0.35;
+          
+          // Photosphere color palette — deep reds to bright yellows
+          vec3 darkSpot = vec3(0.75, 0.15, 0.0);
+          vec3 midTone  = vec3(1.0, 0.55, 0.05);
+          vec3 hotSpot  = vec3(1.0, 0.92, 0.35);
+          vec3 baseColor = mix(darkSpot, midTone, combined);
+          baseColor = mix(baseColor, hotSpot, smoothstep(0.55, 0.85, combined));
+          baseColor -= spots;
+          
+          // Limb darkening — realistic solar physics effect
+          float NdV = dot(vNormal, vViewDir);
+          float limb = 1.0 - pow(1.0 - max(0.0, NdV), 0.6);
+          baseColor *= (0.35 + 0.65 * limb);
+          
+          // Bright edge corona glow
+          float edge = pow(1.0 - max(0.0, NdV), 4.0);
+          vec3 edgeGlow = vec3(1.0, 0.45, 0.0) * edge * 1.2;
           
           gl_FragColor = vec4(baseColor + edgeGlow, 1.0);
         }
@@ -791,91 +820,45 @@
   sunCore.position.set(-100, 30, -150);
   scene.add(sunCore);
 
-  // Volumetric solar rays texture generator for landing page Sun
-  function generateSunRaysTexture() {
+  // Clean radial corona glow — single additive sprite, no holographic rings
+  function generateCoronaTexture() {
+    const size = 512;
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = size;
+    canvas.height = size;
     const ctx = canvas.getContext('2d');
-    const cx = 128;
-    const cy = 128;
+    const cx = size / 2;
+    const cy = size / 2;
     
-    // Set a heavy blur filter to make rays look soft, misty, and atmospheric
-    ctx.filter = 'blur(6px)';
-    
-    // Radial base glow
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 80);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-    grad.addColorStop(0.15, 'rgba(255, 242, 200, 0.9)');
-    grad.addColorStop(0.4, 'rgba(255, 160, 40, 0.4)');
-    grad.addColorStop(0.7, 'rgba(255, 80, 10, 0.15)');
-    grad.addColorStop(1, 'rgba(255, 40, 0, 0.0)');
+    // Pure smooth radial gradient — like a real solar corona photograph
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx);
+    grad.addColorStop(0,    'rgba(255, 255, 240, 1.0)');
+    grad.addColorStop(0.08, 'rgba(255, 230, 180, 0.85)');
+    grad.addColorStop(0.15, 'rgba(255, 180, 80, 0.5)');
+    grad.addColorStop(0.25, 'rgba(255, 120, 30, 0.22)');
+    grad.addColorStop(0.40, 'rgba(255, 70, 10, 0.08)');
+    grad.addColorStop(0.60, 'rgba(200, 40, 5, 0.025)');
+    grad.addColorStop(1,    'rgba(100, 20, 0, 0.0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 256, 256);
-    
-    // Add soft, feathered volumetric rays
-    const numRays = 24; // Fewer, wider, softer rays are much more realistic!
-    ctx.save();
-    ctx.translate(cx, cy);
-    for (let i = 0; i < numRays; i++) {
-      const angle = (i / numRays) * Math.PI * 2 + Math.sin(i * 4.3) * 0.15;
-      const length = 45 + Math.abs(Math.sin(i * 7.7)) * 40;
-      const width = 0.15 + Math.abs(Math.cos(i * 5.2)) * 0.12; // Wider rays for soft blending
-      
-      const rayGrad = ctx.createLinearGradient(0, 0, 0, length);
-      rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.40)');
-      rayGrad.addColorStop(0.2, 'rgba(255, 200, 80, 0.20)');
-      rayGrad.addColorStop(0.6, 'rgba(255, 70, 10, 0.05)');
-      rayGrad.addColorStop(1, 'rgba(255, 30, 0, 0.0)');
-      
-      ctx.fillStyle = rayGrad;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      const xLeft = Math.cos(angle - width) * length;
-      const yLeft = Math.sin(angle - width) * length;
-      const xRight = Math.cos(angle + width) * length;
-      const yRight = Math.sin(angle + width) * length;
-      ctx.lineTo(xLeft, yLeft);
-      ctx.lineTo(xRight, yRight);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
+    ctx.fillRect(0, 0, size, size);
     
     const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
     return texture;
   }
   
-  // Add volumetric solar ray sprite
-  const sunRayTexture = generateSunRaysTexture();
-  const sunRayMaterial = new THREE.SpriteMaterial({
-    map: sunRayTexture,
+  const coronaTexture = generateCoronaTexture();
+  const coronaMaterial = new THREE.SpriteMaterial({
+    map: coronaTexture,
     transparent: true,
-    opacity: 0.95,
+    opacity: 0.75,
     blending: THREE.AdditiveBlending,
     depthWrite: false
   });
-  const sunRaySprite = new THREE.Sprite(sunRayMaterial);
-  sunRaySprite.scale.set(38, 38, 1);
-  sunCore.add(sunRaySprite);
-  
-  // Corona layers
-  const sunGlow = new THREE.Group();
-  for(let i=0; i<5; i++) {
-    const glowMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(12 + i*3, 32, 32),
-      new THREE.MeshBasicMaterial({
-        color: i < 2 ? 0xFFAA00 : 0xFF6600,
-        transparent: true,
-        opacity: (0.15 - i*0.025) * (i < 2 ? 1.2 : 0.8),
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      })
-    );
-    sunGlow.add(glowMesh);
-  }
-  sunCore.add(sunGlow);
+  const coronaSprite = new THREE.Sprite(coronaMaterial);
+  coronaSprite.scale.set(55, 55, 1);
+  sunCore.add(coronaSprite);
+
   const sun = sunCore; // Keep reference
   
   const mercury = createPlanet('mercury', 2.5, 0x8C7853, {x:-80, y:5, z:-40});
@@ -895,7 +878,6 @@
   const uranus = createPlanet('uranus', 5.5, 0x4FD0E7, {x:95, y:-30, z:-120}, true);
   planets.push({ mesh: uranus, speed: 0.0001, radius: 110, angle: Math.PI/3, rotationSpeed: 0.009 });
   const neptune = createPlanet('neptune', 5.2, 0x4169E1, {x:-85, y:15, z:-130});
-  planets.push({ mesh: neptune, speed: 0.00008, radius: 125, angle: Math.PI*1.7, rotationSpeed: 0.01 });
   planets.push({ mesh: neptune, speed: 0.00008, radius: 125, angle: Math.PI*1.7, rotationSpeed: 0.01 });
   
   // Lighting
@@ -1049,15 +1031,13 @@
       sun.material.uniforms.time.value = currentTime * 0.0001;
     }
     sun.rotation.y += 0.001 * scale;
-    sunGlow.rotation.y -= 0.0015 * scale;
-    sunGlow.rotation.z += 0.0008 * scale;
     
-    // Organic shimmering and pulsing for volumetric sun rays
-    if (typeof sunRaySprite !== 'undefined' && sunRaySprite) {
-      const rayPulse = 1.0 + Math.sin(currentTime * 0.0015) * 0.05;
-      sunRaySprite.scale.set(38 * rayPulse, 38 * rayPulse, 1);
-      sunRaySprite.material.rotation = Math.sin(currentTime * 0.0002) * 0.08;
-      sunRaySprite.material.opacity = 0.8 + Math.cos(currentTime * 0.0007) * 0.12;
+    // Subtle corona breathing
+    if (typeof coronaSprite !== 'undefined' && coronaSprite) {
+      const coronaPulse = 1.0 + Math.sin(currentTime * 0.0008) * 0.03;
+      coronaSprite.scale.set(55 * coronaPulse, 55 * coronaPulse, 1);
+      coronaSprite.material.rotation = Math.sin(currentTime * 0.00015) * 0.04;
+      coronaSprite.material.opacity = 0.70 + Math.cos(currentTime * 0.0005) * 0.08;
     }
     
     // Planets - Batch update
