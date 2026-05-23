@@ -721,17 +721,21 @@
 
     drawCircleParticle() {
       const canvas = document.createElement('canvas');
-      canvas.width = 32;
-      canvas.height = 32;
+      canvas.width = 64; // higher resolution for beautiful smooth borders
+      canvas.height = 64;
       const ctx = canvas.getContext('2d');
-      // Specular light source offset to (11, 11) for beautiful 3D volumetrics close to eye
-      const gradient = ctx.createRadialGradient(11, 11, 1, 16, 16, 15);
-      gradient.addColorStop(0, 'rgba(255,255,255,1)'); // Specular highlight
-      gradient.addColorStop(0.5, 'rgba(210,230,255,0.95)'); // Translucent midtone
-      gradient.addColorStop(0.85, 'rgba(120,160,255,0.6)'); // Volumetric shadow
-      gradient.addColorStop(1, 'rgba(0,0,0,0)'); // Transparent edge
+      
+      // Smooth radial gradient for a photorealistic camera lens bokeh ring
+      const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.04)');     // Very soft translucent center
+      gradient.addColorStop(0.72, 'rgba(235, 245, 255, 0.22)');   // Light airy inner body
+      gradient.addColorStop(0.88, 'rgba(215, 238, 255, 0.70)');  // Distinct delicate bokeh bright edge ring
+      gradient.addColorStop(0.95, 'rgba(180, 212, 255, 0.38)');  // Chromatic blue-shifted edge bleed
+      gradient.addColorStop(1.0, 'rgba(0, 0, 0, 0)');            // Perfectly smooth transparent fade-out
+      
       ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 32, 32);
+      ctx.fillRect(0, 0, 64, 64);
+      
       const texture = new THREE.CanvasTexture(canvas);
       texture.needsUpdate = true;
       return texture;
@@ -1012,14 +1016,14 @@
       else if (this.currentWeather === 'rain') vy = -3.0;
 
       const material = new THREE.PointsMaterial({
-        size: this.currentWeather === 'rain' ? 1.5 : this.currentWeather === 'cloudy' ? 6 : 4,
-        color: this.currentWeather === 'rain' ? 0x4A90E2 : this.currentWeather === 'cloudy' ? 0x666666 : 0xFFFFFF,
+        size: this.currentWeather === 'rain' ? 1.55 : this.currentWeather === 'cloudy' ? 9.5 : 5.5,
+        color: this.currentWeather === 'rain' ? 0x7ac1ff : this.currentWeather === 'cloudy' ? 0xb5d3ff : 0xffffff,
         transparent: true,
-        opacity: this.currentWeather === 'rain' ? 0.6 : this.currentWeather === 'cloudy' ? 0.25 : 0.8,
+        opacity: this.currentWeather === 'rain' ? 0.45 : this.currentWeather === 'cloudy' ? 0.12 : 0.16,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         map: TextureGenerator.generate('circle-particle', 'albedo'),
-        alphaTest: 0.01
+        alphaTest: 0.001
       });
       
       material.onBeforeCompile = (shader) => {
@@ -1030,7 +1034,7 @@
 
         material.userData.shader = shader;
 
-        shader.vertexShader = 'uniform float uTime;\nuniform float uSpeed;\nuniform float uRangeY;\nuniform float uStartY;\n' + shader.vertexShader;
+        shader.vertexShader = 'uniform float uTime;\nuniform float uSpeed;\nuniform float uRangeY;\nuniform float uStartY;\nvarying float vDist;\n' + shader.vertexShader;
 
         shader.vertexShader = shader.vertexShader.replace(
           '#include <begin_vertex>',
@@ -1051,6 +1055,28 @@
             transformed.x = (randX - 0.5) * 1000.0;
             transformed.z = (randZ - 0.5) * 1000.0;
           }
+          `
+        );
+
+        // Inject vDist calculation after view-space position assignment
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <project_vertex>',
+          `
+          #include <project_vertex>
+          vDist = length( mvPosition.xyz );
+          `
+        );
+
+        // Inject vDist in fragment shader
+        shader.fragmentShader = 'varying float vDist;\n' + shader.fragmentShader;
+        
+        // Inject smoothstep near-camera fade in fragment shader
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <color_fragment>',
+          `
+          #include <color_fragment>
+          // Smoothly fade out particles closer than 110 units down to 60 units from camera
+          diffuseColor.a *= smoothstep(60.0, 110.0, vDist);
           `
         );
       };
