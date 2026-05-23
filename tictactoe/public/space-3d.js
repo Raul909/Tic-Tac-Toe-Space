@@ -241,35 +241,81 @@
   }
   
   const starLayers = [
-    createStarLayer(15000, 1.2, 3000, () => Math.random() < 0.1 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff)),
-    createStarLayer(5000, 2.5, 3000, () => new THREE.Color(0xffffff)),
-    createStarLayer(20000, 0.8, 4000, () => new THREE.Color(0x445566))
+    createStarLayer(25000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff)),
+    createStarLayer(8000, 2.2, 3000, () => new THREE.Color(0xffffff)),
+    createStarLayer(30000, 0.6, 4500, () => new THREE.Color(0x445566)),
+    createStarLayer(4000, 3.5, 2500, () => {
+      const r = Math.random();
+      if (r < 0.25) return new THREE.Color(0xff9977); // Orange/Red giants
+      if (r < 0.50) return new THREE.Color(0x88ddff); // Blue supergiants
+      if (r < 0.75) return new THREE.Color(0xffe484); // Yellow dwarfs
+      return new THREE.Color(0xffb7ff); // Purple stars
+    }),
+    // 5th Ultra-Dense Deep-Space Star Layer for massive background realism
+    createStarLayer(35000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15))
   ];
   const stars = starLayers[0]; // Reference for weather presets
   
   // Nebula - Optimized with circular texture
   const nebulaGeo = new THREE.BufferGeometry();
   const nebPos = [], nebCol = [];
-  const nebulaCount = isMobile ? 2000 : 4000;
+  const nebulaCount = isMobile ? 2000 : 5000; // Even denser, gorgeous volumetric gas!
   for (let i = 0; i < nebulaCount; i++) {
     const theta = Math.random() * Math.PI * 2, phi = Math.random() * Math.PI, r = 700 + Math.random() * 600;
     nebPos.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
-    const c = new THREE.Color().setHSL(Math.random() < 0.5 ? 0.6 : 0.9, 0.8, 0.2 + Math.random()*0.3);
+    
+    // Rich nebula colors (Cyan, Gold, Purple, Emerald)
+    const rand = Math.random();
+    let c;
+    if (rand < 0.3) {
+      c = new THREE.Color(0x00d4ff); // Cyan
+    } else if (rand < 0.55) {
+      c = new THREE.Color(0xff6b35); // Gold/Orange
+    } else if (rand < 0.8) {
+      c = new THREE.Color(0xa855f7); // Cosmic purple
+    } else {
+      c = new THREE.Color(0x4dffdb); // Earth teal/emerald
+    }
     nebCol.push(c.r, c.g, c.b);
   }
   nebulaGeo.setAttribute('position', new THREE.Float32BufferAttribute(nebPos, 3));
   nebulaGeo.setAttribute('color', new THREE.Float32BufferAttribute(nebCol, 3));
   const nebula = new THREE.Points(nebulaGeo, new THREE.PointsMaterial({ 
-    size: 15, 
+    size: 20, // slightly larger for smoother blending
     vertexColors: true, 
     transparent: true, 
-    opacity: 0.15, 
+    opacity: 0.12, 
     blending: THREE.AdditiveBlending, 
     depthWrite: false,
     map: createCircleTexture(),
     alphaTest: 0.01
   }));
   scene.add(nebula);
+
+  // Central Glowing Core Nebula (Pink/Gold)
+  const coreNebGeo = new THREE.BufferGeometry();
+  const coreNebPos = [], coreNebCol = [];
+  const coreNebCount = isMobile ? 1500 : 3500;
+  for (let i = 0; i < coreNebCount; i++) {
+    const theta = Math.random() * Math.PI * 2, phi = Math.random() * Math.PI, r = 200 + Math.random() * 450;
+    coreNebPos.push(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta) * 0.4, r * Math.cos(phi));
+    
+    const c = Math.random() < 0.5 ? new THREE.Color(0xff55b3) : new THREE.Color(0xff9d3b);
+    coreNebCol.push(c.r, c.g, c.b);
+  }
+  coreNebGeo.setAttribute('position', new THREE.Float32BufferAttribute(coreNebPos, 3));
+  coreNebGeo.setAttribute('color', new THREE.Float32BufferAttribute(coreNebCol, 3));
+  const coreNebula = new THREE.Points(coreNebGeo, new THREE.PointsMaterial({
+    size: 24,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.09,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    map: createCircleTexture(),
+    alphaTest: 0.01
+  }));
+  scene.add(coreNebula);
   
   // 3D Pseudo-random noise for background planet textures
   const noise3D = (x, y, z) => {
@@ -866,11 +912,11 @@
   ssGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3)); // 2 points
   const ssMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
   
-  // Create pool of 5 reuseable lines
-  for(let i=0; i<5; i++) {
+  // Create pool of 8 reuseable lines for gorgeous layering
+  for(let i=0; i<8; i++) {
     const line = new THREE.Line(ssGeo.clone(), ssMat.clone());
     scene.add(line);
-    shootingStars.push({ mesh: line, active: false, t: 0, start: new THREE.Vector3(), end: new THREE.Vector3() });
+    shootingStars.push({ mesh: line, active: false, t: 0, speed: 1.0, tailLength: 0.1, start: new THREE.Vector3(), end: new THREE.Vector3() });
   }
   
   function spawnShootingStar() {
@@ -879,20 +925,47 @@
     
     star.active = true;
     star.t = 0;
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 300 + Math.random() * 200;
-    star.start.set(Math.cos(angle)*dist, 100+Math.random()*50, Math.sin(angle)*dist);
-    const dir = new THREE.Vector3((Math.random()-0.5)*2, -1-Math.random(), (Math.random()-0.5)*2).normalize();
-    star.end.copy(star.start).add(dir.multiplyScalar(200)); // Length of travel
+    star.speed = 0.85 + Math.random() * 1.5; // Random speed factor
+    star.tailLength = 0.06 + Math.random() * 0.14; // Random tail length
+    
+    // Meteor composition color tints
+    const chemicalTints = [
+      0xffffff, // White
+      0xd4ffff, // Iron/Nickel (bluish-cyan)
+      0xffffd4, // Sodium (yellowish)
+      0xffd4fa  // Calcium (violet-pink)
+    ];
+    star.mesh.material.color.setHex(chemicalTints[Math.floor(Math.random() * chemicalTints.length)]);
+    
+    // Spawn off-screen to one side, crossing in front of camera
+    const side = Math.random() < 0.5 ? -1 : 1;
+    star.start.set(
+      side * (120 + Math.random() * 150), // Start far left or right
+      60 + Math.random() * 70,            // Spawn at high altitude
+      -100 - Math.random() * 320           // Directly in front of camera field
+    );
+    
+    // Fly diagonally across the center camera field
+    const dir = new THREE.Vector3(
+      -side * (0.6 + Math.random() * 0.8), // Fly to opposite side
+      -0.45 - Math.random() * 0.65,        // Fly downwards
+      (Math.random() - 0.5) * 0.4          // Faint Z-depth shift
+    ).normalize();
+    
+    const travel = 220 + Math.random() * 180; // Distance of travel
+    star.end.copy(star.start).add(dir.multiplyScalar(travel));
     
     star.mesh.material.opacity = 1;
     star.mesh.geometry.attributes.position.setXYZ(0, star.start.x, star.start.y, star.start.z);
     star.mesh.geometry.attributes.position.setXYZ(1, star.start.x, star.start.y, star.start.z);
     star.mesh.geometry.attributes.position.needsUpdate = true;
   }
-  setInterval(() => { if(Math.random()<0.3) spawnShootingStar(); }, 2000);
+  // Slightly faster interval for highly immersive space atmosphere
+  setInterval(() => { if(Math.random()<0.4) spawnShootingStar(); }, 1200);
 
   // Animation Loop - Optimized for 60fps
+  const _v1 = new THREE.Vector3();
+  const _v2 = new THREE.Vector3();
   let lastTime = 0;
   let frameCount = 0;
   let lastFpsUpdate = 0;
@@ -915,10 +988,23 @@
     cinematic.warpFactor += (cinematic.targetWarp - cinematic.warpFactor) * dt * 2;
     const warpSpeed = 1 + cinematic.warpFactor * 50;
     
-    // Stars - Optimized rotation
+    // Stars - Optimized rotation and twinkling
     const baseRotation = 0.00005 * scale * warpSpeed;
     starLayers.forEach((stars, i) => {
       stars.rotation.y += baseRotation * (i + 1);
+      
+      // Dynamic star twinkling: vary material opacity on a smooth sine wave
+      if (i === 1) {
+        // Bright stars twinkle rapidly
+        stars.material.opacity = 0.5 + Math.sin(currentTime * 0.0028) * 0.22;
+      } else if (i === 3) {
+        // Giant/colored stars twinkle slowly
+        stars.material.opacity = 0.6 + Math.cos(currentTime * 0.0013 + 1.5) * 0.25;
+      } else if (i === 4) {
+        // Background tiny stars twinkle very rapidly and subtly
+        stars.material.opacity = 0.35 + Math.sin(currentTime * 0.0045 + 3.0) * 0.18;
+      }
+      
       if (cinematic.warpFactor > 0.01) {
          const warpScale = 1 + cinematic.warpFactor * 20;
          stars.scale.z = warpScale;
@@ -929,6 +1015,9 @@
     });
     
     nebula.rotation.y -= 0.00005 * scale;
+    if (coreNebula) {
+      coreNebula.rotation.y += 0.00003 * scale;
+    }
     
     // Animate sun shader
     if (sun.material.uniforms) {
@@ -970,27 +1059,27 @@
       a.mesh.rotation.y += rotDelta;
     });
     
-    // Shooting Stars Update - Only active ones
+    // Shooting Stars Update - Only active ones with realistic speed & tail fade
     for (let i = shootingStars.length - 1; i >= 0; i--) {
       const s = shootingStars[i];
       if (!s.active) continue;
       
-      s.t += dt * 1.5;
+      s.t += dt * 1.5 * (s.speed || 1.0);
       if (s.t > 1) { 
         s.active = false; 
         s.mesh.material.opacity = 0; 
         continue;
       }
       
-      const p1 = new THREE.Vector3().lerpVectors(s.start, s.end, s.t);
-      const p2 = new THREE.Vector3().lerpVectors(s.start, s.end, Math.max(0, s.t - 0.1));
+      _v1.lerpVectors(s.start, s.end, s.t);
+      _v2.lerpVectors(s.start, s.end, Math.max(0, s.t - (s.tailLength || 0.1)));
       
       const positions = s.mesh.geometry.attributes.position;
-      positions.setXYZ(0, p1.x, p1.y, p1.z);
-      positions.setXYZ(1, p2.x, p2.y, p2.z);
+      positions.setXYZ(0, _v1.x, _v1.y, _v1.z);
+      positions.setXYZ(1, _v2.x, _v2.y, _v2.z);
       positions.needsUpdate = true;
       
-      s.mesh.material.opacity = Math.sin(s.t * Math.PI) * 0.8;
+      s.mesh.material.opacity = Math.sin(s.t * Math.PI) * 0.9;
     }
     
     // Background weather particles

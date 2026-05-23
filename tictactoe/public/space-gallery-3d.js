@@ -2011,6 +2011,11 @@
     animate() {
       requestAnimationFrame(() => this.animate());
       
+      const container = document.getElementById('space-gallery-3d');
+      if (!container || container.offsetParent === null) {
+        return;
+      }
+      
       // Update controls for smooth damping
       if (this.controls) {
         this.controls.update();

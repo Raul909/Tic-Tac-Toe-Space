@@ -62,9 +62,13 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  background-color: var(--c-space) !important;
+}
+
 body {
   font-family: 'Space Mono', monospace;
-  background: var(--c-space);
+  background: transparent !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -95,14 +99,14 @@ a,
 #three-canvas {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: -2;
   will-change: transform;
   transform: translateZ(0);
 }
 
 .content-layer {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
@@ -585,11 +589,11 @@ textarea:focus {
   left: 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(to bottom, transparent, rgba(0, 212, 255, 0.5), transparent);
+  background: linear-gradient(to bottom, transparent, rgba(0, 212, 255, 0.35), transparent);
   /* Use transform for animation — GPU composited, zero layout cost */
   animation: scan 8s linear infinite;
   pointer-events: none;
-  z-index: 100;
+  z-index: -1;
   will-change: transform;
 }
 
