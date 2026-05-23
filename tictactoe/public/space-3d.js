@@ -40,24 +40,69 @@
     return texture;
   }
 
-  // Create gorgeous cinematic out-of-focus bokeh glare texture (soft edge, airy core, subtle chromatic ring)
+  // Cinematic multi-layer DSLR bokeh disc texture
+  // 4 layers: hollow aperture ring + chromatic fringe, warm catseye catch-light,
+  // anamorphic horizontal streak, inner Newton's interference ring
   function createWeatherSphereTexture() {
+    const S = 128;
     const canvas = document.createElement('canvas');
-    canvas.width = 64; // higher resolution for beautiful smooth borders
-    canvas.height = 64;
+    canvas.width = S;
+    canvas.height = S;
     const ctx = canvas.getContext('2d');
-    
-    // Smooth radial gradient for a photorealistic camera lens bokeh ring
-    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.04)');     // Very soft translucent center
-    gradient.addColorStop(0.72, 'rgba(235, 245, 255, 0.22)');   // Light airy inner body
-    gradient.addColorStop(0.88, 'rgba(215, 238, 255, 0.70)');  // Distinct delicate bokeh bright edge ring
-    gradient.addColorStop(0.95, 'rgba(180, 212, 255, 0.38)');  // Chromatic blue-shifted edge bleed
-    gradient.addColorStop(1.0, 'rgba(0, 0, 0, 0)');            // Perfectly smooth transparent fade-out
-    
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 64, 64);
-    
+    const cx = S / 2, cy = S / 2, r = S / 2;
+
+    // ── Layer 1: Hollow-centre bokeh disc with crisp aperture ring ────────────
+    // Real out-of-focus light: dark hollow interior, very bright sharp ring edge
+    const disc = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    disc.addColorStop(0.00, 'rgba(190, 215, 255, 0.00)'); // hollow dark core
+    disc.addColorStop(0.48, 'rgba(190, 215, 255, 0.01)'); // barely-there inner body
+    disc.addColorStop(0.74, 'rgba(210, 232, 255, 0.10)'); // building luminance
+    disc.addColorStop(0.84, 'rgba(240, 250, 255, 0.65)'); // crisp bright aperture ring
+    disc.addColorStop(0.90, 'rgba(200, 230, 255, 0.85)'); // peak ring brightness
+    disc.addColorStop(0.94, 'rgba(160, 205, 255, 0.50)'); // cyan chromatic fringe
+    disc.addColorStop(0.98, 'rgba(120, 170, 255, 0.15)'); // blue outer halo
+    disc.addColorStop(1.00, 'rgba(  0,   0,   0, 0.00)'); // clean transparent edge
+    ctx.fillStyle = disc;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── Layer 2: Warm off-centre catseye catch-light ──────────────────────────
+    // Cinema bokeh always has an asymmetric warm specular reflection offset from centre
+    const catchX = cx - r * 0.20;
+    const catchY = cy - r * 0.20;
+    const catchR = r * 0.26;
+    const catch_ = ctx.createRadialGradient(catchX, catchY, 0, catchX, catchY, catchR);
+    catch_.addColorStop(0.00, 'rgba(255, 248, 220, 0.60)'); // warm white specular core
+    catch_.addColorStop(0.45, 'rgba(255, 240, 190, 0.22)'); // warm glow
+    catch_.addColorStop(1.00, 'rgba(  0,   0,   0, 0.00)'); // smooth fade
+    ctx.fillStyle = catch_;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── Layer 3: Anamorphic horizontal lens streak ────────────────────────────
+    // High-end anamorphic cinema lenses produce a thin horizontal blue streak
+    const streak = ctx.createLinearGradient(0, cy, S, cy);
+    streak.addColorStop(0.00, 'rgba( 80, 160, 255, 0.00)');
+    streak.addColorStop(0.25, 'rgba(100, 180, 255, 0.06)');
+    streak.addColorStop(0.50, 'rgba(160, 215, 255, 0.18)'); // peak at center
+    streak.addColorStop(0.75, 'rgba(100, 180, 255, 0.06)');
+    streak.addColorStop(1.00, 'rgba( 80, 160, 255, 0.00)');
+    ctx.fillStyle = streak;
+    ctx.fillRect(0, cy - 1.5, S, 3); // 3px-tall narrow horizontal band
+
+    // ── Layer 4: Inner Newton's interference ring ─────────────────────────────
+    // Subtle concentric band ~60% radius — gives the disc physical depth
+    const newton = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r * 0.66);
+    newton.addColorStop(0.0, 'rgba(180, 215, 255, 0.00)');
+    newton.addColorStop(0.5, 'rgba(200, 228, 255, 0.09)');
+    newton.addColorStop(1.0, 'rgba(180, 215, 255, 0.00)');
+    ctx.fillStyle = newton;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
     return texture;
