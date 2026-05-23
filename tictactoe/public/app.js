@@ -445,7 +445,7 @@ function app() {
       
       this[loadingProp] = true;
       try {
-        const res = await fetch(endpoint, {
+        const res = await fetch((window.BACKEND_URL || '') + endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -480,7 +480,7 @@ function app() {
         const guestPassword = Math.random().toString(36).substring(2, 15);
         
         // Auto-register guest account
-        const res = await fetch('/api/register', {
+        const res = await fetch((window.BACKEND_URL || '') + '/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -534,7 +534,7 @@ function app() {
     
     async handleGoogleCallback(response) {
       try {
-        const res = await fetch('/api/auth/google', {
+        const res = await fetch((window.BACKEND_URL || '') + '/api/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -570,7 +570,7 @@ function app() {
     
     async handleFacebookCallback(authResponse) {
       try {
-        const res = await fetch('/api/auth/facebook', {
+        const res = await fetch((window.BACKEND_URL || '') + '/api/auth/facebook', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -1193,7 +1193,7 @@ function app() {
     
     async fetchLeaderboard() {
       try {
-        const res = await fetch('/api/leaderboard');
+        const res = await fetch((window.BACKEND_URL || '') + '/api/leaderboard');
         this.leaderboard = await res.json();
       } catch (e) {
         console.error('Failed to fetch leaderboard', e);
