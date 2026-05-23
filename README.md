@@ -8,8 +8,7 @@
 
 * **Static Frontend**: Hosted on **Cloudflare Pages** for ultra-low latency global CDN delivery.
 * **Persistent Backend**: Hosted on **Render** (Free Tier Web Service) for WebSocket handling, lobbies, and database synchronization.
-* **Live Server**: [https://tictactoe-multiplayer-nrpb.onrender.com/](https://tictactoe-multiplayer-nrpb.onrender.com/)
-* **Health Check**: [https://tictactoe-multiplayer-nrpb.onrender.com/health](https://tictactoe-multiplayer-nrpb.onrender.com/health)
+* **Live App**: [https://tic-tac-toe-space.pages.dev](https://tic-tac-toe-space.pages.dev)
 
 ---
 
@@ -55,19 +54,10 @@ Here is a visual showcase of the premium, celestial interface you will experienc
 
 > [!CAUTION]
 > ### 🛡️ Critical Security Warning for Public Repositories
-> Since this repository is public, **NEVER** hardcode or commit actual credentials, passwords, or secrets (such as your private MongoDB Atlas connection strings or API keys) directly inside your codebase or documentation.
-> - **Local Development**: Keep all credentials confined inside a local `.env` file. This file is safely listed in `.gitignore` and will never be pushed to your public GitHub repository.
-> - **Production Deployment**: Inject your actual secret keys dynamically via your hosting provider's dashboard (e.g. Render Dashboard under environment variables, or Cloudflare Pages secrets).
-
-To run the application locally or in production, configure the following variables inside your private `.env` file:
-
-| Variable | Description | Default / Fallback |
-|---|---|---|
-| `MONGODB_URI` | MongoDB Atlas cluster connection string | Falls back to local `data/users.json` |
-| `RABBITMQ_URL` | CloudAMQP connection URL | Falls back to in-process memory queue |
-| `REDIS_URL` | Redis connection URL for cross-node sockets | Falls back to local in-memory Maps |
-| `ALLOWED_ORIGINS` | Comma-separated CORS allowed domains (e.g. your Cloudflare Pages URL) | Defaults to `*` in development |
-| `NODE_ENV` | Environment mode (`production` or `development`) | `development` |
+> Since this repository is public, **NEVER** hardcode or commit actual credentials, passwords, or secrets directly inside your codebase or documentation.
+> - **Local Development**: Keep all credentials confined inside a local `.env` file (listed in `.gitignore`).
+> - **Production Deployment**: Inject secrets dynamically via your hosting provider's dashboard (e.g. Render Dashboard or Cloudflare Pages secrets).
+> - See `.env.example` inside `tictactoe/` for the list of required variables.
 
 ---
 
