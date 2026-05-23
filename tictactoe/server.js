@@ -585,7 +585,15 @@ server.on('close', () => {
 });
 
 // ── HEALTH CHECK ──────────────────────────────────────────────────────
-app.get('/health', (_, res) => res.json({ status: 'ok', uptime: process.uptime() }));
+app.get('/health', (_, res) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    database: useDB() ? 'connected' : 'disconnected (file-fallback)',
+    redis: redisClient.isReady() ? 'connected' : 'disconnected',
+    rabbitmq: queue.isConnected() ? 'connected' : 'disconnected (in-process fallback)'
+  });
+});
 
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;

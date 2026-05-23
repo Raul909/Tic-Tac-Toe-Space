@@ -73,4 +73,8 @@ async function publish(msg) {
   }
 }
 
-module.exports = { connect, publish };
+module.exports = {
+  connect,
+  publish,
+  isConnected: () => channel !== null
+};
