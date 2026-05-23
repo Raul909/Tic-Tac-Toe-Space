@@ -46,7 +46,7 @@ class SoundManager {
 
     const sound = packs[this.currentPack] || packs.scifi;
     if (sound) {
-      sound.forEach(s => this.playTone(s.freq, s.type, s.duration, s.delay, s.volume));
+      sound.forEach(s => this.playTone(s.freq, s.type, s.duration, s.delay, s.volume, s.endFreq));
     }
   }
 
@@ -78,6 +78,8 @@ class SoundManager {
         return [{ freq: 200, type: 'sawtooth', duration: 0.4, delay: 0, volume: 0.1 }];
       case 'error':
         return [{ freq: 150, type: 'sawtooth', duration: 0.2, delay: 0, volume: 0.2 }];
+      case 'zip':
+        return [{ freq: 150, endFreq: 2400, type: 'sawtooth', duration: 0.45, delay: 0, volume: 0.15 }];
       default:
         return [];
     }
@@ -111,6 +113,8 @@ class SoundManager {
         return [{ freq: 300, type: 'square', duration: 0.3, delay: 0, volume: 0.15 }];
       case 'error':
         return [{ freq: 200, type: 'square', duration: 0.15, delay: 0, volume: 0.2 }];
+      case 'zip':
+        return [{ freq: 120, endFreq: 1800, type: 'square', duration: 0.38, delay: 0, volume: 0.15 }];
       default:
         return [];
     }
@@ -139,6 +143,8 @@ class SoundManager {
         return [{ freq: 500, type: 'sine', duration: 0.2, delay: 0, volume: 0.1 }];
       case 'error':
         return [{ freq: 250, type: 'sine', duration: 0.15, delay: 0, volume: 0.15 }];
+      case 'zip':
+        return [{ freq: 250, endFreq: 1400, type: 'sine', duration: 0.52, delay: 0, volume: 0.18 }];
       default:
         return [];
     }
@@ -160,12 +166,14 @@ class SoundManager {
         return [{ freq: 700, type: 'sine', duration: 0.15, delay: 0, volume: 0.08 }];
       case 'error':
         return [{ freq: 300, type: 'sine', duration: 0.1, delay: 0, volume: 0.1 }];
+      case 'zip':
+        return [{ freq: 500, endFreq: 950, type: 'sine', duration: 0.22, delay: 0, volume: 0.08 }];
       default:
         return [];
     }
   }
 
-  playTone(freq, type, duration, delay = 0, volume = 0.1) {
+  playTone(freq, type, duration, delay = 0, volume = 0.1, endFreq = null) {
     if (this.muted || !this.audioCtx) return;
 
     const osc = this.audioCtx.createOscillator();
@@ -178,6 +186,10 @@ class SoundManager {
 
     osc.type = type;
     osc.frequency.setValueAtTime(freq, startTime);
+    if (endFreq) {
+      // Perform a smooth exponential sweep over the sound duration
+      osc.frequency.exponentialRampToValueAtTime(endFreq, startTime + duration);
+    }
 
     gainNode.gain.setValueAtTime(volume, startTime);
     gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);

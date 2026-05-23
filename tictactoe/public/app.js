@@ -870,6 +870,35 @@ function app() {
 
       const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 
+      // Dynamic styling and visual transitions matching each sound pack profile
+      const soundPack = (this.user && this.user.profile && this.user.profile.soundPack) || 'scifi';
+      let colors = { start: '#00d4ff', mid: '#00ffff', end: '#00d4ff' };
+      let transitionStyle = 'stroke-dashoffset 0.45s ease-out';
+
+      if (soundPack === 'retro') {
+        colors = { start: '#ff003c', mid: '#ffbb00', end: '#ff003c' }; // retro pixel red/orange
+        transitionStyle = 'stroke-dashoffset 0.38s steps(12, end)'; // blocky arcade sweep
+      } else if (soundPack === 'realistic') {
+        colors = { start: '#ff9000', mid: '#ffd700', end: '#ff9000' }; // physical golden solar ray
+        transitionStyle = 'stroke-dashoffset 0.52s cubic-bezier(0.25, 0.8, 0.25, 1)';
+      } else if (soundPack === 'minimal') {
+        colors = { start: '#ffffff', mid: '#d1d5db', end: '#ffffff' }; // sleek silver-white strip
+        transitionStyle = 'stroke-dashoffset 0.22s cubic-bezier(0.1, 0.9, 0.2, 1)'; // ultra-fast snap
+      }
+
+      // Update neonGradient colors in-place
+      const stop0 = svg.querySelector('#neonGradient stop:first-child');
+      const stop1 = svg.querySelector('#neonGradient stop:nth-child(2)');
+      const stop2 = svg.querySelector('#neonGradient stop:last-child');
+      if (stop0 && stop1 && stop2) {
+        stop0.style.stopColor = colors.start;
+        stop1.style.stopColor = colors.mid;
+        stop2.style.stopColor = colors.end;
+      }
+
+      // Dynamic color for drop-shadow resolving (currentColor)
+      svgLine.style.color = colors.mid;
+
       svgLine.setAttribute('x1', x1);
       svgLine.setAttribute('y1', y1);
       svgLine.setAttribute('x2', x1);
@@ -879,10 +908,15 @@ function app() {
 
       svg.classList.add('active');
 
+      // Play the custom zipping sound!
+      if (window.SoundManager) {
+        window.SoundManager.play('zip');
+      }
+
       requestAnimationFrame(() => {
         svgLine.setAttribute('x2', x2);
         svgLine.setAttribute('y2', y2);
-        svgLine.style.transition = 'stroke-dashoffset 0.6s ease-out';
+        svgLine.style.transition = transitionStyle;
         svgLine.style.strokeDashoffset = '0';
       });
     },
