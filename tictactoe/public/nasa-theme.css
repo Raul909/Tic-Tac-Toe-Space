@@ -1,40 +1,195 @@
-/* NASA-Style Space UI Theme */
-@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&display=swap');
+/*
+ * nasa-theme.css — Space HUD Design System
+ * ==========================================
+ * Sections:
+ *   1. Design Tokens (CSS Custom Properties)
+ *   2. Font Import
+ *   3. Base / Reset
+ *   4. Layout Utilities
+ *   5. Glass & Panel Components
+ *   6. Input Fields
+ *   7. Telemetry / Stat Pills
+ *   8. Game Board — 3D Board & Cells
+ *   9. Player & Waiting Panels
+ *  10. Space Gallery
+ *  11. Animations & Keyframes
+ *  12. Scan Line
+ *  13. HUD Button System (base → variants)
+ *  14. Accessibility Modes
+ *  15. Responsive / Media Queries
+ */
 
+/* ─────────────────────────────────────────────────────────────────────────
+   1. DESIGN TOKENS
+   ───────────────────────────────────────────────────────────────────────── */
 :root {
-  --nasa-blue: #00d4ff;
-  --mars-orange: #ff6b35;
-  --earth-teal: #4dffdb;
-  --deep-space: #000510;
-  --hud-border: rgba(0, 212, 255, 0.5); /* Increased visibility */
-  --glass-bg: rgba(0, 5, 16, 0.85); /* Increased opacity for readability */
+  /* Colour palette */
+  --c-nasa:        #00d4ff;
+  --c-earth:       #4dffdb;
+  --c-mars:        #ff6b35;
+  --c-space:       #000510;
+  --c-purple:      #a855f7;
+
+  /* Semantic aliases */
+  --nasa-blue:     var(--c-nasa);
+  --mars-orange:   var(--c-mars);
+  --earth-teal:    var(--c-earth);
+  --deep-space:    var(--c-space);
+
+  /* Surface & border */
+  --hud-border:    rgba(0, 212, 255, 0.45);
+  --glass-bg:      rgba(0, 5, 16, 0.85);
+  --glass-blur:    15px;
+
+  /* Transition presets — never use "transition: all" */
+  --t-fast:        150ms ease;
+  --t-base:        220ms ease;
+  --t-slow:        350ms ease;
+  --t-ease-out:    cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-/* Override base typography */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   2. FONT IMPORT
+   ───────────────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Space+Mono&display=swap');
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   3. BASE / RESET
+   ───────────────────────────────────────────────────────────────────────── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   font-family: 'Space Mono', monospace;
-  background: var(--deep-space);
+  background: var(--c-space);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, .brand, .lobby-section-title {
+h1, h2, h3,
+.brand,
+.lobby-section-title {
   font-family: 'Exo 2', sans-serif;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  text-shadow: 0 0 15px rgba(0, 212, 255, 0.5); /* Added glow */
+  text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
 }
 
-/* NASA Corner Brackets */
+/* GPU-acceleration hint for interactive elements */
+button,
+a,
+[x-on\:click] {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   4. LAYOUT UTILITIES
+   ───────────────────────────────────────────────────────────────────────── */
+[x-cloak] { display: none !important; }
+
+#three-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.content-layer {
+  position: relative;
+  z-index: 1;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Loading screen */
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--c-space);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity var(--t-slow);
+}
+
+#loading-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Fireworks / FX canvas */
+#fw-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   5. GLASS & PANEL COMPONENTS
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Base glassmorphism ── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* ── Corner bracket decoration ── */
+.nasa-bracket {
+  position: relative;
+}
+
+.nasa-bracket::before,
+.nasa-bracket::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--c-nasa);
+  pointer-events: none;
+}
+
+.nasa-bracket::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.nasa-bracket::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+/* ── NASA panel (heavier variant with glow) ── */
 .nasa-panel {
   position: relative;
   border: 1px solid var(--hud-border);
   background: var(--glass-bg);
-  backdrop-filter: blur(20px); /* Increased blur */
-  box-shadow: 0 0 25px rgba(0, 212, 255, 0.15); /* Added outer glow */
-  transition: box-shadow 0.3s ease;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 0 25px rgba(0, 212, 255, 0.15);
+  transition: box-shadow var(--t-base);
 }
 
 .nasa-panel:hover {
-  box-shadow: 0 0 35px rgba(0, 212, 255, 0.25);
+  box-shadow: 0 0 35px rgba(0, 212, 255, 0.28);
 }
 
 .nasa-panel::before,
@@ -43,8 +198,9 @@ h1, h2, h3, .brand, .lobby-section-title {
   position: absolute;
   width: 20px;
   height: 20px;
-  border: 2px solid var(--nasa-blue);
-  box-shadow: 0 0 10px var(--nasa-blue); /* Glowing corners */
+  border: 2px solid var(--c-nasa);
+  box-shadow: 0 0 10px var(--c-nasa);
+  pointer-events: none;
 }
 
 .nasa-panel::before {
@@ -61,591 +217,636 @@ h1, h2, h3, .brand, .lobby-section-title {
   border-bottom: none;
 }
 
-/* Mission Control Label */
+/* ── Mission control label ── */
 .mission-label {
   font-family: 'Exo 2', sans-serif;
   font-size: 0.75rem;
   letter-spacing: 0.3em;
-  color: var(--nasa-blue);
+  color: var(--c-nasa);
   text-align: center;
   margin-bottom: 1rem;
-  opacity: 1; /* Full opacity */
-  text-shadow: 0 0 5px var(--nasa-blue);
+  text-shadow: 0 0 5px var(--c-nasa);
 }
 
-/* Auth Screen Styling */
-.auth-box {
-  border: 1px solid var(--hud-border) !important;
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(20px);
-  position: relative;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-}
-
-/* Buttons - Mission Style */
-button {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  position: relative;
-  overflow: hidden;
-}
-
-button:hover {
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
-  transform: translateY(-2px);
-  text-shadow: 0 0 8px currentColor;
-}
-
-button:active {
-  transform: translateY(0);
-}
-
-.btn-primary, .bg-nasa {
-  background: linear-gradient(135deg, var(--nasa-blue), #0099cc) !important;
-  border: 1px solid var(--nasa-blue) !important;
-  color: #000 !important;
-  font-weight: 700 !important;
-}
-
-.btn-primary:hover, .bg-nasa:hover {
-  filter: brightness(1.2);
-}
-
-/* Telemetry Stats */
-.stat-pill {
-  font-family: 'Exo 2', sans-serif !important;
-  border: 1px solid var(--hud-border) !important;
-  background: rgba(0, 212, 255, 0.1) !important;
-  letter-spacing: 0.15em;
-  box-shadow: inset 0 0 10px rgba(0, 212, 255, 0.1);
-}
-
-/* Game Screen Enhancements */
-#screen-game {
-  background: rgba(0, 5, 16, 0.9); /* Darker background for game */
-}
-
-/* Board - Targeting Grid */
-#board, .grid-cols-3 {
-  border: 1px solid var(--hud-border) !important;
-  background: rgba(0, 5, 16, 0.8) !important;
-  position: relative;
-  z-index: 1;
-  box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
-}
-
-.cell, .aspect-square {
-  border: 1px solid rgba(0, 212, 255, 0.3) !important;
-  background: rgba(0, 5, 16, 0.4) !important;
-  position: relative;
-  transition: all 0.2s;
-}
-
-.cell:hover, .aspect-square:hover:not(:disabled) {
-  background: rgba(0, 212, 255, 0.15) !important;
-  border-color: var(--nasa-blue) !important;
-  box-shadow: inset 0 0 15px rgba(0, 212, 255, 0.2);
-}
-
-/* Player Panels - Spacecraft Style */
-.player-panel {
-  border: 1px solid var(--hud-border) !important;
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(15px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-
-.pp-name {
-  font-family: 'Exo 2', sans-serif !important;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-size: 0.9rem !important;
-  text-shadow: 0 0 5px currentColor;
-}
-
-/* Waiting Screen */
-.waiting-card {
-  border: 1px solid var(--hud-border) !important;
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(20px);
-  box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
-}
-
-.room-code-display {
-  font-family: 'Exo 2', sans-serif !important;
-  letter-spacing: 0.5em !important;
-  color: var(--nasa-blue) !important;
-  text-shadow: 0 0 20px var(--nasa-blue), 0 0 40px var(--nasa-blue);
-  font-weight: 700;
-}
-
-/* Input Fields */
-input {
-  background: rgba(0, 10, 20, 0.8) !important;
-  border: 1px solid var(--hud-border) !important;
-  color: #fff !important;
-  font-family: 'Space Mono', monospace !important;
-  transition: all 0.3s;
-}
-
-input:focus {
-  border-color: var(--nasa-blue) !important;
-  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3) !important;
-  background: rgba(0, 15, 30, 0.9) !important;
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .nasa-panel::before,
-  .nasa-panel::after {
-    width: 15px;
-    height: 15px;
-    border-width: 1px;
-  }
-  
-  .mission-label {
-    font-size: 0.65rem;
-  }
-}
-
-/* 3D Board CSS transforms */
-.board-3d-container {
-  perspective: 1200px;
-  perspective-origin: 50% 50%;
-  padding: 1.5rem;
-  will-change: transform;
-}
-
-.board-3d {
-  transform-style: preserve-3d;
-  transform: rotateX(var(--tilt-y, 15deg)) rotateY(var(--tilt-x, -5deg)) translateZ(0);
-  transition: transform 0.1s ease-out, box-shadow 0.3s;
-  box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.6),
-    0 0 30px rgba(0, 212, 255, 0.15);
-}
-
-/* 3D Game Cells */
-.cell-3d {
-  transform-style: preserve-3d;
-  transform: translateZ(0px);
-  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s, background-color 0.2s !important;
-}
-
-.cell-3d:hover:not(:disabled) {
-  transform: translateZ(15px) !important;
-  box-shadow: 
-    0 15px 30px rgba(0, 212, 255, 0.3),
-    inset 0 0 12px rgba(0, 212, 255, 0.25) !important;
-  background: rgba(0, 212, 255, 0.15) !important;
-  border-color: var(--nasa-blue) !important;
-}
-
-.cell-3d:active:not(:disabled) {
-  transform: translateZ(5px) !important;
-}
-
-/* 3D Tactile Buttons */
-.btn-3d {
-  position: relative;
-  transition: all 0.1s ease;
-  transform: translateY(0);
-  box-shadow: 0 4px 0 var(--btn-shadow, #0088cc), 0 8px 16px rgba(0, 0, 0, 0.4);
-}
-
-.btn-3d:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 0 var(--btn-shadow, #0088cc), 0 10px 20px rgba(0, 212, 255, 0.15);
-}
-
-.btn-3d:active {
-  transform: translateY(4px);
-  box-shadow: 0 0 0 var(--btn-shadow, #0088cc), 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-/* Cybernetic Hologram Overlay panels */
+/* ── Cybernetic hologram panel ── */
 .glass-hologram {
   position: relative;
-  border: 1px solid rgba(0, 212, 255, 0.25) !important;
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(0, 5, 16, 0.85) 100%) !important;
-  box-shadow: 
-    inset 0 0 20px rgba(0, 212, 255, 0.1),
-    0 10px 30px rgba(0, 0, 0, 0.5) !important;
-  backdrop-filter: blur(20px);
-  position: relative;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
-}
-
-/* Buttons - Mission Style */
-button {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  position: relative;
   overflow: hidden;
-}
-
-button:hover {
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
-  transform: translateY(-2px);
-  text-shadow: 0 0 8px currentColor;
-}
-
-button:active {
-  transform: translateY(0);
-}
-
-.btn-primary, .bg-nasa {
-  background: linear-gradient(135deg, var(--nasa-blue), #0099cc) !important;
-  border: 1px solid var(--nasa-blue) !important;
-  color: #000 !important;
-  font-weight: 700 !important;
-}
-
-.btn-primary:hover, .bg-nasa:hover {
-  filter: brightness(1.2);
-}
-
-/* Telemetry Stats */
-.stat-pill {
-  font-family: 'Exo 2', sans-serif !important;
-  border: 1px solid var(--hud-border) !important;
-  background: rgba(0, 212, 255, 0.1) !important;
-  letter-spacing: 0.15em;
-  box-shadow: inset 0 0 10px rgba(0, 212, 255, 0.1);
-}
-
-/* Game Screen Enhancements */
-#screen-game {
-  background: rgba(0, 5, 16, 0.9); /* Darker background for game */
-}
-
-/* Board - Targeting Grid */
-#board, .grid-cols-3 {
-  border: 1px solid var(--hud-border) !important;
-  background: rgba(0, 5, 16, 0.8) !important;
-  position: relative;
-  z-index: 1;
-  box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
-}
-
-.cell, .aspect-square {
-  border: 1px solid rgba(0, 212, 255, 0.3) !important;
-  background: rgba(0, 5, 16, 0.4) !important;
-  position: relative;
-  transition: all 0.2s;
-}
-
-.cell:hover, .aspect-square:hover:not(:disabled) {
-  background: rgba(0, 212, 255, 0.15) !important;
-  border-color: var(--nasa-blue) !important;
-  box-shadow: inset 0 0 15px rgba(0, 212, 255, 0.2);
-}
-
-/* Player Panels - Spacecraft Style */
-.player-panel {
-  border: 1px solid var(--hud-border) !important;
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(15px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-
-.pp-name {
-  font-family: 'Exo 2', sans-serif !important;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-size: 0.9rem !important;
-  text-shadow: 0 0 5px currentColor;
-}
-
-/* Waiting Screen */
-.waiting-card {
-  border: 1px solid var(--hud-border) !important;
-  background: var(--glass-bg) !important;
-  backdrop-filter: blur(20px);
-  box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
-}
-
-.room-code-display {
-  font-family: 'Exo 2', sans-serif !important;
-  letter-spacing: 0.5em !important;
-  color: var(--nasa-blue) !important;
-  text-shadow: 0 0 20px var(--nasa-blue), 0 0 40px var(--nasa-blue);
-  font-weight: 700;
-}
-
-/* Input Fields */
-input {
-  background: rgba(0, 10, 20, 0.8) !important;
-  border: 1px solid var(--hud-border) !important;
-  color: #fff !important;
-  font-family: 'Space Mono', monospace !important;
-  transition: all 0.3s;
-}
-
-input:focus {
-  border-color: var(--nasa-blue) !important;
-  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3) !important;
-  background: rgba(0, 15, 30, 0.9) !important;
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .nasa-panel::before,
-  .nasa-panel::after {
-    width: 15px;
-    height: 15px;
-    border-width: 1px;
-  }
-  
-  .mission-label {
-    font-size: 0.65rem;
-  }
-}
-
-/* 3D Board CSS transforms */
-.board-3d-container {
-  perspective: 1200px;
-  perspective-origin: 50% 50%;
-  padding: 1.5rem;
-  will-change: transform;
-}
-
-.board-3d {
-  transform-style: preserve-3d;
-  transform: rotateX(var(--tilt-y, 15deg)) rotateY(var(--tilt-x, -5deg)) translateZ(0);
-  transition: transform 0.1s ease-out, box-shadow 0.3s;
-  box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.6),
-    0 0 30px rgba(0, 212, 255, 0.15);
-}
-
-/* 3D Game Cells */
-.cell-3d {
-  transform-style: preserve-3d;
-  transform: translateZ(0px);
-  transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s, background-color 0.2s !important;
-}
-
-.cell-3d:hover:not(:disabled) {
-  transform: translateZ(15px) !important;
-  box-shadow: 
-    0 15px 30px rgba(0, 212, 255, 0.3),
-    inset 0 0 12px rgba(0, 212, 255, 0.25) !important;
-  background: rgba(0, 212, 255, 0.15) !important;
-  border-color: var(--nasa-blue) !important;
-}
-
-.cell-3d:active:not(:disabled) {
-  transform: translateZ(5px) !important;
-}
-
-/* 3D Tactile Buttons */
-.btn-3d {
-  position: relative;
-  transition: all 0.1s ease;
-  transform: translateY(0);
-  box-shadow: 0 4px 0 var(--btn-shadow, #0088cc), 0 8px 16px rgba(0, 0, 0, 0.4);
-}
-
-.btn-3d:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 0 var(--btn-shadow, #0088cc), 0 10px 20px rgba(0, 212, 255, 0.15);
-}
-
-.btn-3d:active {
-  transform: translateY(4px);
-  box-shadow: 0 0 0 var(--btn-shadow, #0088cc), 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-/* Cybernetic Hologram Overlay panels */
-.glass-hologram {
-  position: relative;
   border: 1px solid rgba(0, 212, 255, 0.25) !important;
   background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(0, 5, 16, 0.85) 100%) !important;
-  box-shadow: 
-    inset 0 0 20px rgba(0, 212, 255, 0.1),
-    0 10px 30px rgba(0, 0, 0, 0.5) !important;
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
-  overflow: hidden;
+  box-shadow:
+    inset 0 0 20px rgba(0, 212, 255, 0.1),
+    0 10px 30px rgba(0, 0, 0, 0.5) !important;
 }
 
+/* Corner-tick overlay via pseudo — pointer-events off, no reflow */
 .glass-hologram::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: 
-    linear-gradient(to right, var(--nasa-blue) 2px, transparent 2px) 0 0,
-    linear-gradient(to bottom, var(--nasa-blue) 2px, transparent 2px) 0 0,
-    linear-gradient(to left, var(--nasa-blue) 2px, transparent 2px) 100% 0,
-    linear-gradient(to bottom, var(--nasa-blue) 2px, transparent 2px) 100% 0,
-    linear-gradient(to right, var(--nasa-blue) 2px, transparent 2px) 0 100%,
-    linear-gradient(to top, var(--nasa-blue) 2px, transparent 2px) 0 100%,
-    linear-gradient(to left, var(--nasa-blue) 2px, transparent 2px) 100% 100%,
-    linear-gradient(to top, var(--nasa-blue) 2px, transparent 2px) 100% 100%;
+  inset: 0;
+  background:
+    linear-gradient(to right,  var(--c-nasa) 2px, transparent 2px) 0   0,
+    linear-gradient(to bottom, var(--c-nasa) 2px, transparent 2px) 0   0,
+    linear-gradient(to left,   var(--c-nasa) 2px, transparent 2px) 100% 0,
+    linear-gradient(to bottom, var(--c-nasa) 2px, transparent 2px) 100% 0,
+    linear-gradient(to right,  var(--c-nasa) 2px, transparent 2px) 0   100%,
+    linear-gradient(to top,    var(--c-nasa) 2px, transparent 2px) 0   100%,
+    linear-gradient(to left,   var(--c-nasa) 2px, transparent 2px) 100% 100%,
+    linear-gradient(to top,    var(--c-nasa) 2px, transparent 2px) 100% 100%;
   background-repeat: no-repeat;
   background-size: 8px 8px;
   opacity: 0.8;
   pointer-events: none;
+  z-index: 0;
 }
 
-/* ── HUD FUTURISTIC BUTTON SYSTEM ────────────────────────────────────── */
-
-/* Base HUD button styling */
-.btn-hud {
+/* Ensure panel children sit above the corner-tick overlay */
+.glass-hologram > * {
   position: relative;
-  background: rgba(0, 212, 255, 0.04);
-  border: 1px solid rgba(0, 212, 255, 0.35);
-  color: #00d4ff;
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 700;
+  z-index: 1;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   6. INPUT FIELDS
+   ───────────────────────────────────────────────────────────────────────── */
+input,
+select,
+textarea {
+  background: rgba(0, 10, 20, 0.8) !important;
+  border: 1px solid var(--hud-border) !important;
+  color: #fff !important;
+  font-family: 'Space Mono', monospace !important;
+  /* Only transition the properties that actually change */
+  transition:
+    border-color var(--t-base),
+    box-shadow   var(--t-base),
+    background   var(--t-base);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--c-nasa) !important;
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3) !important;
+  background: rgba(0, 15, 30, 0.9) !important;
+  outline: none;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   7. TELEMETRY / STAT PILLS
+   ───────────────────────────────────────────────────────────────────────── */
+.stat-pill {
+  font-family: 'Exo 2', sans-serif !important;
+  border: 1px solid var(--hud-border) !important;
+  background: rgba(0, 212, 255, 0.1) !important;
   letter-spacing: 0.15em;
+  box-shadow: inset 0 0 10px rgba(0, 212, 255, 0.1);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   8. GAME BOARD — 3D BOARD & CELLS
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── 3D perspective container ── */
+.board-3d-container {
+  perspective: 1200px;
+  perspective-origin: 50% 50%;
+  padding: 1.5rem;
+  will-change: transform;
+}
+
+/* ── The board itself ── */
+.board-3d {
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tilt-y, 15deg)) rotateY(var(--tilt-x, -5deg)) translateZ(0);
+  /* Only the GPU-composited props */
+  transition: transform 80ms ease-out, box-shadow var(--t-base);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.6),
+    0 0 30px rgba(0, 212, 255, 0.15);
+}
+
+/* Board grid border (flat mode) */
+#board,
+.grid-cols-3 {
+  border: 1px solid var(--hud-border) !important;
+  background: rgba(0, 5, 16, 0.8) !important;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+}
+
+/* ── Cells (flat mode) ── */
+.cell,
+.aspect-square {
+  border: 1px solid rgba(0, 212, 255, 0.3) !important;
+  background: rgba(0, 5, 16, 0.4) !important;
+  position: relative;
+  transition:
+    background-color var(--t-fast),
+    border-color     var(--t-fast),
+    box-shadow       var(--t-fast);
+}
+
+.cell:hover,
+.aspect-square:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.15) !important;
+  border-color: var(--c-nasa) !important;
+  box-shadow: inset 0 0 15px rgba(0, 212, 255, 0.2);
+}
+
+/* ── 3D cells ── */
+.cell-3d {
+  transform-style: preserve-3d;
+  will-change: transform;
+  /* Only GPU-composited props in transition */
+  transition:
+    transform    180ms cubic-bezier(0.25, 1, 0.5, 1),
+    box-shadow   180ms ease,
+    background-color 100ms ease !important;
+}
+
+.cell-3d:hover:not(:disabled) {
+  transform: translateZ(15px) !important;
+  box-shadow:
+    0 15px 30px rgba(0, 212, 255, 0.3),
+    inset 0 0 12px rgba(0, 212, 255, 0.25) !important;
+  background: rgba(0, 212, 255, 0.15) !important;
+  border-color: var(--c-nasa) !important;
+}
+
+.cell-3d:active:not(:disabled) {
+  transform: translateZ(5px) !important;
+}
+
+/* Winning cell highlight */
+.winning-cell {
+  animation: winPulse 0.6s ease-in-out, winGlow 1s ease-in-out infinite !important;
+  background: rgba(0, 212, 255, 0.3) !important;
+  border-color: var(--c-nasa) !important;
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.8) !important;
+}
+
+/* Win-strike SVG line */
+#winning-line {
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+#winning-line.active {
+  opacity: 1;
+  animation: neonPulse 1.5s ease-in-out infinite;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   9. PLAYER & WAITING PANELS
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Player panels */
+.player-panel {
+  border: 1px solid var(--hud-border) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.pp-name {
+  font-family: 'Exo 2', sans-serif !important;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  overflow: hidden;
-  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: inset 0 0 12px rgba(0, 212, 255, 0.05);
+  font-size: 0.9rem !important;
+  text-shadow: 0 0 5px currentColor;
+}
+
+/* Waiting / lobby card */
+.waiting-card {
+  border: 1px solid var(--hud-border) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
+}
+
+.room-code-display {
+  font-family: 'Exo 2', sans-serif !important;
+  letter-spacing: 0.5em !important;
+  color: var(--c-nasa) !important;
+  font-weight: 700;
+  text-shadow: 0 0 20px var(--c-nasa), 0 0 40px var(--c-nasa);
+}
+
+/* Title glow class */
+.title-glow {
+  animation: titleGlow 3s ease-in-out infinite;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   10. SPACE GALLERY
+   ───────────────────────────────────────────────────────────────────────── */
+#space-gallery-canvas {
+  width: 100%;
+  height: 500px;
+  border-radius: 0.5rem;
+  cursor: grab;
+}
+
+#space-gallery-canvas:active {
+  cursor: grabbing;
+}
+
+.space-object-item {
+  padding: 0.75rem;
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast),
+    border-color     var(--t-fast);
+}
+
+.space-object-item:hover {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: rgba(0, 212, 255, 0.5);
+}
+
+.space-object-item.active {
+  background: rgba(0, 212, 255, 0.25);
+  border-color: var(--c-nasa);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   11. ANIMATIONS & KEYFRAMES
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Winning cell pulse */
+@keyframes winPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(0, 212, 255, 0);
+  }
+  25%, 75% {
+    transform: scale(1.1);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 50px rgba(0, 212, 255, 1);
+  }
+}
+
+/* Winning cell brightness flicker */
+@keyframes winGlow {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(2); }
+}
+
+/* Title ambient glow */
+@keyframes titleGlow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.8), 0 0 40px rgba(0, 212, 255, 0.4);
+  }
+  50% {
+    text-shadow:
+      0 0 30px rgba(0, 212, 255, 1),
+      0 0 60px rgba(0, 212, 255, 0.6),
+      0 0 80px rgba(77, 255, 219, 0.4);
+  }
+}
+
+/* Neon win-strike pulse */
+@keyframes neonPulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px var(--c-nasa))  drop-shadow(0 0 15px var(--c-nasa));
+  }
+  50% {
+    filter: drop-shadow(0 0 15px #00ffff) drop-shadow(0 0 25px #00ffff);
+  }
+}
+
+/* SVG strike-through draw */
+@keyframes drawLine {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0;    }
+}
+
+/* Victory emoji bounce */
+@keyframes victoryBounce {
+  0%, 100% { transform: scale(1)   rotate(0deg);  }
+  25%, 75% { transform: scale(1.2) rotate(-5deg); }
+  50%       { transform: scale(1.1) rotate(5deg);  }
+}
+
+/* Victory title shake */
+@keyframes victoryShake {
+  0%, 100%                      { transform: translateX(0);  }
+  10%, 30%, 50%, 70%, 90%       { transform: translateX(-5px); }
+  20%, 40%, 60%, 80%            { transform: translateX(5px);  }
+}
+
+/* HUD button light sweep — uses transform, not `left`, so no reflow */
+@keyframes hudSweep {
+  from { transform: translateX(-200%); }
+  to   { transform: translateX(200%);  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   12. SCAN LINE
+   ───────────────────────────────────────────────────────────────────────── */
+@keyframes scan {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(100vh); }
+}
+
+.scan-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 212, 255, 0.5), transparent);
+  /* Use transform for animation — GPU composited, zero layout cost */
+  animation: scan 8s linear infinite;
+  pointer-events: none;
+  z-index: 100;
+  will-change: transform;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   13. HUD BUTTON SYSTEM
+   ─────────────────────────────────────────────────────────────────────────
+   Class hierarchy:
+     .btn-hud                — base (cyan)
+     .btn-hud.btn-hud-primary  — teal-cyan gradient (main CTA)
+     .btn-hud.btn-hud-danger   — mars-orange (abort / logout)
+     .btn-hud.btn-hud-purple   — nebula-purple (tournament)
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Token overrides per variant (set on the element, read by base) ── */
+.btn-hud-primary {
+  --hud-color:        #4dffdb;
+  --hud-border-c:     #4dffdb;
+  --hud-bg:           rgba(0, 212, 255, 0.15);
+  --hud-sweep:        rgba(77, 255, 219, 0.45);
+  --hud-glow:         rgba(77, 255, 219, 0.55);
+  --hud-glow-in:      rgba(77, 255, 219, 0.35);
+}
+
+.btn-hud-danger {
+  --hud-color:        #ff6b35;
+  --hud-border-c:     rgba(255, 107, 53, 0.4);
+  --hud-bg:           rgba(255, 107, 53, 0.05);
+  --hud-sweep:        rgba(255, 107, 53, 0.35);
+  --hud-glow:         rgba(255, 107, 53, 0.45);
+  --hud-glow-in:      rgba(255, 107, 53, 0.35);
+}
+
+.btn-hud-purple {
+  --hud-color:        #c084fc;
+  --hud-border-c:     rgba(168, 85, 247, 0.45);
+  --hud-bg:           rgba(168, 85, 247, 0.05);
+  --hud-sweep:        rgba(168, 85, 247, 0.35);
+  --hud-glow:         rgba(168, 85, 247, 0.5);
+  --hud-glow-in:      rgba(168, 85, 247, 0.35);
+}
+
+/* ── Base button ── */
+.btn-hud {
+  /* Layout */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
   cursor: pointer;
   outline: none;
+
+  /* Typography */
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+
+  /* Colours — fall back to base cyan if no variant tokens set */
+  color:            var(--hud-color,    var(--c-nasa));
+  background:       var(--hud-bg,       rgba(0, 212, 255, 0.04));
+  border: 1px solid var(--hud-border-c, rgba(0, 212, 255, 0.35));
+  box-shadow: inset 0 0 12px rgba(0, 212, 255, 0.05);
+
+  /* Transition only GPU-composited / cheap props */
+  transition:
+    background-color var(--t-base),
+    border-color     var(--t-base),
+    box-shadow       var(--t-base),
+    color            var(--t-base),
+    text-shadow      var(--t-base),
+    transform        var(--t-fast);
+
+  /* GPU layer promotion */
+  will-change: transform;
 }
 
-/* Light sweep effect on hover */
+/* ── Sweep shimmer — transform-based (no layout reflow) ── */
 .btn-hud::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: -150%;
-  width: 100%;
-  height: 100%;
+  inset: 0;
+  /* Width wider than container so it fully enters/exits */
+  width: 60%;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(0, 212, 255, 0.25),
+    var(--hud-sweep, rgba(0, 212, 255, 0.25)),
     transparent
   );
-  transition: all 0.75s ease;
+  /* Start offscreen left */
+  transform: translateX(-200%);
   pointer-events: none;
+  /* No transition here — animation handles it on hover */
 }
 
 .btn-hud:hover::before {
-  left: 150%;
+  animation: hudSweep 0.65s ease forwards;
 }
 
+/* ── Hover state ── */
 .btn-hud:hover:not(:disabled) {
-  background: rgba(0, 212, 255, 0.15);
-  border-color: #00d4ff;
-  box-shadow: 
-    0 0 22px rgba(0, 212, 255, 0.4),
-    inset 0 0 15px rgba(0, 212, 255, 0.25);
-  text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
-  transform: translateY(-2px);
+  background:  var(--hud-bg,    rgba(0, 212, 255, 0.15));
+  border-color: var(--hud-color, var(--c-nasa));
+  box-shadow:
+    0 0 22px var(--hud-glow,    rgba(0, 212, 255, 0.4)),
+    inset 0 0 14px var(--hud-glow-in, rgba(0, 212, 255, 0.22));
+  text-shadow: 0 0 10px var(--hud-color, var(--c-nasa));
   color: #ffffff;
+  transform: translateY(-2px);
 }
 
-.btn-hud:active:not(:disabled) {
-  transform: translateY(1px);
-  box-shadow: 
-    0 0 10px rgba(0, 212, 255, 0.2),
-    inset 0 0 12px rgba(0, 212, 255, 0.4);
-}
-
-.btn-hud:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-/* Primary/Launch HUD Button (Teal-cyan matrix gradient) */
-.btn-hud-primary {
-  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2) 0%, rgba(77, 255, 219, 0.15) 100%);
-  border: 1px solid #4dffdb;
-  color: #4dffdb;
-  text-shadow: 0 0 8px rgba(77, 255, 219, 0.6);
-  box-shadow: 
-    0 0 15px rgba(0, 212, 255, 0.15),
-    inset 0 0 10px rgba(0, 212, 255, 0.1);
-}
-
-.btn-hud-primary::before {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(77, 255, 219, 0.45),
-    transparent
-  );
-}
-
+/* Primary: slightly stronger hover glow */
 .btn-hud-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(0, 212, 255, 0.35) 0%, rgba(77, 255, 219, 0.3) 100%);
   border-color: #ffffff;
-  box-shadow: 
-    0 0 25px rgba(77, 255, 219, 0.55),
-    0 0 12px rgba(0, 212, 255, 0.35),
-    inset 0 0 18px rgba(77, 255, 219, 0.4);
-  text-shadow: 0 0 15px rgba(255, 255, 255, 0.95);
-  color: #ffffff;
+  box-shadow:
+    0 0 28px rgba(77, 255, 219, 0.55),
+    0 0 14px rgba(0, 212, 255, 0.35),
+    inset 0 0 18px rgba(77, 255, 219, 0.35);
+  text-shadow: 0 0 16px rgba(255, 255, 255, 0.9);
 }
 
-/* Danger / Abort HUD Button (Mars Orange theme) */
-.btn-hud-danger {
-  background: rgba(255, 107, 53, 0.05);
-  border: 1px solid rgba(255, 107, 53, 0.4);
-  color: #ff6b35;
-  text-shadow: 0 0 6px rgba(255, 107, 53, 0.5);
-  box-shadow: inset 0 0 10px rgba(255, 107, 53, 0.05);
+/* ── Active / press ── */
+.btn-hud:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    0 0 10px var(--hud-glow-in, rgba(0, 212, 255, 0.2)),
+    inset 0 0 12px var(--hud-glow-in, rgba(0, 212, 255, 0.35));
 }
 
-.btn-hud-danger::before {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 107, 53, 0.3),
-    transparent
-  );
+/* ── Disabled ── */
+.btn-hud:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  animation: none !important;
 }
 
-.btn-hud-danger:hover:not(:disabled) {
-  background: rgba(255, 107, 53, 0.18);
-  border-color: #ff6b35;
-  box-shadow: 
-    0 0 25px rgba(255, 107, 53, 0.45),
-    inset 0 0 15px rgba(255, 107, 53, 0.35);
-  text-shadow: 0 0 12px rgba(255, 107, 53, 0.8);
-  color: #ffffff;
+/* ── 3D tactile buttons (legacy / landing page) ── */
+.btn-3d {
+  position: relative;
+  will-change: transform;
+  transform: translateY(0);
+  box-shadow: 0 4px 0 var(--btn-shadow, #0088cc), 0 8px 16px rgba(0, 0, 0, 0.4);
+  transition:
+    transform   80ms ease,
+    box-shadow  80ms ease;
 }
 
-/* Tournament HUD Button (Nebula Purple theme) */
-.btn-hud-purple {
-  background: rgba(168, 85, 247, 0.05);
-  border: 1px solid rgba(168, 85, 247, 0.45);
-  color: #c084fc;
-  text-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
-  box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.05);
+.btn-3d:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--btn-shadow, #0088cc), 0 10px 20px rgba(0, 212, 255, 0.15);
 }
 
-.btn-hud-purple::before {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(168, 85, 247, 0.3),
-    transparent
-  );
+.btn-3d:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--btn-shadow, #0088cc), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-.btn-hud-purple:hover:not(:disabled) {
-  background: rgba(168, 85, 247, 0.2);
-  border-color: #d8b4fe;
-  box-shadow: 
-    0 0 25px rgba(168, 85, 247, 0.5),
-    inset 0 0 15px rgba(168, 85, 247, 0.35);
-  text-shadow: 0 0 12px rgba(216, 180, 254, 0.85);
-  color: #ffffff;
+
+/* ─────────────────────────────────────────────────────────────────────────
+   14. ACCESSIBILITY MODES
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* High-contrast mode */
+body.high-contrast {
+  --c-nasa:  #00ffff;
+  --c-earth: #00ff00;
+  --c-mars:  #ff0000;
+}
+
+body.high-contrast .glass {
+  background: rgba(0, 0, 0, 0.95);
+  border: 2px solid #00ffff;
+}
+
+/* Colour-blind mode */
+body.colorblind .text-mars        { color: #0066ff !important; }
+body.colorblind .text-earth       { color: #ffaa00 !important; }
+body.colorblind .border-mars\/50  { border-color: rgba(0, 102, 255, 0.5) !important; }
+body.colorblind .border-earth\/50 { border-color: rgba(255, 170, 0, 0.5)  !important; }
+
+/* Touch targets — Apple HIG 44 pt minimum */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  .space-object-item,
+  .btn-hud {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .space-object-item {
+    padding: 1rem !important;
+  }
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   15. RESPONSIVE / MEDIA QUERIES
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Tablet */
+@media (max-width: 768px) {
+  body { font-size: 14px; }
+
+  h1 { font-size: 1.5rem  !important; }
+  h2 { font-size: 1.25rem !important; }
+
+  .glass { padding: 1rem !important; }
+
+  button:not(.aspect-square) {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.875rem !important;
+  }
+
+  .nasa-panel::before,
+  .nasa-panel::after {
+    width: 15px;
+    height: 15px;
+    border-width: 1px;
+  }
+
+  .mission-label { font-size: 0.65rem; }
+
+  #space-gallery-3d  { height: 300px !important; }
+  .space-object-item { padding: 0.5rem !important; font-size: 0.875rem !important; }
+
+  .grid-cols-3 { gap: 0.5rem !important; }
+
+  /* Hide expensive scan line on mid-range screens */
+  .scan-line { display: none; }
+
+  /* Reduce backdrop blur on tablet for performance */
+  .glass,
+  .glass-hologram {
+    --glass-blur: 8px;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+  h1 { font-size: 1.25rem !important; }
+
+  .glass { padding: 0.75rem !important; }
+
+  button:not(.aspect-square) {
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  #space-gallery-3d { height: 250px !important; }
+
+  input { font-size: 14px !important; /* prevent iOS auto-zoom */ }
+
+  .nasa-bracket::before,
+  .nasa-bracket::after {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Three-canvas scale on mobile */
+@media (max-width: 640px) {
+  #three-canvas { transform: scale(1.1); }
 }

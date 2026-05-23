@@ -8,7 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <!-- Google Identity Services — needed for loginWithGoogle() in app.js -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link rel="stylesheet" href="/mobile-optimizations.css">
@@ -505,12 +505,28 @@
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="border-b border-gray-700 text-xs text-gray-400 tracking-wider">
-              <th class="p-3">RANK</th>
-              <th class="p-3">CALLSIGN</th>
-              <th class="p-3 text-right">WINS</th>
-                <td class="p-3 text-right font-mono text-earth" x-text="player.draws"></td>
+              <th class="p-3 text-nasa">RANK</th>
+              <th class="p-3 text-nasa">CALLSIGN</th>
+              <th class="p-3 text-right text-earth">WINS</th>
+              <th class="p-3 text-right text-mars">LOSSES</th>
+              <th class="p-3 text-right text-gray-400">DRAWS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="(player, index) in leaderboard" :key="index">
+              <tr class="border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors">
+                <td class="p-3 font-bold text-nasa" x-text="index + 1"></td>
+                <td class="p-3 font-mono" x-text="player.name"></td>
+                <td class="p-3 text-right font-mono text-earth" x-text="player.wins"></td>
+                <td class="p-3 text-right font-mono text-mars" x-text="player.losses"></td>
+                <td class="p-3 text-right font-mono text-gray-400" x-text="player.draws"></td>
               </tr>
             </template>
+            <tr x-show="leaderboard.length === 0">
+              <td colspan="5" class="p-8 text-center text-gray-500 font-mono">
+                NO TELEMETRY RECORDED YET
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
