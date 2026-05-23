@@ -724,11 +724,12 @@
       canvas.width = 32;
       canvas.height = 32;
       const ctx = canvas.getContext('2d');
-      const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-      gradient.addColorStop(0, 'rgba(255,255,255,1)');
-      gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
-      gradient.addColorStop(0.5, 'rgba(255,255,255,0.3)');
-      gradient.addColorStop(1, 'rgba(255,255,255,0)');
+      // Specular light source offset to (11, 11) for beautiful 3D volumetrics close to eye
+      const gradient = ctx.createRadialGradient(11, 11, 1, 16, 16, 15);
+      gradient.addColorStop(0, 'rgba(255,255,255,1)'); // Specular highlight
+      gradient.addColorStop(0.5, 'rgba(210,230,255,0.95)'); // Translucent midtone
+      gradient.addColorStop(0.85, 'rgba(120,160,255,0.6)'); // Volumetric shadow
+      gradient.addColorStop(1, 'rgba(0,0,0,0)'); // Transparent edge
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 32, 32);
       const texture = new THREE.CanvasTexture(canvas);

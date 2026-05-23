@@ -22,7 +22,7 @@
   renderer.outputEncoding = THREE.sRGBEncoding;
   camera.position.set(0, 25, 90);
   
-  // Create circular texture for round stars
+  // Create circular texture for round stars (sharp core with tight edge)
   function createCircleTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 32;
@@ -30,9 +30,28 @@
     const ctx = canvas.getContext('2d');
     const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
     gradient.addColorStop(0, 'rgba(255,255,255,1)');
-    gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
-    gradient.addColorStop(0.5, 'rgba(255,255,255,0.3)');
-    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    gradient.addColorStop(0.75, 'rgba(255,255,255,1)'); // Pinpoint bright core
+    gradient.addColorStop(0.9, 'rgba(255,255,255,0.7)'); // Fast fall-off
+    gradient.addColorStop(1, 'rgba(255,255,255,0)'); // Anti-aliased boundary
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 32, 32);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  // Create 3D shaded spherical texture for realistic weather droplets/particles
+  function createWeatherSphereTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    // Specular light source offset to (11, 11) for beautiful 3D volumetrics close to eye
+    const gradient = ctx.createRadialGradient(11, 11, 1, 16, 16, 15);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)'); // Specular highlight
+    gradient.addColorStop(0.5, 'rgba(210,230,255,0.95)'); // Translucent midtone
+    gradient.addColorStop(0.85, 'rgba(120,160,255,0.6)'); // Volumetric shadow
+    gradient.addColorStop(1, 'rgba(0,0,0,0)'); // Transparent edge
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 32, 32);
     const texture = new THREE.CanvasTexture(canvas);
@@ -163,7 +182,7 @@
       opacity: currentBgWeather === 'rain' ? 0.4 : 0.2,
       blending: THREE.AdditiveBlending, 
       depthWrite: false,
-      map: createCircleTexture(),
+      map: createWeatherSphereTexture(),
       alphaTest: 0.01
     });
 
@@ -239,7 +258,7 @@
       size: isMobile ? size * 1.5 : size, 
       vertexColors: true, 
       transparent: true, 
-      opacity: useTexture ? 0.6 : 0.9, 
+      opacity: 0.95, 
       sizeAttenuation: true, 
       blending: THREE.AdditiveBlending, 
       depthWrite: false,
