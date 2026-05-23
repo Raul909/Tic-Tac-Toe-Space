@@ -19,8 +19,26 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
 
+const cors = require('cors');
 const app = express();
 app.set('trust proxy', 1);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (process.env.NODE_ENV !== 'production' || !origin) {
+      callback(null, true);
+    } else {
+      const allowed = process.env.ALLOWED_ORIGINS?.split(',') || [];
+      if (allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  credentials: true
+}));
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
