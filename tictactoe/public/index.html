@@ -101,7 +101,21 @@
   <canvas id="fw-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:99"></canvas>
   
   <!-- Home/Landing Screen -->
-  <div x-show="screen === 'home'" class="content-layer min-h-screen flex items-center justify-center p-4 sm:p-6">
+  <div x-show="screen === 'home'" class="content-layer min-h-screen flex items-center justify-center p-4 sm:p-6 relative">
+    <!-- Corner Telemetry HUD Overlays -->
+    <div class="hidden md:block absolute top-6 left-6 text-left font-mono text-[10px] text-nasa/60 space-y-1 select-none pointer-events-none">
+      <div>SYSTEM: TIC-TAC-TOE_GRID_COMBAT</div>
+      <div>MODULE: HOME_LAUNCH_v3.6</div>
+      <div>SECURE: ENCRYPTED_SSL</div>
+      <div>STATION: EARTH_CONTROL_NODE</div>
+    </div>
+    <div class="hidden md:block absolute top-6 right-20 text-right font-mono text-[10px] text-nasa/60 space-y-1 select-none pointer-events-none">
+      <div>SECTOR: SOL-III_SYS</div>
+      <div>SYS-STATUS: INTEGRITY_NOMINAL</div>
+      <div>TELEMETRY: ONLINE</div>
+      <div>TIME: UTC_SYNC</div>
+    </div>
+
     <div class="max-w-4xl w-full text-center">
       <div class="mb-6 sm:mb-8">
         <div class="text-nasa text-xs sm:text-sm tracking-widest mb-3 sm:mb-4 animate-pulse">◆ MISSION CONTROL ◆</div>
@@ -113,6 +127,13 @@
       </div>
 
       <div class="glass nasa-bracket rounded-lg p-6 sm:p-8 md:p-12 shadow-2xl mb-6 sm:mb-8 max-w-2xl mx-auto">
+        <!-- Telemetry Header Line inside container -->
+        <div class="flex justify-between items-center text-[9px] text-nasa/50 font-mono border-b border-nasa/20 pb-2 mb-6 select-none">
+          <span>[NODE: SYS-INIT_01]</span>
+          <span class="animate-pulse text-[#4dffdb]">● TELEMETRY STABLE</span>
+          <span>[LVL: ALPHA]</span>
+        </div>
+
         <div class="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
           <div class="text-center">
             <div class="text-3xl sm:text-4xl mb-1 sm:mb-2">🌐</div>
@@ -313,6 +334,12 @@
       </div>
       
       <div class="glass nasa-bracket rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6 shadow-2xl">
+        <!-- Telemetry Header Line inside lobby container -->
+        <div class="flex justify-between items-center text-[9px] text-nasa/50 font-mono border-b border-nasa/20 pb-2 mb-4 select-none">
+          <span>[TERM: HUD-NODE-03]</span>
+          <span class="animate-pulse text-[#4dffdb]">● ORBITAL LINK STABLE</span>
+          <span>[NET: ONLINE]</span>
+        </div>
         <div>
           <h3 class="text-nasa text-sm tracking-widest mb-3 sm:mb-4">🚀 MULTIPLAYER MISSION</h3>
           <!-- Mobile: Stack buttons vertically -->

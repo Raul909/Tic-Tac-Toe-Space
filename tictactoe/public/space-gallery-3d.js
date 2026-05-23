@@ -1036,26 +1036,47 @@
     },
     
     addReferencePoint() {
-      // Add Earth as reference point (Your Location)
+      // Add Earth as reference point (Your Location) with highly realistic procedural textures
       const earthGeometry = new THREE.SphereGeometry(8, 32, 32);
+      const earthTexture = TextureGenerator.generate('earth', 'albedo');
+      const earthBump = TextureGenerator.generate('earth', 'bump');
+      const earthRoughness = TextureGenerator.generate('earth', 'roughness');
+      
       const earthMaterial = new THREE.MeshStandardMaterial({
-        color: 0x4A90E2,
+        map: earthTexture,
+        bumpMap: earthBump,
+        bumpScale: 0.85,
+        roughnessMap: earthRoughness,
+        metalness: 0.12,
+        roughness: 0.8,
         emissive: 0x4A90E2,
-        emissiveIntensity: 0.8,
-        roughness: 0.5,
-        metalness: 0.2
+        emissiveIntensity: 0.05
       });
       const earth = new THREE.Mesh(earthGeometry, earthMaterial);
       earth.position.set(0, 0, 0);
       earth.castShadow = true;
       earth.receiveShadow = true;
       
+      // Clouds Layer
+      const cloudGeo = new THREE.SphereGeometry(8.2, 32, 32);
+      const cloudTex = TextureGenerator.generate('earth-clouds', 'albedo');
+      const cloudMat = new THREE.MeshStandardMaterial({
+        map: cloudTex,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        blending: THREE.NormalBlending
+      });
+      const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+      earth.add(clouds);
+      earth.userData.clouds = clouds; // Reference to rotate in render loop
+      
       // Brighter atmosphere glow
-      const glowGeometry = new THREE.SphereGeometry(10, 24, 24);
+      const glowGeometry = new THREE.SphereGeometry(10.2, 24, 24);
       const glowMaterial = new THREE.MeshBasicMaterial({
         color: 0x00d4ff,
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.45,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending
       });
@@ -1069,7 +1090,7 @@
       const ctx = canvas.getContext('2d');
       
       // Background for better visibility
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.fillStyle = 'rgba(0, 5, 16, 0.85)';
       ctx.fillRect(0, 0, 512, 128);
       
       // Border
@@ -1094,8 +1115,21 @@
       sprite.scale.set(60, 15, 1);
       earth.add(sprite);
       
+      earth.userData = {
+        id: 'your-location',
+        name: 'Your Location',
+        type: 'Earth Reference',
+        radius: 8,
+        temp: '15°C',
+        mass: '5.97e24 kg',
+        moons: 1,
+        distance: 0,
+        description: 'Your actual location on Earth, synchronized with your browser telemetry.'
+      };
+      
       this.scene.add(earth);
       this.referenceEarth = earth;
+      this.objects.push(earth);
     },
     
     clearScene() {
@@ -1129,6 +1163,11 @@
       
       this.objects = [];
       this.referenceEarth = null;
+      this.selectedObj = null;
+      const alpineEl = document.body;
+      if (alpineEl && alpineEl.__x__ && alpineEl.__x__.$data) {
+        alpineEl.__x__.$data.selectedObject = null;
+      }
     },
     
     setupLighting() {
@@ -1627,16 +1666,48 @@
       const glowTexture = TextureGenerator.generate('star-glow');
       this.constellations.forEach((data, i) => {
         const group = new THREE.Group();
+        
+        // Calculate geometric center of the constellation stars
+        let sumX = 0, sumY = 0, sumZ = 0;
+        data.stars.forEach(pos => {
+          sumX += pos[0];
+          sumY += pos[1];
+          sumZ += pos[2];
+        });
+        const count = data.stars.length;
+        const centerX = sumX / count;
+        const centerY = sumY / count;
+        const centerZ = sumZ / count;
+        
+        // Calculate bounding radius relative to this center
+        let maxDistSq = 0;
+        data.stars.forEach(pos => {
+          const dx = pos[0] - centerX;
+          const dy = pos[1] - centerY;
+          const dz = pos[2] - centerZ;
+          const distSq = dx*dx + dy*dy + dz*dz;
+          if (distSq > maxDistSq) {
+            maxDistSq = distSq;
+          }
+        });
+        const computedRadius = Math.sqrt(maxDistSq);
+
         const angle = Math.random() * Math.PI * 2;
         const height = (Math.random() - 0.5) * 100;
         const distance = 150 + Math.random() * 150;
+        
+        // Position group at the world coordinates + the calculated geometric center offset
         group.position.set(
-          Math.cos(angle) * distance,
-          height,
-          Math.sin(angle) * distance
+          Math.cos(angle) * distance + centerX,
+          height + centerY,
+          Math.sin(angle) * distance + centerZ
         );
         
         data.stars.forEach((pos, j) => {
+          const localX = pos[0] - centerX;
+          const localY = pos[1] - centerY;
+          const localZ = pos[2] - centerZ;
+
           const isBrightest = j === 0;
           const starRadius = isBrightest ? 5 : 2 + Math.random() * 1.5;
           const starGeo = new THREE.SphereGeometry(starRadius, 16, 16);
@@ -1652,7 +1723,7 @@
             color: starColor
           });
           const star = new THREE.Mesh(starGeo, starMat);
-          star.position.set(pos[0], pos[1], pos[2]);
+          star.position.set(localX, localY, localZ);
           
           const glowMaterial = new THREE.SpriteMaterial({
             map: glowTexture,
@@ -1668,21 +1739,30 @@
           group.add(star);
           
           if (j < data.stars.length - 1) {
+            const nextLocalX = data.stars[j+1][0] - centerX;
+            const nextLocalY = data.stars[j+1][1] - centerY;
+            const nextLocalZ = data.stars[j+1][2] - centerZ;
+
             const lineGeo = new THREE.BufferGeometry().setFromPoints([
-              new THREE.Vector3(pos[0], pos[1], pos[2]),
-              new THREE.Vector3(data.stars[j+1][0], data.stars[j+1][1], data.stars[j+1][2])
+              new THREE.Vector3(localX, localY, localZ),
+              new THREE.Vector3(nextLocalX, nextLocalY, nextLocalZ)
             ]);
             const lineMat = new THREE.LineBasicMaterial({
               color: data.color,
               transparent: true,
-              opacity: 0.35
+              opacity: 0.45
             });
             const line = new THREE.Line(lineGeo, lineMat);
             group.add(line);
           }
         });
         
-        group.userData = { ...data, type: 'Constellation', id: i };
+        group.userData = { 
+          ...data, 
+          type: 'Constellation', 
+          id: i,
+          radius: computedRadius
+        };
         this.scene.add(group);
         this.objects.push(group);
       });
@@ -1733,10 +1813,19 @@
     
     selectObject(id) {
       this.selectedObj = this.objects.find(o => o.userData.id === id);
-      document.querySelectorAll('.space-object-item').forEach((el, i) => {
-        el.classList.toggle('active', i === id);
+      
+      document.querySelectorAll('.space-object-item').forEach((el) => {
+        const elId = el.getAttribute('data-id');
+        el.classList.toggle('active', elId === String(id));
       });
+      
       this.showDetails(this.selectedObj?.userData);
+
+      // Sync selection with Alpine.js application layer so Details panel is visible
+      const alpineEl = document.body;
+      if (alpineEl && alpineEl.__x__ && alpineEl.__x__.$data) {
+        alpineEl.__x__.$data.selectedObject = this.selectedObj?.userData || null;
+      }
 
       if (this.selectedObj) {
         const radius = this.selectedObj.userData.radius || 10;
@@ -1744,7 +1833,33 @@
         this.selectedObj.getWorldPosition(targetPos);
         
         this.controlsTargetPos.copy(targetPos);
-        this.cameraTargetPos.copy(targetPos).add(new THREE.Vector3(0, radius * 3.5, radius * 5));
+        
+        // Highly accurate, custom camera angle locks for specific objects
+        if (this.selectedObj.userData.id === 'your-location') {
+          // Earth Reference (Your Location) Focus
+          this.cameraTargetPos.copy(targetPos).add(new THREE.Vector3(0, radius * 2.8, radius * 4.0));
+        } else if (this.selectedObj.userData.type === 'Constellation') {
+          const name = this.selectedObj.userData.name;
+          let offset;
+          if (name === 'Orion') {
+            // Orion: LOW-ANGLE lock looking up slightly to emphasize the grand celestial scale of the stars and belt
+            offset = new THREE.Vector3(0, radius * 1.15, radius * 2.25);
+          } else if (name === 'Ursa Major') {
+            // Ursa Major: HIGH-ANGLE lock looking down from overhead to capture the distinct Big Dipper ladle cleanly
+            offset = new THREE.Vector3(radius * 0.4, radius * 1.8, radius * 1.8);
+          } else if (name === 'Cassiopeia') {
+            // Cassiopeia: SHARP SIDE-ANGLE lock to reveal the distinct zig-zag 'W' profile in all its glory
+            offset = new THREE.Vector3(radius * 1.25, radius * 1.0, radius * 1.95);
+          } else {
+            // Standard constellation framing
+            offset = new THREE.Vector3(0, radius * 1.5, radius * 2.5);
+          }
+          this.cameraTargetPos.copy(targetPos).add(offset);
+        } else {
+          // Standard planet / star focus camera lock
+          this.cameraTargetPos.copy(targetPos).add(new THREE.Vector3(0, radius * 3.5, radius * 5));
+        }
+        
         this.isGliding = true;
         
         if (this.controls) {
@@ -1790,6 +1905,12 @@
       if (data.constellation) addDetail('In', data.constellation);
       if (data.brightest) addDetail('Brightest', data.brightest);
       if (data.stars) addDetail('Stars', data.stars.length);
+      if (data.description) {
+        const descDiv = document.createElement('div');
+        descDiv.className = 'text-xs text-gray-300 mt-2 italic border-t border-nasa/20 pt-2';
+        descDiv.textContent = data.description;
+        details.appendChild(descDiv);
+      }
     },
     
     updateObjectsList() {
@@ -1801,9 +1922,29 @@
                    this.currentTab === 'stars' ? this.nearbyStars : 
                    this.currentTab === 'constellations' ? this.constellations : this.nebulae;
       
+      // Inject "Your Location" (referenceEarth) at the top of the list for all tabs
+      const userLocationItem = document.createElement('div');
+      userLocationItem.className = 'space-object-item';
+      userLocationItem.setAttribute('data-id', 'your-location');
+      userLocationItem.addEventListener('click', () => this.selectObject('your-location'));
+
+      const locName = document.createElement('div');
+      locName.className = 'font-bold text-nasa';
+      locName.textContent = '🌍 Your Location';
+      userLocationItem.appendChild(locName);
+
+      const locType = document.createElement('div');
+      locType.className = 'text-xs text-gray-400';
+      locType.textContent = 'Earth Reference';
+      userLocationItem.appendChild(locType);
+
+      list.appendChild(userLocationItem);
+      
+      // Populate standard items
       data.forEach((o, i) => {
         const item = document.createElement('div');
         item.className = 'space-object-item';
+        item.setAttribute('data-id', String(i));
         item.addEventListener('click', () => this.selectObject(i));
 
         const nameDiv = document.createElement('div');
@@ -1851,9 +1992,12 @@
         }
       }
       
-      // Rotate reference Earth (removed location indicator)
+      // Rotate reference Earth (Your Location) and its clouds dynamically
       if (this.referenceEarth) {
-        this.referenceEarth.rotation.y += 0.005;
+        this.referenceEarth.rotation.y += 0.003;
+        if (this.referenceEarth.userData.clouds) {
+          this.referenceEarth.userData.clouds.rotation.y += 0.005;
+        }
       }
       
       // Rotate objects
@@ -1864,11 +2008,13 @@
           obj.position.x = Math.cos(obj.userData.angle) * obj.userData.distance;
           obj.position.z = Math.sin(obj.userData.angle) * obj.userData.distance;
         }
-        obj.rotation.y += 0.005;
         
-        // Rotate nested clouds if present
-        if (obj.userData.clouds) {
-          obj.userData.clouds.rotation.y += 0.007;
+        // Skip double-rotating the reference Earth as it is animated separately
+        if (obj !== this.referenceEarth) {
+          obj.rotation.y += 0.005;
+          if (obj.userData.clouds) {
+            obj.userData.clouds.rotation.y += 0.007;
+          }
         }
       });
       
@@ -1895,6 +2041,11 @@
       const details = document.getElementById('space-object-details');
       if (details) details.replaceChildren();
       document.querySelectorAll('.space-object-item').forEach(el => el.classList.remove('active'));
+      
+      const alpineEl = document.body;
+      if (alpineEl && alpineEl.__x__ && alpineEl.__x__.$data) {
+        alpineEl.__x__.$data.selectedObject = null;
+      }
     }
   };
 })();

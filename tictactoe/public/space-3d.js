@@ -271,23 +271,347 @@
   }));
   scene.add(nebula);
   
+  // 3D Pseudo-random noise for background planet textures
+  const noise3D = (x, y, z) => {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    const Z = Math.floor(z) & 255;
+    const fx = x - Math.floor(x);
+    const fy = y - Math.floor(y);
+    const fz = z - Math.floor(z);
+    const u = fx * fx * (3 - 2 * fx);
+    const v = fy * fy * (3 - 2 * fy);
+    const w = fz * fz * (3 - 2 * fz);
+    
+    const hash = (p1, p2, p3) => {
+      let h = Math.sin(p1 * 12.9898 + p2 * 78.233 + p3 * 37.719) * 43758.5453123;
+      return h - Math.floor(h);
+    };
+    
+    const r000 = hash(X, Y, Z);
+    const r100 = hash(X + 1, Y, Z);
+    const r010 = hash(X, Y + 1, Z);
+    const r110 = hash(X + 1, Y + 1, Z);
+    const r001 = hash(X, Y, Z + 1);
+    const r101 = hash(X + 1, Y, Z + 1);
+    const r011 = hash(X, Y + 1, Z + 1);
+    const r111 = hash(X + 1, Y + 1, Z + 1);
+    
+    return (
+      r000 * (1 - u) * (1 - v) * (1 - w) +
+      r100 * u * (1 - v) * (1 - w) +
+      r010 * (1 - u) * v * (1 - w) +
+      r110 * u * v * (1 - w) +
+      r001 * (1 - u) * (1 - v) * w +
+      r101 * u * (1 - v) * w +
+      r011 * (1 - u) * v * w +
+      r111 * u * v * w
+    );
+  };
+
+  const fbm3D = (x, y, z, octaves = 3) => {
+    let value = 0;
+    let amplitude = 0.5;
+    let frequency = 1.0;
+    for (let i = 0; i < octaves; i++) {
+      value += amplitude * noise3D(x * frequency, y * frequency, z * frequency);
+      frequency *= 2.0;
+      amplitude *= 0.5;
+    }
+    return value;
+  };
+
+  function generatePlanetTexture(name) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    const imgData = ctx.createImageData(w, h);
+    const data = imgData.data;
+    
+    for (let y = 0; y < h; y++) {
+      const lat = (y / h) * Math.PI - Math.PI / 2;
+      const sinLat = Math.sin(lat);
+      const cosLat = Math.cos(lat);
+      for (let x = 0; x < w; x++) {
+        const lon = (x / w) * Math.PI * 2;
+        const px = cosLat * Math.cos(lon);
+        const py = sinLat;
+        const pz = cosLat * Math.sin(lon);
+        
+        const val = fbm3D(px * 6.0, py * 6.0, pz * 6.0, 3);
+        const idx = (y * w + x) * 4;
+        
+        let r = 128, g = 128, b = 128;
+        
+        switch (name.toLowerCase()) {
+          case 'mercury':
+            r = g = b = Math.floor(70 + val * 100);
+            break;
+          case 'venus':
+            r = Math.floor(210 + val * 45);
+            g = Math.floor(165 + val * 60);
+            b = Math.floor(50 + val * 40);
+            break;
+          case 'earth':
+            const height = fbm3D(px * 4.0, py * 4.0, pz * 4.0, 3);
+            if (height > 0.47) {
+              if (Math.abs(lat) > 1.25) {
+                r = 240; g = 245; b = 250;
+              } else {
+                r = Math.floor(30 + (height - 0.47) * 150);
+                g = Math.floor(120 - (height - 0.47) * 40);
+                b = Math.floor(50 - (height - 0.47) * 30);
+              }
+            } else {
+              r = 15; g = 55; b = Math.floor(110 + height * 80);
+            }
+            break;
+          case 'mars':
+            const mRatio = Math.max(0, Math.min(1, (val - 0.3) / 0.4));
+            r = Math.floor(180 - mRatio * 80);
+            g = Math.floor(65 - mRatio * 30);
+            b = Math.floor(20 - mRatio * 10);
+            if (Math.abs(lat) > 1.35) {
+              r = 255; g = 255; b = 255;
+            }
+            break;
+          case 'jupiter':
+            const jTurb = fbm3D(px * 5, py * 10, pz * 5, 2) * 0.1;
+            const jLat = lat + jTurb;
+            const jMix = Math.sin(jLat * 12) * 0.5 + 0.5 + val * 0.15;
+            if (jMix < 0.4) {
+              r = 145; g = 110; b = 85;
+            } else if (jMix < 0.7) {
+              r = 225; g = 205; b = 185;
+            } else {
+              r = 175; g = 120; b = 80;
+            }
+            break;
+          case 'saturn':
+            const sTurb = fbm3D(px * 4, py * 8, pz * 4, 2) * 0.05;
+            const sLat = lat + sTurb;
+            const sMix = Math.sin(sLat * 8) * 0.5 + 0.5;
+            r = Math.floor(210 - sMix * 30);
+            g = Math.floor(190 - sMix * 25);
+            b = Math.floor(150 - sMix * 30);
+            break;
+          case 'uranus':
+            r = Math.floor(40 + val * 40);
+            g = Math.floor(160 + val * 40);
+            b = Math.floor(190 + val * 30);
+            break;
+          case 'neptune':
+            r = Math.floor(20 + val * 30);
+            g = Math.floor(60 + val * 50);
+            b = Math.floor(160 + val * 60);
+            break;
+          default:
+            r = g = b = Math.floor(val * 255);
+        }
+        
+        data[idx] = r;
+        data[idx+1] = g;
+        data[idx+2] = b;
+        data[idx+3] = 255;
+      }
+    }
+    
+    ctx.putImageData(imgData, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    return texture;
+  }
+
+  function generatePlanetBumpMap(name) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    const imgData = ctx.createImageData(w, h);
+    const data = imgData.data;
+    
+    for (let y = 0; y < h; y++) {
+      const lat = (y / h) * Math.PI - Math.PI / 2;
+      const sinLat = Math.sin(lat);
+      const cosLat = Math.cos(lat);
+      for (let x = 0; x < w; x++) {
+        const lon = (x / w) * Math.PI * 2;
+        const px = cosLat * Math.cos(lon);
+        const py = sinLat;
+        const pz = cosLat * Math.sin(lon);
+        
+        const idx = (y * w + x) * 4;
+        let bumpVal = 128;
+        
+        switch (name.toLowerCase()) {
+          case 'mercury': {
+            const val = fbm3D(px * 16.0, py * 16.0, pz * 16.0, 4);
+            bumpVal = Math.floor(100 + val * 55);
+            break;
+          }
+          case 'earth': {
+            const height = fbm3D(px * 6.0, py * 6.0, pz * 6.0, 4);
+            bumpVal = height > 0.47 ? Math.floor(128 + (height - 0.47) * 127) : 100;
+            break;
+          }
+          case 'mars': {
+            const val = fbm3D(px * 12.0, py * 12.0, pz * 12.0, 4);
+            bumpVal = Math.floor(80 + val * 90);
+            break;
+          }
+          default:
+            bumpVal = 128; // flat
+        }
+        
+        data[idx] = bumpVal;
+        data[idx+1] = bumpVal;
+        data[idx+2] = bumpVal;
+        data[idx+3] = 255;
+      }
+    }
+    
+    ctx.putImageData(imgData, 0, 0);
+    // Draw occasional craters on Mercury bump map for extra realistic textures!
+    if (name.toLowerCase() === 'mercury') {
+      for (let i = 0; i < 30; i++) {
+        const cx = Math.random() * w;
+        const cy = Math.random() * h;
+        const r = 4 + Math.random() * 15;
+        
+        ctx.fillStyle = 'rgba(60,60,60,0.8)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.strokeStyle = 'rgba(200,200,200,0.8)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    return texture;
+  }
+
+  function generatePlanetRoughnessMap(name) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    const imgData = ctx.createImageData(w, h);
+    const data = imgData.data;
+    
+    for (let y = 0; y < h; y++) {
+      const lat = (y / h) * Math.PI - Math.PI / 2;
+      const sinLat = Math.sin(lat);
+      const cosLat = Math.cos(lat);
+      for (let x = 0; x < w; x++) {
+        const lon = (x / w) * Math.PI * 2;
+        const px = cosLat * Math.cos(lon);
+        const py = sinLat;
+        const pz = cosLat * Math.sin(lon);
+        
+        const idx = (y * w + x) * 4;
+        let rVal = 200; // rough default
+        
+        if (name.toLowerCase() === 'earth') {
+          const height = fbm3D(px * 6.0, py * 6.0, pz * 6.0, 4);
+          rVal = height > 0.47 ? 220 : 40; // land is rough, water is extremely shiny (smooth)
+        } else if (name.toLowerCase() === 'venus') {
+          rVal = 240; // highly diffuse clouds
+        }
+        
+        data[idx] = rVal;
+        data[idx+1] = rVal;
+        data[idx+2] = rVal;
+        data[idx+3] = 255;
+      }
+    }
+    
+    ctx.putImageData(imgData, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    return texture;
+  }
+
+  function generateRingTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 4;
+    const ctx = canvas.getContext('2d');
+    
+    const imgData = ctx.createImageData(256, 4);
+    const data = imgData.data;
+    for (let x = 0; x < 256; x++) {
+      const rRatio = x / 256;
+      let alpha = 0.0;
+      let r = 215, g = 195, b = 160;
+      
+      if (rRatio > 0.1 && rRatio < 0.95) {
+        alpha = 0.7;
+        if (rRatio > 0.65 && rRatio < 0.7) {
+          alpha = 0.05;
+        } else {
+          const ringLines = Math.sin(rRatio * 120) * 0.1;
+          alpha += ringLines;
+        }
+      }
+      
+      for (let y = 0; y < 4; y++) {
+        const idx = (y * 256 + x) * 4;
+        data[idx] = r;
+        data[idx+1] = g;
+        data[idx+2] = b;
+        data[idx+3] = Math.floor(alpha * 255);
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
+  }
+
   // Planets - Optimized geometry
   const planets = [];
-  function createPlanet(radius, color, pos, hasRings = false, hasAtmos = false, atmosColor = null) {
-    // Use lower poly count for smaller planets, higher for larger ones
-    const segments = radius > 5 ? 48 : 32;
+  function createPlanet(name, radius, color, pos, hasRings = false, hasAtmos = false, atmosColor = null) {
+    const segments = radius > 5 ? 64 : 48;
+    const texture = generatePlanetTexture(name);
+    
+    const matParams = {
+      map: texture,
+      flatShading: false
+    };
+
+    if (name.toLowerCase() === 'earth' || name.toLowerCase() === 'mars' || name.toLowerCase() === 'mercury') {
+      matParams.bumpMap = generatePlanetBumpMap(name);
+      matParams.bumpScale = name.toLowerCase() === 'earth' ? 0.25 : name.toLowerCase() === 'mars' ? 0.15 : 0.08;
+    }
+
+    matParams.roughnessMap = generatePlanetRoughnessMap(name);
+    matParams.metalness = name.toLowerCase() === 'earth' ? 0.15 : 0.02;
+
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(radius, segments, segments), 
-      new THREE.MeshStandardMaterial({ 
-        color: color, 
-        roughness: 0.7, 
-        metalness: 0.2,
-        flatShading: false
-      })
+      new THREE.MeshStandardMaterial(matParams)
     );
     mesh.position.set(pos.x, pos.y, pos.z);
-    mesh.castShadow = false; // Disabled for performance
-    mesh.receiveShadow = false;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     scene.add(mesh);
     
     if (hasAtmos) {
@@ -300,8 +624,31 @@
       mesh.add(glow);
     }
     if (hasRings) {
-      const ring = new THREE.Mesh(new THREE.RingGeometry(radius * 1.4, radius * 2.3, 64), new THREE.MeshStandardMaterial({ color: color, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
-      ring.rotation.x = Math.PI / 2.2; ring.castShadow = true; ring.receiveShadow = true;
+      const ringGeometry = new THREE.RingGeometry(radius * 1.4, radius * 2.3, 64);
+      
+      const posAttr = ringGeometry.attributes.position;
+      const uvAttr = ringGeometry.attributes.uv;
+      const innerR = radius * 1.4;
+      const outerR = radius * 2.3;
+      for (let j = 0; j < posAttr.count; j++) {
+        const rx = posAttr.getX(j);
+        const ry = posAttr.getY(j);
+        const rDist = Math.sqrt(rx*rx + ry*ry);
+        const u = (rDist - innerR) / (outerR - innerR);
+        uvAttr.setXY(j, u, 0.5);
+      }
+      uvAttr.needsUpdate = true;
+      
+      const ringMaterial = new THREE.MeshStandardMaterial({ 
+        map: generateRingTexture(), 
+        transparent: true, 
+        opacity: 0.85, 
+        side: THREE.DoubleSide 
+      });
+      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+      ring.rotation.x = Math.PI / 2.2; 
+      ring.castShadow = true; 
+      ring.receiveShadow = true;
       mesh.add(ring);
     }
     return mesh;
@@ -329,18 +676,41 @@
         varying vec3 vNormal;
         
         float noise(vec2 p) {
-          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+          vec2 ip = floor(p);
+          vec2 fp = fract(p);
+          fp = fp * fp * (3.0 - 2.0 * fp);
+          
+          float n00 = fract(sin(dot(ip, vec2(127.1, 311.7))) * 43758.5453123);
+          float n10 = fract(sin(dot(ip + vec2(1.0, 0.0), vec2(127.1, 311.7))) * 43758.5453123);
+          float n01 = fract(sin(dot(ip + vec2(0.0, 1.0), vec2(127.1, 311.7))) * 43758.5453123);
+          float n11 = fract(sin(dot(ip + vec2(1.0, 1.0), vec2(127.1, 311.7))) * 43758.5453123);
+          
+          return mix(mix(n00, n10, fp.x), mix(n01, n11, fp.x), fp.y);
+        }
+        
+        float fbm(vec2 p) {
+          float v = 0.0;
+          float a = 0.5;
+          for (int i = 0; i < 4; i++) {
+            v += a * noise(p);
+            p *= 2.0;
+            a *= 0.5;
+          }
+          return v;
         }
         
         void main() {
-          vec2 uv = vUv * 8.0 + time * 0.1;
-          float n = noise(uv) * 0.5 + noise(uv * 2.0) * 0.25 + noise(uv * 4.0) * 0.125;
+          vec2 uv = vUv * 6.0;
+          float speed = time * 0.18;
+          float n1 = fbm(uv + vec2(speed, speed * 0.5));
+          float n2 = fbm(uv - vec2(speed * 0.3, speed) + vec2(n1 * 1.5));
           
-          vec3 sunColor = mix(vec3(1.0, 0.6, 0.0), vec3(1.0, 0.9, 0.2), n);
-          float edge = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.0);
-          sunColor += edge * vec3(1.0, 0.4, 0.0) * 0.5;
+          vec3 baseColor = mix(vec3(0.95, 0.25, 0.0), vec3(1.0, 0.85, 0.1), n2);
           
-          gl_FragColor = vec4(sunColor, 1.0);
+          float edge = pow(1.0 - max(0.0, dot(vNormal, vec3(0.0, 0.0, 1.0))), 3.0);
+          vec3 edgeGlow = vec3(1.0, 0.3, 0.0) * edge * 1.8;
+          
+          gl_FragColor = vec4(baseColor + edgeGlow, 1.0);
         }
       `
     })
@@ -367,23 +737,24 @@
   sunCore.add(sunGlow);
   const sun = sunCore; // Keep reference
   
-  const mercury = createPlanet(2.5, 0x8C7853, {x:-80, y:5, z:-40});
+  const mercury = createPlanet('mercury', 2.5, 0x8C7853, {x:-80, y:5, z:-40});
   planets.push({ mesh: mercury, speed: 0.0015, radius: 30, angle: 0, rotationSpeed: 0.004 });
-  const venus = createPlanet(3.8, 0xFFC649, {x:25, y:10, z:-50}, false, true, 0xFFE4B5);
+  const venus = createPlanet('venus', 3.8, 0xFFC649, {x:25, y:10, z:-50}, false, true, 0xFFE4B5);
   planets.push({ mesh: venus, speed: 0.001, radius: 40, angle: Math.PI/4, rotationSpeed: 0.005 });
-  const earth = createPlanet(4.5, 0x2E5F8C, {x:40, y:-15, z:-60}, false, true, 0x4A90E2);
+  const earth = createPlanet('earth', 4.5, 0x2E5F8C, {x:40, y:-15, z:-60}, false, true, 0x4A90E2);
   planets.push({ mesh: earth, speed: 0.0008, radius: 50, angle: 0, rotationSpeed: 0.01 });
   const moon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), new THREE.MeshStandardMaterial({ color: 0xCCCCCC }));
   moon.castShadow = true; earth.add(moon); moon.position.set(8,0,0);
-  const mars = createPlanet(3.2, 0xCD5C5C, {x:-50, y:20, z:-70});
+  const mars = createPlanet('mars', 3.2, 0xCD5C5C, {x:-50, y:20, z:-70});
   planets.push({ mesh: mars, speed: 0.0005, radius: 65, angle: Math.PI, rotationSpeed: 0.008 });
-  const jupiter = createPlanet(8.5, 0xC88B3A, {x:80, y:35, z:-100});
+  const jupiter = createPlanet('jupiter', 8.5, 0xC88B3A, {x:80, y:35, z:-100});
   planets.push({ mesh: jupiter, speed: 0.0002, radius: 90, angle: Math.PI/2, rotationSpeed: 0.015 });
-  const saturn = createPlanet(7.5, 0xE8D4A0, {x:-70, y:-25, z:-90}, true);
+  const saturn = createPlanet('saturn', 7.5, 0xE8D4A0, {x:-70, y:-25, z:-90}, true);
   planets.push({ mesh: saturn, speed: 0.00015, radius: 80, angle: Math.PI*1.5, rotationSpeed: 0.012 });
-  const uranus = createPlanet(5.5, 0x4FD0E7, {x:95, y:-30, z:-120}, true);
+  const uranus = createPlanet('uranus', 5.5, 0x4FD0E7, {x:95, y:-30, z:-120}, true);
   planets.push({ mesh: uranus, speed: 0.0001, radius: 110, angle: Math.PI/3, rotationSpeed: 0.009 });
-  const neptune = createPlanet(5.2, 0x4169E1, {x:-85, y:15, z:-130});
+  const neptune = createPlanet('neptune', 5.2, 0x4169E1, {x:-85, y:15, z:-130});
+  planets.push({ mesh: neptune, speed: 0.00008, radius: 125, angle: Math.PI*1.7, rotationSpeed: 0.01 });
   planets.push({ mesh: neptune, speed: 0.00008, radius: 125, angle: Math.PI*1.7, rotationSpeed: 0.01 });
   
   // Lighting
