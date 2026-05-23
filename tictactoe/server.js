@@ -14,8 +14,10 @@ const { setupSocket } = require('./socket');
 const redisClient = require('./redis');
 const queue = require('./queue');
 
-// Load environment variables
-require('dotenv').config();
+// Load environment variables in non-production environments
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 
 const app = express();
 app.set('trust proxy', 1);

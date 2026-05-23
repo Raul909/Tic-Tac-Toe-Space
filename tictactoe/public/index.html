@@ -1298,7 +1298,7 @@
     // Define backend URL dynamically (empty string for localhost, or absolute URL for Render backend)
     window.BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
       ? ''
-      : 'https://tictactoe-multiplayer.onrender.com'; // Replace with actual Render URL if different
+      : localStorage.getItem('BACKEND_URL') || 'https://tictactoe-multiplayer-nrpb.onrender.com';
   </script>
   <script src="/space-3d.js"></script>
   <script src="/space-gallery-3d.js"></script>
