@@ -50,16 +50,6 @@ Here is a visual showcase of the premium, celestial interface you will experienc
 
 ---
 
-## 📦 Environment Variables
-
-> [!CAUTION]
-> ### 🛡️ Critical Security Warning for Public Repositories
-> Since this repository is public, **NEVER** hardcode or commit actual credentials, passwords, or secrets directly inside your codebase or documentation.
-> - **Local Development**: Keep all credentials confined inside a local `.env` file (listed in `.gitignore`).
-> - **Production Deployment**: Inject secrets dynamically via your hosting provider's dashboard (e.g. Render Dashboard or Cloudflare Pages secrets).
-> - See `.env.example` inside `tictactoe/` for the list of required variables.
-
----
 
 ## 🚀 Local Development
 
