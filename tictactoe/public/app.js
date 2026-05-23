@@ -186,6 +186,25 @@ function app() {
     },
 
     init() {
+      // Keyboard fullscreen toggle using F key
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+          return;
+        }
+        if (e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+              console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+          } else {
+            if (document.exitFullscreen) {
+              document.exitFullscreen();
+            }
+          }
+        }
+      });
+
       // Don't auto-connect - let user see landing page first
       this.initSpaceGallery();
       this.initGoogleSignIn();

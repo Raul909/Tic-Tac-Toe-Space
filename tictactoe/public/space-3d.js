@@ -917,11 +917,17 @@
     asteroids.push({ mesh: ast, rot: (Math.random()-0.5)*0.02, orb: 0.0001+Math.random()*0.0002, angle: angle, dist: dist });
   }
 
-  // Shooting Stars (Optimized Pool)
+  // Shooting Stars (Optimized Pool with Cinematic Fade-out Trails)
   const shootingStars = [];
   const ssGeo = new THREE.BufferGeometry();
   ssGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3)); // 2 points
-  const ssMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+  ssGeo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(6), 3)); // 2 colors (RGB)
+  const ssMat = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending
+  });
   
   // Create pool of 8 reuseable lines for gorgeous layering
   for(let i=0; i<8; i++) {
@@ -939,14 +945,21 @@
     star.speed = 1.2 + Math.random() * 1.8; // Distant meteors are extremely fast needle streaks!
     star.tailLength = 0.02 + Math.random() * 0.06; // Ultra-thin, realistic short tails for deep space
     
-    // Meteor composition color tints
+    // Meteor composition color tints for premium glow
     const chemicalTints = [
-      0xffffff, // White
-      0xd5ffff, // bluish-cyan
-      0xffffd5, // yellowish
-      0xffd5fa  // violet-pink
+      new THREE.Color(0xffffff), // Pure white
+      new THREE.Color(0xd5ffff), // Iron-nickel (electric blue)
+      new THREE.Color(0xffffd5), // Sodium (golden yellow)
+      new THREE.Color(0xffd5fa)  // Calcium (neon violet)
     ];
-    star.mesh.material.color.setHex(chemicalTints[Math.floor(Math.random() * chemicalTints.length)]);
+    const headColor = chemicalTints[Math.floor(Math.random() * chemicalTints.length)];
+    const tailColor = new THREE.Color(0x000000); // Fade to black at the tail!
+    
+    // Assign vertex colors for cinematic tail gradient
+    const colors = star.mesh.geometry.attributes.color;
+    colors.setXYZ(0, headColor.r, headColor.g, headColor.b); // Bright core
+    colors.setXYZ(1, tailColor.r, tailColor.g, tailColor.b); // Dissolving tail
+    colors.needsUpdate = true;
     
     // Spawn deep in the background far behind the planets (z = -600 to -1600)
     // and randomly across a wide range (x = -400 to 400, y = 80 to 250)
