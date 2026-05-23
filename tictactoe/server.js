@@ -23,17 +23,45 @@ const cors = require('cors');
 const app = express();
 app.set('trust proxy', 1);
 
+// Helper to validate allowed cross-origins (handles localhost, preview subdomains, and main site)
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+
+  // 1. Allow all localhost development origins
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+
+  // 2. Allow any Cloudflare Pages deployment/preview subdomains (*.pages.dev)
+  try {
+    const hostname = new URL(origin).hostname;
+    if (hostname === 'pages.dev' || hostname.endsWith('.pages.dev')) {
+      return true;
+    }
+  } catch (e) {
+    // Ignore URL parse errors
+  }
+
+  // 3. Allow origins explicitly specified in ALLOWED_ORIGINS env variable (comma-separated, trimmed)
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
+
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  return false;
+};
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (process.env.NODE_ENV !== 'production' || !origin) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      const allowed = process.env.ALLOWED_ORIGINS?.split(',') || [];
-      if (allowed.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      console.warn(`[CORS Blocked] Origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true
@@ -42,9 +70,13 @@ app.use(cors({
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production'
-      ? process.env.ALLOWED_ORIGINS?.split(',') || []
-      : '*',
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET', 'POST'],
     credentials: true
   }
