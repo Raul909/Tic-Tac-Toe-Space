@@ -821,9 +821,9 @@
       this.userLocation = null;
       this.getUserLocationAndWeather();
       
-      // Camera
-      this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / 500, 0.1, 5000);
-      this.camera.position.set(0, 100, 300);
+      // Camera — start wide so users see the full scene first
+      this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / 600, 0.1, 5000);
+      this.camera.position.set(0, 150, 450);
       
       // Renderer
       this.renderer = new THREE.WebGLRenderer({ 
@@ -831,10 +831,10 @@
         alpha: true,
         powerPreference: 'high-performance'
       });
-      this.renderer.setSize(container.clientWidth, 500);
+      this.renderer.setSize(container.clientWidth, 600);
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      this.renderer.toneMappingExposure = 2.5;
+      this.renderer.toneMappingExposure = 2.2;
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(this.renderer.domElement);
@@ -842,11 +842,11 @@
       // Orbit Controls for 3D rotation
       this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
       this.controls.enableDamping = true;
-      this.controls.dampingFactor = 0.05;
-      this.controls.minDistance = 50;
-      this.controls.maxDistance = 800;
+      this.controls.dampingFactor = 0.04;
+      this.controls.minDistance = 30;
+      this.controls.maxDistance = 900;
       this.controls.autoRotate = true;
-      this.controls.autoRotateSpeed = 0.5;
+      this.controls.autoRotateSpeed = 0.3; // Calm cinematic drift
       
       // Raycaster for clicking
       this.raycaster = new THREE.Raycaster();
@@ -884,9 +884,9 @@
     },
 
     addGridHelper() {
-      const gridHelper = new THREE.GridHelper(1000, 50, 0x00d4ff, 0x002244);
+      const gridHelper = new THREE.GridHelper(1000, 50, 0x00d4ff, 0x001133);
       gridHelper.position.y = -50;
-      gridHelper.material.opacity = 0.25;
+      gridHelper.material.opacity = 0; // Hidden — cleaner cinematic space
       gridHelper.material.transparent = true;
       gridHelper.material.depthWrite = false;
       this.scene.add(gridHelper);
@@ -1846,7 +1846,8 @@
           obj = obj.parent;
         }
         if (obj.userData.id !== undefined) {
-          this.selectObject(obj.userData.id);
+          // Canvas click: highlight + show details but do NOT lock camera
+          this.selectObject(obj.userData.id, false);
         }
       }
     },
@@ -1862,7 +1863,7 @@
       this.renderer.domElement.style.cursor = intersects.length > 0 ? 'pointer' : 'grab';
     },
     
-    selectObject(id) {
+    selectObject(id, fromSidebar = true) {
       this.selectedObj = this.objects.find(o => o.userData.id === id);
       
       document.querySelectorAll('.space-object-item').forEach((el) => {
@@ -1878,7 +1879,8 @@
         alpineEl.__x__.$data.selectedObject = this.selectedObj?.userData || null;
       }
 
-      if (this.selectedObj) {
+      // Only glide camera if triggered from sidebar (not canvas click)
+      if (fromSidebar && this.selectedObj) {
         const radius = this.selectedObj.userData.radius || 10;
         const targetPos = new THREE.Vector3();
         this.selectedObj.getWorldPosition(targetPos);
@@ -1887,32 +1889,25 @@
         
         // Highly accurate, custom camera angle locks for specific objects
         if (this.selectedObj.userData.id === 'your-location') {
-          // Earth Reference (Your Location) Focus
           this.cameraTargetPos.copy(targetPos).add(new THREE.Vector3(0, radius * 2.8, radius * 4.0));
         } else if (this.selectedObj.userData.type === 'Constellation') {
           const name = this.selectedObj.userData.name;
           let offset;
           if (name === 'Orion') {
-            // Orion: LOW-ANGLE lock looking up slightly to emphasize the grand celestial scale of the stars and belt
             offset = new THREE.Vector3(0, radius * 1.15, radius * 2.25);
           } else if (name === 'Ursa Major') {
-            // Ursa Major: HIGH-ANGLE lock looking down from overhead to capture the distinct Big Dipper ladle cleanly
             offset = new THREE.Vector3(radius * 0.4, radius * 1.8, radius * 1.8);
           } else if (name === 'Cassiopeia') {
-            // Cassiopeia: SHARP SIDE-ANGLE lock to reveal the distinct zig-zag 'W' profile in all its glory
             offset = new THREE.Vector3(radius * 1.25, radius * 1.0, radius * 1.95);
           } else {
-            // Standard constellation framing
             offset = new THREE.Vector3(0, radius * 1.5, radius * 2.5);
           }
           this.cameraTargetPos.copy(targetPos).add(offset);
         } else {
-          // Standard planet / star focus camera lock
           this.cameraTargetPos.copy(targetPos).add(new THREE.Vector3(0, radius * 3.5, radius * 5));
         }
         
         this.isGliding = true;
-        
         if (this.controls) {
           this.controls.autoRotate = false;
         }
@@ -1977,7 +1972,7 @@
       const userLocationItem = document.createElement('div');
       userLocationItem.className = 'space-object-item';
       userLocationItem.setAttribute('data-id', 'your-location');
-      userLocationItem.addEventListener('click', () => this.selectObject('your-location'));
+      userLocationItem.addEventListener('click', () => this.selectObject('your-location', true));
 
       const locName = document.createElement('div');
       locName.className = 'font-bold text-nasa';
@@ -1996,7 +1991,7 @@
         const item = document.createElement('div');
         item.className = 'space-object-item';
         item.setAttribute('data-id', String(i));
-        item.addEventListener('click', () => this.selectObject(i));
+        item.addEventListener('click', () => this.selectObject(i, true));
 
         const nameDiv = document.createElement('div');
         nameDiv.className = 'font-bold';
@@ -2025,8 +2020,12 @@
         this.controls.update();
       }
       
-      // Update HUD in real-time
-      this.updateHUD();
+      // Throttle HUD updates to every 10 frames to reduce DOM lag
+      if (!this._frameCount) this._frameCount = 0;
+      this._frameCount++;
+      if (this._frameCount % 10 === 0) {
+        this.updateHUD();
+      }
       
       // Update weather particles shader uniform
       if (this.weatherParticles && this.weatherParticles.material.userData.shader) {
@@ -2093,9 +2092,9 @@
       const container = document.getElementById('space-gallery-3d');
       if (!container) return;
       
-      this.camera.aspect = container.clientWidth / 500;
+      this.camera.aspect = container.clientWidth / 600;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(container.clientWidth, 500);
+      this.renderer.setSize(container.clientWidth, 600);
     },
     
     reset() {

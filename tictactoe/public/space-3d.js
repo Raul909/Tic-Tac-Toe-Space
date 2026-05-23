@@ -942,8 +942,8 @@
     
     star.active = true;
     star.t = 0;
-    star.speed = 1.2 + Math.random() * 1.8; // Distant meteors are extremely fast needle streaks!
-    star.tailLength = 0.02 + Math.random() * 0.06; // Ultra-thin, realistic short tails for deep space
+    star.speed = 0.20 + Math.random() * 0.35; // Slow, cinematic deep-space meteors
+    star.tailLength = 0.04 + Math.random() * 0.10; // Longer visible tail for realism
     
     // Meteor composition color tints for premium glow
     const chemicalTints = [
@@ -985,8 +985,8 @@
     star.mesh.geometry.attributes.position.setXYZ(1, star.start.x, star.start.y, star.start.z);
     star.mesh.geometry.attributes.position.needsUpdate = true;
   }
-  // Slightly faster interval for highly immersive space atmosphere
-  setInterval(() => { if(Math.random()<0.4) spawnShootingStar(); }, 1200);
+  // Cinematic slow shooting stars — rare, dramatic, deep-space feel
+  setInterval(() => { if(Math.random()<0.35) spawnShootingStar(); }, 3200);
 
   // Animation Loop - Optimized for 60fps
   const _v1 = new THREE.Vector3();
@@ -1014,7 +1014,7 @@
     const warpSpeed = 1 + cinematic.warpFactor * 50;
     
     // Stars - Optimized rotation and twinkling
-    const baseRotation = 0.00005 * scale * warpSpeed;
+    const baseRotation = 0.000012 * scale * warpSpeed;
     starLayers.forEach((stars, i) => {
       stars.rotation.y += baseRotation * (i + 1);
       
@@ -1097,7 +1097,7 @@
       const s = shootingStars[i];
       if (!s.active) continue;
       
-      s.t += dt * 1.5 * (s.speed || 1.0);
+      s.t += dt * 0.55 * (s.speed || 1.0);
       if (s.t > 1) { 
         s.active = false; 
         s.mesh.material.opacity = 0; 
