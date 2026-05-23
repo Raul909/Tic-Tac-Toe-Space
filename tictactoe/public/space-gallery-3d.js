@@ -1,5 +1,707 @@
 // 3D Cinematic Space Gallery with Three.js
 (function() {
+  // 3D Pseudo-random noise for textures and gas clouds
+  const noise3D = (x, y, z) => {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    const Z = Math.floor(z) & 255;
+    const fx = x - Math.floor(x);
+    const fy = y - Math.floor(y);
+    const fz = z - Math.floor(z);
+    const u = fx * fx * (3 - 2 * fx);
+    const v = fy * fy * (3 - 2 * fy);
+    const w = fz * fz * (3 - 2 * fz);
+    
+    const hash = (p1, p2, p3) => {
+      let h = Math.sin(p1 * 12.9898 + p2 * 78.233 + p3 * 37.719) * 43758.5453123;
+      return h - Math.floor(h);
+    };
+    
+    const r000 = hash(X, Y, Z);
+    const r100 = hash(X + 1, Y, Z);
+    const r010 = hash(X, Y + 1, Z);
+    const r110 = hash(X + 1, Y + 1, Z);
+    const r001 = hash(X, Y, Z + 1);
+    const r101 = hash(X + 1, Y, Z + 1);
+    const r011 = hash(X, Y + 1, Z + 1);
+    const r111 = hash(X + 1, Y + 1, Z + 1);
+    
+    return (
+      r000 * (1 - u) * (1 - v) * (1 - w) +
+      r100 * u * (1 - v) * (1 - w) +
+      r010 * (1 - u) * v * (1 - w) +
+      r110 * u * v * (1 - w) +
+      r001 * (1 - u) * (1 - v) * w +
+      r101 * u * (1 - v) * w +
+      r011 * (1 - u) * v * w +
+      r111 * u * v * w
+    );
+  };
+
+  const fbm3D = (x, y, z, octaves = 4) => {
+    let value = 0;
+    let amplitude = 0.5;
+    let frequency = 1.0;
+    for (let i = 0; i < octaves; i++) {
+      value += amplitude * noise3D(x * frequency, y * frequency, z * frequency);
+      frequency *= 2.0;
+      amplitude *= 0.5;
+    }
+    return value;
+  };
+
+  const TextureGenerator = {
+    generate(name, type = 'albedo') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      const key = `${name.toLowerCase()}-${type.toLowerCase()}`;
+
+      switch (key) {
+        case 'sun-albedo':
+          this.drawSunAlbedo(ctx, w, h);
+          break;
+        case 'mercury-albedo':
+          this.drawMercuryAlbedo(ctx, w, h);
+          break;
+        case 'mercury-bump':
+          this.drawMercuryBump(ctx, w, h);
+          break;
+        case 'venus-albedo':
+          this.drawVenusAlbedo(ctx, w, h);
+          break;
+        case 'earth-albedo':
+          this.drawEarthAlbedo(ctx, w, h);
+          break;
+        case 'earth-bump':
+          this.drawEarthBump(ctx, w, h);
+          break;
+        case 'earth-roughness':
+          this.drawEarthRoughness(ctx, w, h);
+          break;
+        case 'earth-clouds-albedo':
+          this.drawEarthClouds(ctx, w, h);
+          break;
+        case 'mars-albedo':
+          this.drawMarsAlbedo(ctx, w, h);
+          break;
+        case 'mars-bump':
+          this.drawMarsBump(ctx, w, h);
+          break;
+        case 'jupiter-albedo':
+          this.drawJupiterAlbedo(ctx, w, h);
+          break;
+        case 'saturn-albedo':
+          this.drawSaturnAlbedo(ctx, w, h);
+          break;
+        case 'saturn-rings-albedo':
+          return this.drawSaturnRings();
+        case 'uranus-albedo':
+          this.drawUranusAlbedo(ctx, w, h);
+          break;
+        case 'neptune-albedo':
+          this.drawNeptuneAlbedo(ctx, w, h);
+          break;
+        case 'star-glow-albedo':
+          return this.drawStarGlow();
+        case 'nebula-gas-albedo':
+          return this.drawNebulaGas();
+        default:
+          if (type === 'bump') {
+            ctx.fillStyle = '#808080';
+            ctx.fillRect(0, 0, w, h);
+          } else if (type === 'roughness') {
+            ctx.fillStyle = '#b0b0b0';
+            ctx.fillRect(0, 0, w, h);
+          } else {
+            this.drawDefault(ctx, w, h);
+          }
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      return texture;
+    },
+
+    drawSunAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const val = fbm3D(px * 8, py * 8, pz * 8, 4);
+          const idx = (y * w + x) * 4;
+          
+          data[idx] = Math.floor(239 + val * 16);
+          data[idx+1] = Math.floor(68 + val * 172);
+          data[idx+2] = Math.floor(68 + val * 40);
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawMercuryAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const val = fbm3D(px * 12, py * 12, pz * 12, 4);
+          const idx = (y * w + x) * 4;
+          
+          const col = Math.floor(51 + val * 80);
+          data[idx] = col;
+          data[idx+1] = col;
+          data[idx+2] = col;
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+      this.drawCraters(ctx, w, h, 'rgba(55,65,81,0.65)', 'rgba(107,114,128,0.65)');
+    },
+
+    drawMercuryBump(ctx, w, h) {
+      ctx.fillStyle = '#808080';
+      ctx.fillRect(0, 0, w, h);
+      
+      for (let i = 0; i < 45; i++) {
+        const x = Math.random() * w;
+        const y = Math.random() * h;
+        const r = 3 + Math.random() * 12;
+        
+        ctx.fillStyle = 'rgba(60,60,60,0.85)';
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.strokeStyle = 'rgba(175,175,175,0.85)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    },
+
+    drawVenusAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const warp = fbm3D(px * 3.5, py * 3.5, pz * 3.5, 3);
+          const val = fbm3D(px * 7 + warp * 2.2, py * 3, pz * 7, 4);
+          
+          const idx = (y * w + x) * 4;
+          data[idx] = Math.floor(202 + val * 53);
+          data[idx+1] = Math.floor(160 + val * 70);
+          data[idx+2] = Math.floor(40 + val * 50);
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawEarthAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const height = fbm3D(px * 4.5, py * 4.5, pz * 4.5, 6);
+          const idx = (y * w + x) * 4;
+          const absLat = Math.abs(lat);
+          
+          if (height > 0.465) {
+            if (absLat > 1.25 || (absLat > 1.1 && height > 0.52)) {
+              data[idx] = 245;
+              data[idx+1] = 248;
+              data[idx+2] = 250;
+            } else {
+              const grad = (height - 0.465) / 0.2;
+              data[idx] = Math.floor(21 + grad * 120);
+              data[idx+1] = Math.floor(128 - grad * 30);
+              data[idx+2] = Math.floor(61 - grad * 30);
+            }
+          } else {
+            if (absLat > 1.35) {
+              data[idx] = 230;
+              data[idx+1] = 240;
+              data[idx+2] = 250;
+            } else {
+              const depth = height / 0.465;
+              data[idx] = Math.floor(10 + depth * 20);
+              data[idx+1] = Math.floor(50 + depth * 60);
+              data[idx+2] = Math.floor(120 + depth * 110);
+            }
+          }
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawEarthBump(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const height = fbm3D(px * 4.5, py * 4.5, pz * 4.5, 6);
+          const idx = (y * w + x) * 4;
+          
+          let bump = 128;
+          if (height > 0.465) {
+            bump = 128 + Math.floor((height - 0.465) * 420);
+            bump = Math.min(255, bump);
+          }
+          data[idx] = bump;
+          data[idx+1] = bump;
+          data[idx+2] = bump;
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawEarthRoughness(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const height = fbm3D(px * 4.5, py * 4.5, pz * 4.5, 6);
+          const idx = (y * w + x) * 4;
+          
+          let roughness = 30;
+          if (height > 0.465) {
+            roughness = 220;
+          }
+          data[idx] = roughness;
+          data[idx+1] = roughness;
+          data[idx+2] = roughness;
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawEarthClouds(ctx, w, h) {
+      ctx.clearRect(0, 0, w, h);
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const cloudVal = fbm3D(px * 5.5, py * 5.5, pz * 5.5, 5);
+          const idx = (y * w + x) * 4;
+          
+          let alpha = 0;
+          if (cloudVal > 0.48) {
+            alpha = Math.floor((cloudVal - 0.48) * 400);
+            alpha = Math.min(180, alpha);
+          }
+          
+          data[idx] = 255;
+          data[idx+1] = 255;
+          data[idx+2] = 255;
+          data[idx+3] = alpha;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawMarsAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const height = fbm3D(px * 4.2, py * 4.2, pz * 4.2, 5);
+          const idx = (y * w + x) * 4;
+          const absLat = Math.abs(lat);
+          
+          if (absLat > 1.34 || (absLat > 1.25 && height > 0.48)) {
+            data[idx] = 255;
+            data[idx+1] = 255;
+            data[idx+2] = 255;
+          } else {
+            const ratio = Math.max(0, Math.min(1, (height - 0.3) / 0.4));
+            data[idx] = Math.floor(180 - ratio * 100);
+            data[idx+1] = Math.floor(65 - ratio * 40);
+            data[idx+2] = Math.floor(20 - ratio * 15);
+          }
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawMarsBump(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const height = fbm3D(px * 5, py * 5, pz * 5, 5);
+          const idx = (y * w + x) * 4;
+          
+          const bump = Math.floor(128 + (height - 0.5) * 160);
+          data[idx] = Math.max(0, Math.min(255, bump));
+          data[idx+1] = data[idx];
+          data[idx+2] = data[idx];
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawJupiterAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const turb = fbm3D(px * 10, py * 22, pz * 10, 4) * 0.12;
+          const latT = lat + turb;
+          
+          let r, g, b;
+          const sVal = Math.sin(latT * 10) * 0.5 + 0.5;
+          const fVal = fbm3D(px * 6, py * 4, pz * 6, 2) * 0.25;
+          const mix = sVal + fVal;
+          
+          if (mix < 0.35) {
+            r = 143; g = 110; b = 87;
+          } else if (mix < 0.65) {
+            r = 238; g = 218; b = 197;
+          } else {
+            r = 181; g = 124; b = 87;
+          }
+          
+          const grsX = Math.cos(-0.38) * Math.cos(4.0);
+          const grsY = Math.sin(-0.38);
+          const grsZ = Math.cos(-0.38) * Math.sin(4.0);
+          
+          const distToGrs = Math.sqrt((px-grsX)*(px-grsX)*2.0 + (py-grsY)*(py-grsY)*5.0 + (pz-grsZ)*(pz-grsZ)*2.0);
+          if (distToGrs < 0.16) {
+            const intensity = (0.16 - distToGrs) / 0.16;
+            const angle = Math.atan2(py - grsY, px - grsX);
+            const spiral = Math.sin(angle * 3.0 + distToGrs * 30.0);
+            
+            r = Math.floor(190 * intensity + r * (1 - intensity));
+            g = Math.floor((45 + spiral * 20) * intensity + g * (1 - intensity));
+            b = Math.floor((15 + spiral * 10) * intensity + b * (1 - intensity));
+          }
+          
+          const idx = (y * w + x) * 4;
+          data[idx] = r;
+          data[idx+1] = g;
+          data[idx+2] = b;
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawSaturnAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const turb = fbm3D(px * 8, py * 12, pz * 8, 3) * 0.05;
+          const latT = lat + turb;
+          
+          const sVal = Math.sin(latT * 6) * 0.5 + 0.5;
+          const r = Math.floor(215 - sVal * 45);
+          const g = Math.floor(195 - sVal * 40);
+          const b = Math.floor(155 - sVal * 45);
+          
+          const idx = (y * w + x) * 4;
+          data[idx] = r;
+          data[idx+1] = g;
+          data[idx+2] = b;
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawSaturnRings() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 4;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      
+      const imgData = ctx.createImageData(w, 4);
+      const data = imgData.data;
+      
+      for (let x = 0; x < w; x++) {
+        const rRatio = x / w;
+        let alpha = 0.0;
+        let r = 215, g = 195, b = 160;
+        
+        if (rRatio > 0.1 && rRatio < 0.95) {
+          alpha = 0.85;
+          if (rRatio > 0.67 && rRatio < 0.71) {
+            alpha = 0.05;
+          } else {
+            const ringLines = Math.sin(rRatio * 250) * 0.15 + Math.sin(rRatio * 600) * 0.08;
+            alpha += ringLines;
+            alpha = Math.max(0.1, Math.min(1.0, alpha));
+            r += Math.floor(ringLines * 40);
+            g += Math.floor(ringLines * 30);
+            b += Math.floor(ringLines * 20);
+          }
+        }
+        
+        if (rRatio <= 0.1) alpha *= (rRatio / 0.1);
+        if (rRatio >= 0.95) alpha *= ((1.0 - rRatio) / 0.05);
+        
+        for (let y = 0; y < 4; y++) {
+          const idx = (y * w + x) * 4;
+          data[idx] = r;
+          data[idx+1] = g;
+          data[idx+2] = b;
+          data[idx+3] = Math.floor(alpha * 255);
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      return texture;
+    },
+
+    drawUranusAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const noiseVal = fbm3D(px * 4, py * 8, pz * 4, 3) * 0.15;
+          const idx = (y * w + x) * 4;
+          
+          data[idx] = Math.floor(30 + noiseVal * 60);
+          data[idx+1] = Math.floor(140 + noiseVal * 80);
+          data[idx+2] = Math.floor(180 + noiseVal * 60);
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawNeptuneAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const noiseVal = fbm3D(px * 5, py * 10, pz * 5, 4) * 0.2;
+          const idx = (y * w + x) * 4;
+          
+          let r = Math.floor(25 + noiseVal * 40);
+          let g = Math.floor(60 + noiseVal * 70);
+          let b = Math.floor(160 + noiseVal * 80);
+          
+          const spotX = Math.cos(-0.35) * Math.cos(3.0);
+          const spotY = Math.sin(-0.35);
+          const spotZ = Math.cos(-0.35) * Math.sin(3.0);
+          const distToSpot = Math.sqrt((px-spotX)*(px-spotX) + (py-spotY)*(py-spotY)*2.0 + (pz-spotZ)*(pz-spotZ));
+          if (distToSpot < 0.18) {
+            const factor = (0.18 - distToSpot) / 0.18;
+            r = Math.floor(r * (1 - factor * 0.5));
+            g = Math.floor(g * (1 - factor * 0.5));
+            b = Math.floor(b * (1 - factor * 0.4));
+          }
+          
+          data[idx] = r;
+          data[idx+1] = g;
+          data[idx+2] = b;
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawCraters(ctx, w, h, darkColor, lightColor) {
+      for (let i = 0; i < 45; i++) {
+        const x = Math.random() * w;
+        const y = Math.random() * h;
+        const r = 3 + Math.random() * 11;
+        ctx.fillStyle = darkColor;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = lightColor;
+        ctx.beginPath();
+        ctx.arc(x + r*0.2, y + r*0.2, r * 0.9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    },
+
+    drawStarGlow() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      grad.addColorStop(0.15, 'rgba(255, 255, 255, 0.9)');
+      grad.addColorStop(0.45, 'rgba(255, 255, 255, 0.35)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 128, 128);
+      const texture = new THREE.CanvasTexture(canvas);
+      return texture;
+    },
+
+    drawNebulaGas() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const dy = y - 64;
+        for (let x = 0; x < w; x++) {
+          const dx = x - 64;
+          const dist = Math.sqrt(dx*dx + dy*dy) / 64;
+          const idx = (y * w + x) * 4;
+          
+          if (dist >= 1.0) {
+            data[idx] = 255;
+            data[idx+1] = 255;
+            data[idx+2] = 255;
+            data[idx+3] = 0;
+          } else {
+            let alpha = Math.pow(1.0 - dist, 1.8);
+            
+            const angle = Math.atan2(dy, dx);
+            const noiseVal = fbm3D(dx * 0.06, dy * 0.06, Math.sin(angle) * 3.5, 3);
+            alpha *= (0.3 + noiseVal * 0.9);
+            alpha = Math.max(0, Math.min(1.0, alpha));
+            
+            data[idx] = 255;
+            data[idx+1] = 255;
+            data[idx+2] = 255;
+            data[idx+3] = Math.floor(alpha * 255);
+          }
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+      const texture = new THREE.CanvasTexture(canvas);
+      return texture;
+    },
+
+    drawDefault(ctx, w, h) {
+      ctx.fillStyle = '#374151';
+      ctx.fillRect(0, 0, w, h);
+    }
+  };
+
   window.SpaceGallery3D = {
     scene: null,
     camera: null,
@@ -105,14 +807,6 @@
       this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
       window.addEventListener('resize', () => this.onResize());
       
-      // Add tactical 3D coordinate grid helper
-      const gridHelper = new THREE.GridHelper(1000, 50, 0x00d4ff, 0x002244);
-      gridHelper.position.y = -50;
-      gridHelper.material.opacity = 0.25;
-      gridHelper.material.transparent = true;
-      gridHelper.material.depthWrite = false;
-      this.scene.add(gridHelper);
-
       // Load initial tab
       this.loadTab('solar');
       this.animate();
@@ -123,6 +817,7 @@
       this.clearScene();
       this.setupLighting();
       this.addReferencePoint();
+      this.addGridHelper();
       
       if (tab === 'solar') {
         this.createSolarSystem();
@@ -136,6 +831,15 @@
       
       this.updateObjectsList();
       this.updateHUD();
+    },
+
+    addGridHelper() {
+      const gridHelper = new THREE.GridHelper(1000, 50, 0x00d4ff, 0x002244);
+      gridHelper.position.y = -50;
+      gridHelper.material.opacity = 0.25;
+      gridHelper.material.transparent = true;
+      gridHelper.material.depthWrite = false;
+      this.scene.add(gridHelper);
     },
     
     getUserLocationAndWeather() {
@@ -395,19 +1099,36 @@
     },
     
     clearScene() {
-      while(this.scene.children.length > 0) { 
-        const obj = this.scene.children[0];
-        if (obj.geometry) obj.geometry.dispose();
+      const disposeObject = (obj) => {
+        while (obj.children.length > 0) {
+          const child = obj.children[0];
+          obj.remove(child);
+          disposeObject(child);
+        }
+        if (obj.geometry) {
+          obj.geometry.dispose();
+        }
         if (obj.material) {
           if (Array.isArray(obj.material)) {
-            obj.material.forEach(m => m.dispose());
+            obj.material.forEach(m => {
+              if (m.map) m.map.dispose();
+              m.dispose();
+            });
           } else {
+            if (obj.material.map) obj.material.map.dispose();
             obj.material.dispose();
           }
         }
+      };
+
+      while (this.scene.children.length > 0) {
+        const obj = this.scene.children[0];
         this.scene.remove(obj);
+        disposeObject(obj);
       }
+      
       this.objects = [];
+      this.referenceEarth = null;
     },
     
     setupLighting() {
@@ -443,39 +1164,51 @@
     createSolarSystem() {
       this.solarSystem.forEach((data, i) => {
         if (data.name === 'Sun') {
-          // Sun with glow
           const geometry = new THREE.SphereGeometry(data.radius, 48, 48);
+          const texture = TextureGenerator.generate('sun', 'albedo');
           const material = new THREE.MeshBasicMaterial({ 
-            color: data.color,
-            emissive: data.color,
-            emissiveIntensity: 1
+            map: texture
           });
           const sun = new THREE.Mesh(geometry, material);
           sun.userData = { ...data, id: i };
           this.scene.add(sun);
           this.objects.push(sun);
           
-          // Sun glow
-          const glowGeometry = new THREE.SphereGeometry(data.radius * 1.3, 32, 32);
-          const glowMaterial = new THREE.MeshBasicMaterial({
+          const glowTexture = TextureGenerator.generate('star-glow', 'albedo');
+          const glowMaterial = new THREE.SpriteMaterial({
+            map: glowTexture,
             color: data.color,
             transparent: true,
-            opacity: 0.3,
-            side: THREE.BackSide,
+            opacity: 0.9,
             blending: THREE.AdditiveBlending
           });
-          const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+          const glow = new THREE.Sprite(glowMaterial);
+          glow.scale.set(data.radius * 3.8, data.radius * 3.8, 1);
           sun.add(glow);
         } else {
-          // Planet
           const geometry = new THREE.SphereGeometry(data.radius, 48, 48);
-          const material = new THREE.MeshStandardMaterial({ 
-            color: data.color,
-            roughness: 0.7,
-            metalness: 0.1,
+          const texture = TextureGenerator.generate(data.name, 'albedo');
+          
+          const matParams = {
+            map: texture,
             emissive: data.color,
-            emissiveIntensity: 0.05
-          });
+            emissiveIntensity: 0.02
+          };
+
+          if (data.name === 'Earth' || data.name === 'Mars' || data.name === 'Mercury') {
+            matParams.bumpMap = TextureGenerator.generate(data.name, 'bump');
+            matParams.bumpScale = data.name === 'Earth' ? 0.85 : data.name === 'Mars' ? 0.45 : 0.35;
+          }
+
+          if (data.name === 'Earth') {
+            matParams.roughnessMap = TextureGenerator.generate(data.name, 'roughness');
+            matParams.metalness = 0.12;
+          } else {
+            matParams.roughness = (data.name === 'Venus' || data.name === 'Jupiter' || data.name === 'Saturn') ? 0.95 : 0.8;
+            matParams.metalness = 0.0;
+          }
+
+          const material = new THREE.MeshStandardMaterial(matParams);
           const planet = new THREE.Mesh(geometry, material);
           planet.castShadow = true;
           planet.receiveShadow = true;
@@ -485,30 +1218,59 @@
           planet.position.z = Math.sin(angle) * data.distance;
           planet.userData = { ...data, id: i, angle };
           
+          if (data.name === 'Earth') {
+            const cloudGeo = new THREE.SphereGeometry(data.radius + 0.2, 48, 48);
+            const cloudTex = TextureGenerator.generate('earth-clouds', 'albedo');
+            const cloudMat = new THREE.MeshStandardMaterial({
+              map: cloudTex,
+              transparent: true,
+              opacity: 0.5,
+              depthWrite: false,
+              blending: THREE.NormalBlending
+            });
+            const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+            planet.add(clouds);
+            planet.userData.clouds = clouds;
+          }
+          
           this.scene.add(planet);
           this.objects.push(planet);
           
-          // Rings for Saturn
           if (data.rings) {
-            const ringGeometry = new THREE.RingGeometry(data.radius * 1.5, data.radius * 2.2, 64);
+            const ringGeometry = new THREE.RingGeometry(data.radius * 1.4, data.radius * 2.4, 64);
+            const posAttr = ringGeometry.attributes.position;
+            const uvAttr = ringGeometry.attributes.uv;
+            const innerR = data.radius * 1.4;
+            const outerR = data.radius * 2.4;
+            
+            for (let j = 0; j < posAttr.count; j++) {
+              const x = posAttr.getX(j);
+              const y = posAttr.getY(j);
+              const r = Math.sqrt(x*x + y*y);
+              const u = (r - innerR) / (outerR - innerR);
+              uvAttr.setXY(j, u, 0.5);
+            }
+            uvAttr.needsUpdate = true;
+ 
+            const ringTex = TextureGenerator.generate('saturn-rings', 'albedo');
             const ringMaterial = new THREE.MeshStandardMaterial({
-              color: data.color,
+              map: ringTex,
               transparent: true,
-              opacity: 0.7,
+              opacity: 0.85,
               side: THREE.DoubleSide,
-              roughness: 0.8
+              roughness: 0.6,
+              metalness: 0.1
             });
             const ring = new THREE.Mesh(ringGeometry, ringMaterial);
             ring.rotation.x = Math.PI / 2.2;
             planet.add(ring);
           }
           
-          // Orbit line
           const orbitGeometry = new THREE.RingGeometry(data.distance - 0.5, data.distance + 0.5, 128);
           const orbitMaterial = new THREE.MeshBasicMaterial({
             color: 0x00d4ff,
             transparent: true,
-            opacity: 0.1,
+            opacity: 0.15,
             side: THREE.DoubleSide
           });
           const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
@@ -519,19 +1281,15 @@
     },
     
     createStars() {
+      const glowTexture = TextureGenerator.generate('star-glow');
       this.nearbyStars.forEach((data, i) => {
         const geometry = new THREE.SphereGeometry(data.radius, 32, 32);
-        const material = new THREE.MeshStandardMaterial({ 
-          color: data.color,
-          emissive: data.color,
-          emissiveIntensity: 0.8,
-          roughness: 0.3,
-          metalness: 0.5
+        const material = new THREE.MeshBasicMaterial({ 
+          color: data.color
         });
         const star = new THREE.Mesh(geometry, material);
         star.castShadow = true;
         
-        // Random 3D positioning
         const angle = Math.random() * Math.PI * 2;
         const height = (Math.random() - 0.5) * 200;
         const distance = 100 + Math.random() * 200;
@@ -542,19 +1300,17 @@
         );
         star.userData = { ...data, id: i };
         
-        // Star glow
-        const glowGeometry = new THREE.SphereGeometry(data.radius * 1.5, 24, 24);
-        const glowMaterial = new THREE.MeshBasicMaterial({
+        const glowMaterial = new THREE.SpriteMaterial({
+          map: glowTexture,
           color: data.color,
           transparent: true,
-          opacity: 0.4,
-          side: THREE.BackSide,
+          opacity: 0.8,
           blending: THREE.AdditiveBlending
         });
-        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        const glow = new THREE.Sprite(glowMaterial);
+        glow.scale.set(data.radius * 4.5, data.radius * 4.5, 1);
         star.add(glow);
         
-        // Point light for bright stars
         if (data.radius > 10) {
           const light = new THREE.PointLight(data.color, 0.5, 100);
           star.add(light);
@@ -564,45 +1320,282 @@
         this.objects.push(star);
       });
     },
-    
+
+    generateNebulaGeometry(name, radius, colorHex) {
+      const positions = [];
+      const colors = [];
+      const particleCount = 5000;
+      const color = new THREE.Color(colorHex);
+      
+      switch(name.toLowerCase()) {
+        case 'ring nebula': {
+          const colorInner = new THREE.Color(0x00ffcc);
+          const colorOuter = new THREE.Color(0xff2255);
+          for (let j = 0; j < particleCount; j++) {
+            const u = Math.random() * Math.PI * 2;
+            const v = Math.random() * Math.PI * 2;
+            const rRing = radius * 0.7;
+            const rTube = radius * 0.3 * (0.6 + Math.random() * 0.4);
+            
+            let x = (rRing + rTube * Math.cos(v)) * Math.cos(u);
+            let z = (rRing + rTube * Math.cos(v)) * Math.sin(u);
+            let y = rTube * Math.sin(v);
+            
+            const ox = (fbm3D(x * 0.1, y * 0.1, z * 0.1, 3) - 0.5) * (radius * 0.3);
+            const oy = (fbm3D(y * 0.1, z * 0.1, x * 0.1, 3) - 0.5) * (radius * 0.3);
+            const oz = (fbm3D(z * 0.1, x * 0.1, y * 0.1, 3) - 0.5) * (radius * 0.3);
+            
+            x += ox;
+            y += oy;
+            z += oz;
+            
+            positions.push(x, y, z);
+            const dist = Math.sqrt(x*x + z*z);
+            const ratio = Math.min(1.0, Math.max(0.0, (dist - (rRing - rTube)) / (rTube * 2.5)));
+            const pColor = new THREE.Color().lerpColors(colorInner, colorOuter, ratio);
+            colors.push(pColor.r, pColor.g, pColor.b);
+          }
+          break;
+        }
+        case 'eagle nebula': {
+          const baseColor = new THREE.Color(0xd97706);
+          const tipColor = new THREE.Color(0xec4899);
+          for (let j = 0; j < particleCount; j++) {
+            const pillar = Math.floor(Math.random() * 3);
+            let px = 0, py = 0, pz = 0;
+            let height = 0;
+            let maxH = 0;
+            if (pillar === 0) {
+              px = -14 + (Math.random() - 0.5) * 8;
+              maxH = radius * 1.3;
+              height = (Math.random() - 0.35) * maxH;
+              py = height;
+              pz = (Math.random() - 0.5) * 8;
+            } else if (pillar === 1) {
+              px = 0 + (Math.random() - 0.5) * 7;
+              maxH = radius * 0.85;
+              height = (Math.random() - 0.45) * maxH;
+              py = height - radius * 0.15;
+              pz = (Math.random() - 0.5) * 7;
+            } else {
+              px = 14 + (Math.random() - 0.5) * 6;
+              maxH = radius * 0.55;
+              height = (Math.random() - 0.55) * maxH;
+              py = height - radius * 0.35;
+              pz = (Math.random() - 0.5) * 6;
+            }
+            
+            const taper = 1.0 - (height / maxH);
+            const thick = radius * 0.18 * taper + 2.0;
+            
+            const ox = (fbm3D(px * 0.12, py * 0.12, pz * 0.12, 3) - 0.5) * thick;
+            const oy = (fbm3D(py * 0.12, pz * 0.12, px * 0.12, 3) - 0.5) * thick;
+            const oz = (fbm3D(pz * 0.12, px * 0.12, py * 0.12, 3) - 0.5) * thick;
+            
+            px += ox;
+            py += oy;
+            pz += oz;
+            
+            positions.push(px, py, pz);
+            const ratio = Math.min(1.0, Math.max(0.0, height / maxH));
+            const pColor = new THREE.Color().lerpColors(baseColor, tipColor, ratio);
+            colors.push(pColor.r, pColor.g, pColor.b);
+          }
+          break;
+        }
+        case 'crab nebula': {
+          const innerColor = new THREE.Color(0x00f3ff);
+          const outerColor = new THREE.Color(0xff4500);
+          for (let j = 0; j < particleCount; j++) {
+            let x = 0, y = 0, z = 0;
+            let ratio = 0;
+            
+            if (Math.random() < 0.22) {
+              const theta = Math.random() * Math.PI * 2;
+              const phi = Math.random() * Math.PI;
+              const length = radius * (0.2 + Math.random() * 0.95);
+              x = length * Math.sin(phi) * Math.cos(theta);
+              z = length * Math.sin(phi) * Math.sin(theta);
+              y = length * Math.cos(phi) * 1.35;
+              
+              const ox = (fbm3D(x * 0.25, y * 0.25, z * 0.25, 4) - 0.5) * 5;
+              const oy = (fbm3D(y * 0.25, z * 0.25, x * 0.25, 4) - 0.5) * 5;
+              const oz = (fbm3D(z * 0.25, x * 0.25, y * 0.25, 4) - 0.5) * 5;
+              x += ox;
+              y += oy;
+              z += oz;
+              ratio = length / (radius * 1.35);
+            } else {
+              const theta = Math.random() * Math.PI * 2;
+              const phi = Math.random() * Math.PI;
+              const deformation = 1.0 + 0.3 * Math.sin(12 * theta) * Math.cos(8 * phi);
+              const r = radius * 0.7 * deformation * (0.75 + Math.random() * 0.25);
+              x = r * Math.sin(phi) * Math.cos(theta);
+              z = r * Math.sin(phi) * Math.sin(theta);
+              y = r * Math.cos(phi) * 1.25;
+              ratio = r / (radius * 1.3);
+            }
+            
+            positions.push(x, y, z);
+            const pColor = new THREE.Color().lerpColors(innerColor, outerColor, ratio);
+            colors.push(pColor.r, pColor.g, pColor.b);
+          }
+          break;
+        }
+        case 'orion nebula': {
+          const magenta = new THREE.Color(0xff00aa);
+          const cyan = new THREE.Color(0x00ffff);
+          for (let j = 0; j < particleCount; j++) {
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+            const lobe = 0.3 + 0.7 * Math.pow(Math.abs(Math.sin(theta) * Math.sin(phi)), 1.5);
+            
+            const rBase = radius * lobe;
+            const noiseFactor = fbm3D(Math.sin(phi)*Math.cos(theta)*3.5, Math.cos(phi)*3.5, Math.sin(phi)*Math.sin(theta)*3.5, 3);
+            const r = rBase * (0.35 + noiseFactor * 1.2);
+            
+            let x = r * Math.sin(phi) * Math.cos(theta) * 1.6;
+            let z = r * Math.sin(phi) * Math.sin(theta);
+            let y = r * Math.cos(phi);
+            
+            const ox = (fbm3D(x * 0.08, y * 0.08, z * 0.08, 3) - 0.5) * (radius * 0.3);
+            const oy = (fbm3D(y * 0.08, z * 0.08, x * 0.08, 3) - 0.5) * (radius * 0.3);
+            const oz = (fbm3D(z * 0.08, x * 0.08, y * 0.08, 3) - 0.5) * (radius * 0.3);
+            
+            x += ox;
+            y += oy;
+            z += oz;
+            
+            positions.push(x, y, z);
+            const pColor = (Math.sin(theta * 2) > 0) ? magenta.clone() : cyan.clone();
+            pColor.r += (Math.random() - 0.5) * 0.12;
+            pColor.g += (Math.random() - 0.5) * 0.12;
+            pColor.b += (Math.random() - 0.5) * 0.12;
+            colors.push(pColor.r, pColor.g, pColor.b);
+          }
+          break;
+        }
+        case 'helix nebula': {
+          const colorInner = new THREE.Color(0x00ffcc);
+          const colorOuter = new THREE.Color(0x9030ff);
+          for (let j = 0; j < particleCount; j++) {
+            const angle = Math.random() * Math.PI * 2;
+            const isRadialKnot = Math.random() < 0.25;
+            let x = 0, y = 0, z = 0;
+            let ringSelect = Math.random() > 0.5 ? 0 : 1;
+            
+            if (isRadialKnot) {
+              const r = radius * (0.35 + Math.random() * 0.9);
+              x = Math.cos(angle) * r;
+              z = Math.sin(angle) * r;
+              y = (Math.random() - 0.5) * 4 + (ringSelect === 0 ? -2.5 : 2.5) * Math.sin(angle);
+              
+              const ox = (fbm3D(x * 0.15, y * 0.15, z * 0.15, 3) - 0.5) * 2;
+              const oy = (fbm3D(y * 0.15, z * 0.15, x * 0.15, 3) - 0.5) * 2;
+              const oz = (fbm3D(z * 0.15, x * 0.15, y * 0.15, 3) - 0.5) * 2;
+              x += ox; y += oy; z += oz;
+            } else {
+              const r = radius * (0.65 + 0.32 * ringSelect) + (Math.random() - 0.5) * 3;
+              x = Math.cos(angle) * r;
+              z = Math.sin(angle) * r;
+              y = (Math.random() - 0.5) * 5 + (ringSelect === 0 ? -2 : 2) * Math.sin(angle);
+            }
+            
+            positions.push(x, y, z);
+            const pColor = new THREE.Color().lerpColors(colorInner, colorOuter, ringSelect);
+            colors.push(pColor.r, pColor.g, pColor.b);
+          }
+          break;
+        }
+        case 'horsehead nebula': {
+          const pink = new THREE.Color(0xff4b9f);
+          for (let j = 0; j < particleCount; j++) {
+            const isBackground = Math.random() > 0.4;
+            if (isBackground) {
+              const x = (Math.random() - 0.5) * radius * 2.8;
+              const y = (Math.random() - 0.5) * radius * 2.2;
+              const z = -16.0 + (Math.random() - 0.5) * 4.0;
+              
+              const intensity = fbm3D(x * 0.08, y * 0.08, z * 0.08, 4);
+              positions.push(x, y, z);
+              colors.push(
+                pink.r * (0.55 + intensity * 0.45),
+                pink.g * (0.35 + intensity * 0.65),
+                pink.b * (0.55 + intensity * 0.45)
+              );
+            } else {
+              let px = (Math.random() - 0.5) * radius * 1.5;
+              let py = (Math.random() - 0.5) * radius * 1.5;
+              let pz = -4.0 + (Math.random() - 0.5) * 3.5;
+              
+              const ny = py / (radius * 0.65);
+              let minX = -999, maxX = -999;
+              
+              if (ny > 0.6) {
+                minX = -13;
+                maxX = -1 + (1.0 - ny) * 12;
+              } else if (ny > 0.15) {
+                minX = -17 + (ny - 0.15) * 10;
+                maxX = 3 + (ny - 0.15) * 6;
+              } else if (ny > -0.45) {
+                minX = -14 - (ny + 0.45) * 5;
+                maxX = 5 + (ny + 0.45) * 5;
+              } else {
+                minX = -20 + (ny + 1.0) * 12;
+                maxX = 10 + (ny + 1.0) * 12;
+              }
+              
+              const edgeNoise = (fbm3D(px * 0.25, py * 0.25, pz * 0.25, 3) - 0.5) * 3.0;
+              if (px >= minX + edgeNoise && px <= maxX + edgeNoise) {
+                positions.push(px, py, pz);
+                colors.push(0.04, 0.035, 0.045);
+              } else {
+                positions.push(px, py, -16.0);
+                colors.push(pink.r * 0.6, pink.g * 0.4, pink.b * 0.6);
+              }
+            }
+          }
+          break;
+        }
+        default: {
+          for (let j = 0; j < particleCount; j++) {
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+            const r = Math.random() * radius;
+            positions.push(
+              r * Math.sin(phi) * Math.cos(theta),
+              r * Math.sin(phi) * Math.sin(theta),
+              r * Math.cos(phi)
+            );
+            colors.push(color.r, color.g, color.b);
+          }
+        }
+      }
+      
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      return geometry;
+    },
+
     createNebulae() {
       this.nebulae.forEach((data, i) => {
-        // Nebula cloud using particles
-        const particleCount = 500;
-        const geometry = new THREE.BufferGeometry();
-        const positions = [];
-        const colors = [];
-        
-        for (let j = 0; j < particleCount; j++) {
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.random() * Math.PI;
-          const r = Math.random() * data.radius;
-          
-          positions.push(
-            r * Math.sin(phi) * Math.cos(theta),
-            r * Math.sin(phi) * Math.sin(theta),
-            r * Math.cos(phi)
-          );
-          
-          const color = new THREE.Color(data.color);
-          colors.push(color.r, color.g, color.b);
-        }
-        
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        const geometry = this.generateNebulaGeometry(data.name, data.radius, data.color);
+        const particleTexture = TextureGenerator.generate('nebula-gas', 'albedo');
+        const isHorsehead = data.name.toLowerCase() === 'horsehead nebula';
         
         const material = new THREE.PointsMaterial({
-          size: 2,
+          size: data.radius * 0.26,
+          map: particleTexture,
           vertexColors: true,
           transparent: true,
-          opacity: 0.6,
-          blending: THREE.AdditiveBlending,
+          opacity: isHorsehead ? 0.95 : 0.65,
+          blending: isHorsehead ? THREE.NormalBlending : THREE.AdditiveBlending,
           depthWrite: false
         });
         
         const nebula = new THREE.Points(geometry, material);
         
-        // Random positioning
         const angle = Math.random() * Math.PI * 2;
         const height = (Math.random() - 0.5) * 150;
         const distance = 150 + Math.random() * 200;
@@ -613,14 +1606,13 @@
         );
         nebula.userData = { ...data, id: i };
         
-        // Core sphere for clicking
-        const coreGeometry = new THREE.SphereGeometry(data.radius * 0.3, 24, 24);
+        const coreGeometry = new THREE.SphereGeometry(data.radius * 0.15, 24, 24);
         const coreMaterial = new THREE.MeshStandardMaterial({
           color: data.color,
           emissive: data.color,
           emissiveIntensity: 0.5,
           transparent: true,
-          opacity: 0.7,
+          opacity: 0.8,
           roughness: 0.5
         });
         const core = new THREE.Mesh(coreGeometry, coreMaterial);
@@ -632,34 +1624,49 @@
     },
 
     createConstellations() {
+      const glowTexture = TextureGenerator.generate('star-glow');
       this.constellations.forEach((data, i) => {
         const group = new THREE.Group();
+        const angle = Math.random() * Math.PI * 2;
+        const height = (Math.random() - 0.5) * 100;
+        const distance = 150 + Math.random() * 150;
+        group.position.set(
+          Math.cos(angle) * distance,
+          height,
+          Math.sin(angle) * distance
+        );
         
-        // Create stars
         data.stars.forEach((pos, j) => {
-          const starGeo = new THREE.SphereGeometry(3, 16, 16);
+          const isBrightest = j === 0;
+          const starRadius = isBrightest ? 5 : 2 + Math.random() * 1.5;
+          const starGeo = new THREE.SphereGeometry(starRadius, 16, 16);
+          
+          let starColor = data.color;
+          if (isBrightest) {
+            if (data.name === 'Orion') starColor = 0xffa500;
+            else if (data.name === 'Scorpius') starColor = 0xff4500;
+            else starColor = 0xe0f2fe;
+          }
+          
           const starMat = new THREE.MeshBasicMaterial({
-            color: data.color,
-            emissive: data.color,
-            emissiveIntensity: 1
+            color: starColor
           });
           const star = new THREE.Mesh(starGeo, starMat);
           star.position.set(pos[0], pos[1], pos[2]);
           
-          // Glow
-          const glowGeo = new THREE.SphereGeometry(5, 16, 16);
-          const glowMat = new THREE.MeshBasicMaterial({
-            color: data.color,
+          const glowMaterial = new THREE.SpriteMaterial({
+            map: glowTexture,
+            color: starColor,
             transparent: true,
-            opacity: 0.3,
+            opacity: isBrightest ? 0.95 : 0.5,
             blending: THREE.AdditiveBlending
           });
-          const glow = new THREE.Mesh(glowGeo, glowMat);
+          const glow = new THREE.Sprite(glowMaterial);
+          glow.scale.set(starRadius * (isBrightest ? 5.5 : 4.0), starRadius * (isBrightest ? 5.5 : 4.0), 1);
           star.add(glow);
           
           group.add(star);
           
-          // Connect lines
           if (j < data.stars.length - 1) {
             const lineGeo = new THREE.BufferGeometry().setFromPoints([
               new THREE.Vector3(pos[0], pos[1], pos[2]),
@@ -668,7 +1675,7 @@
             const lineMat = new THREE.LineBasicMaterial({
               color: data.color,
               transparent: true,
-              opacity: 0.5
+              opacity: 0.35
             });
             const line = new THREE.Line(lineGeo, lineMat);
             group.add(line);
@@ -858,6 +1865,11 @@
           obj.position.z = Math.sin(obj.userData.angle) * obj.userData.distance;
         }
         obj.rotation.y += 0.005;
+        
+        // Rotate nested clouds if present
+        if (obj.userData.clouds) {
+          obj.userData.clouds.rotation.y += 0.007;
+        }
       });
       
       this.renderer.render(this.scene, this.camera);

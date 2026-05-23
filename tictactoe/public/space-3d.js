@@ -130,8 +130,6 @@
         (Math.random() - 0.5) * 500
       );
     }
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setAttribute('velocity', new THREE.Float32BufferAttribute(vel, 3));
     
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     

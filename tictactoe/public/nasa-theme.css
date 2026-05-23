@@ -555,8 +555,8 @@ textarea:focus {
 
 /* HUD button light sweep — uses transform, not `left`, so no reflow */
 @keyframes hudSweep {
-  from { transform: translateX(-200%); }
-  to   { transform: translateX(200%);  }
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%);  }
 }
 
 
@@ -665,22 +665,38 @@ textarea:focus {
   content: '';
   position: absolute;
   inset: 0;
-  /* Width wider than container so it fully enters/exits */
-  width: 60%;
+  width: 100%;
   background: linear-gradient(
     90deg,
-    transparent,
-    var(--hud-sweep, rgba(0, 212, 255, 0.25)),
-    transparent
+    transparent 0%,
+    transparent 20%,
+    rgba(0, 212, 255, 0.15) 20%,
+    rgba(0, 212, 255, 0.15) 24%,
+    transparent 24%,
+    transparent 35%,
+    var(--hud-sweep, rgba(0, 212, 255, 0.6)) 35%,
+    var(--hud-sweep, rgba(0, 212, 255, 0.6)) 42%,
+    transparent 42%,
+    transparent 45%,
+    var(--hud-sweep, rgba(0, 212, 255, 0.95)) 45%,
+    var(--hud-sweep, rgba(0, 212, 255, 0.95)) 52%,
+    transparent 52%,
+    transparent 55%,
+    var(--hud-sweep, rgba(0, 212, 255, 0.5)) 55%,
+    var(--hud-sweep, rgba(0, 212, 255, 0.5)) 58%,
+    transparent 58%,
+    transparent 70%,
+    rgba(0, 212, 255, 0.2) 70%,
+    rgba(0, 212, 255, 0.2) 74%,
+    transparent 74%,
+    transparent 100%
   );
-  /* Start offscreen left */
-  transform: translateX(-200%);
+  transform: translateX(-100%);
   pointer-events: none;
-  /* No transition here — animation handles it on hover */
 }
 
 .btn-hud:hover::before {
-  animation: hudSweep 0.65s ease forwards;
+  animation: hudSweep 0.45s steps(12) forwards;
 }
 
 /* ── Hover state ── */

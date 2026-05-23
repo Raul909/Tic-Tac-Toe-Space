@@ -309,7 +309,15 @@ function app() {
       
       this.socket.on('auth:ok', (data) => {
         window.SoundManager.play('start');
-        this.user = { username: data.username, stats: data.stats };
+        this.user = { 
+          ...this.user, 
+          username: data.username, 
+          stats: data.stats || this.user.stats,
+          elo: data.elo !== undefined ? data.elo : this.user.elo,
+          rank: data.rank || this.user.rank,
+          profile: data.profile || this.user.profile,
+          friends: data.friends || this.user.friends
+        };
         if (data.rejoining) return; // game:rejoin will handle navigation
         if (this.mode === 'tournament') {
           this.exitTournament();
@@ -426,7 +434,15 @@ function app() {
     },
     handleAuthSuccess(data) {
       localStorage.setItem('token', data.token);
-      this.user = { username: data.username, stats: data.stats };
+      this.user = { 
+        ...this.user, 
+        username: data.username, 
+        stats: data.stats || this.user.stats,
+        elo: data.elo !== undefined ? data.elo : this.user.elo,
+        rank: data.rank || this.user.rank,
+        profile: data.profile || this.user.profile,
+        friends: data.friends || this.user.friends
+      };
       this.connectSocket(data.token);
     },
 
@@ -515,7 +531,15 @@ function app() {
       localStorage.removeItem('token');
       if (this.socket) this.socket.disconnect();
       this.setScreen('auth');
-      this.user = { username: '', stats: { wins: 0, draws: 0, losses: 0 } };
+      this.user = {
+        username: '',
+        stats: { wins: 0, draws: 0, losses: 0, gamesPlayed: 0, winStreak: 0, bestStreak: 0 },
+        achievements: [],
+        profile: { avatar: 'astronaut', symbol: 'default', theme: 'space', banner: 'nebula', soundPack: 'scifi' },
+        elo: 1000,
+        rank: 'Cadet',
+        friends: []
+      };
     },
     
     loginWithGoogle() {
