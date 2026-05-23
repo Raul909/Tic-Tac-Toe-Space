@@ -53,8 +53,8 @@
   const TextureGenerator = {
     generate(name, type = 'albedo') {
       const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 256;
+      canvas.width = 1024;
+      canvas.height = 512;
       const ctx = canvas.getContext('2d');
       const w = canvas.width;
       const h = canvas.height;
@@ -511,37 +511,44 @@
 
     drawSaturnRings() {
       const canvas = document.createElement('canvas');
-      canvas.width = 1024;
-      canvas.height = 4;
+      canvas.width = 2048; // Extremely high resolution!
+      canvas.height = 128; // Large height for butter-smooth oblique mipmap filtering
       const ctx = canvas.getContext('2d');
       const w = canvas.width;
+      const h = canvas.height;
       
-      const imgData = ctx.createImageData(w, 4);
+      const imgData = ctx.createImageData(w, h);
       const data = imgData.data;
       
       for (let x = 0; x < w; x++) {
         const rRatio = x / w;
         let alpha = 0.0;
-        let r = 215, g = 195, b = 160;
+        let r = 225, g = 205, b = 175; // beautiful realistic creamy color
         
         if (rRatio > 0.1 && rRatio < 0.95) {
           alpha = 0.85;
-          if (rRatio > 0.67 && rRatio < 0.71) {
-            alpha = 0.05;
+          if (rRatio > 0.65 && rRatio < 0.70) {
+            // Cassini Division
+            alpha = 0.02;
+          } else if (rRatio > 0.82 && rRatio < 0.84) {
+            // Encke Gap
+            alpha = 0.1;
           } else {
-            const ringLines = Math.sin(rRatio * 250) * 0.15 + Math.sin(rRatio * 600) * 0.08;
+            // Organic, realistic high-frequency ring bands using composite sine waves
+            const ringLines = Math.sin(rRatio * 400) * 0.12 + Math.sin(rRatio * 1000) * 0.06 + Math.sin(rRatio * 150) * 0.08;
             alpha += ringLines;
-            alpha = Math.max(0.1, Math.min(1.0, alpha));
-            r += Math.floor(ringLines * 40);
-            g += Math.floor(ringLines * 30);
-            b += Math.floor(ringLines * 20);
+            alpha = Math.max(0.12, Math.min(1.0, alpha));
+            r += Math.floor(ringLines * 30);
+            g += Math.floor(ringLines * 20);
+            b += Math.floor(ringLines * 10);
           }
         }
         
         if (rRatio <= 0.1) alpha *= (rRatio / 0.1);
         if (rRatio >= 0.95) alpha *= ((1.0 - rRatio) / 0.05);
         
-        for (let y = 0; y < 4; y++) {
+        // Fill all vertical rows identically
+        for (let y = 0; y < h; y++) {
           const idx = (y * w + x) * 4;
           data[idx] = r;
           data[idx+1] = g;
@@ -554,6 +561,9 @@
       const texture = new THREE.CanvasTexture(canvas);
       texture.wrapS = THREE.ClampToEdgeWrapping;
       texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.minFilter = THREE.LinearMipmapLinearFilter; // Butter-smooth trilinear filtering
+      texture.magFilter = THREE.LinearFilter;
+      texture.generateMipmaps = true;
       return texture;
     },
 
@@ -640,35 +650,72 @@
 
     drawStarGlow() {
       const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 128;
+      canvas.width = 512; // High resolution for ultra-sharp, gorgeous volumetric rays
+      canvas.height = 512;
       const ctx = canvas.getContext('2d');
-      const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      const cx = 256;
+      const cy = 256;
+      
+      // 1. Soft radial base glow
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 256);
       grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-      grad.addColorStop(0.15, 'rgba(255, 255, 255, 0.9)');
-      grad.addColorStop(0.45, 'rgba(255, 255, 255, 0.35)');
-      grad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+      grad.addColorStop(0.12, 'rgba(255, 245, 220, 0.95)');
+      grad.addColorStop(0.28, 'rgba(255, 180, 50, 0.45)');
+      grad.addColorStop(0.55, 'rgba(255, 100, 20, 0.12)');
+      grad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 128, 128);
+      ctx.fillRect(0, 0, 512, 512);
+      
+      // 2. Volumetric Solar Rays (shafts of light extending dynamically)
+      const numRays = 48;
+      ctx.save();
+      ctx.translate(cx, cy);
+      
+      for (let i = 0; i < numRays; i++) {
+        const angle = (i / numRays) * Math.PI * 2 + Math.sin(i * 3.7) * 0.1;
+        const length = 120 + Math.abs(Math.sin(i * 12.3)) * 130;
+        const width = 0.02 + Math.abs(Math.cos(i * 7.4)) * 0.05; // sharp, wispy rays
+        
+        const rayGrad = ctx.createLinearGradient(0, 0, 0, length);
+        rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.55)');
+        rayGrad.addColorStop(0.15, 'rgba(255, 225, 120, 0.35)');
+        rayGrad.addColorStop(0.5, 'rgba(255, 120, 30, 0.12)');
+        rayGrad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
+        
+        ctx.fillStyle = rayGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        const xLeft = Math.cos(angle - width) * length;
+        const yLeft = Math.sin(angle - width) * length;
+        const xRight = Math.cos(angle + width) * length;
+        const yRight = Math.sin(angle + width) * length;
+        ctx.lineTo(xLeft, yLeft);
+        ctx.lineTo(xRight, yRight);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+      
       const texture = new THREE.CanvasTexture(canvas);
       return texture;
     },
 
     drawNebulaGas() {
       const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 128;
+      canvas.width = 256; // Increase resolution to 256 for smooth wispy gas clouds without blocky artifacts
+      canvas.height = 256;
       const ctx = canvas.getContext('2d');
       const w = canvas.width;
       const h = canvas.height;
+      const halfW = w / 2;
       
       const imgData = ctx.createImageData(w, h);
       const data = imgData.data;
       for (let y = 0; y < h; y++) {
-        const dy = y - 64;
+        const dy = y - halfW;
         for (let x = 0; x < w; x++) {
-          const dx = x - 64;
-          const dist = Math.sqrt(dx*dx + dy*dy) / 64;
+          const dx = x - halfW;
+          const dist = Math.sqrt(dx*dx + dy*dy) / halfW;
           const idx = (y * w + x) * 4;
           
           if (dist >= 1.0) {
@@ -680,7 +727,7 @@
             let alpha = Math.pow(1.0 - dist, 1.8);
             
             const angle = Math.atan2(dy, dx);
-            const noiseVal = fbm3D(dx * 0.06, dy * 0.06, Math.sin(angle) * 3.5, 3);
+            const noiseVal = fbm3D(dx * 0.03, dy * 0.03, Math.sin(angle) * 3.5, 3);
             alpha *= (0.3 + noiseVal * 0.9);
             alpha = Math.max(0, Math.min(1.0, alpha));
             

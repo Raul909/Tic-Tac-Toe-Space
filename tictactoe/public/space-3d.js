@@ -552,29 +552,43 @@
 
   function generateRingTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 4;
+    canvas.width = 2048; // Extremely high resolution!
+    canvas.height = 128; // Large height for perfect oblique rendering
     const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
     
-    const imgData = ctx.createImageData(256, 4);
+    const imgData = ctx.createImageData(w, h);
     const data = imgData.data;
-    for (let x = 0; x < 256; x++) {
-      const rRatio = x / 256;
+    for (let x = 0; x < w; x++) {
+      const rRatio = x / w;
       let alpha = 0.0;
-      let r = 215, g = 195, b = 160;
+      let r = 225, g = 205, b = 175;
       
       if (rRatio > 0.1 && rRatio < 0.95) {
-        alpha = 0.7;
-        if (rRatio > 0.65 && rRatio < 0.7) {
-          alpha = 0.05;
+        alpha = 0.85;
+        if (rRatio > 0.65 && rRatio < 0.70) {
+          // Cassini Division
+          alpha = 0.02;
+        } else if (rRatio > 0.82 && rRatio < 0.84) {
+          // Encke Gap
+          alpha = 0.1;
         } else {
-          const ringLines = Math.sin(rRatio * 120) * 0.1;
+          // Realistic high-frequency ring lines
+          const ringLines = Math.sin(rRatio * 400) * 0.12 + Math.sin(rRatio * 1000) * 0.06 + Math.sin(rRatio * 150) * 0.08;
           alpha += ringLines;
+          alpha = Math.max(0.12, Math.min(1.0, alpha));
+          r += Math.floor(ringLines * 30);
+          g += Math.floor(ringLines * 20);
+          b += Math.floor(ringLines * 10);
         }
       }
       
-      for (let y = 0; y < 4; y++) {
-        const idx = (y * 256 + x) * 4;
+      if (rRatio <= 0.1) alpha *= (rRatio / 0.1);
+      if (rRatio >= 0.95) alpha *= ((1.0 - rRatio) / 0.05);
+      
+      for (let y = 0; y < h; y++) {
+        const idx = (y * w + x) * 4;
         data[idx] = r;
         data[idx+1] = g;
         data[idx+2] = b;
@@ -583,6 +597,11 @@
     }
     ctx.putImageData(imgData, 0, 0);
     const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = true;
     return texture;
   }
 
@@ -717,6 +736,71 @@
   );
   sunCore.position.set(-100, 30, -150);
   scene.add(sunCore);
+
+  // Volumetric solar rays texture generator for landing page Sun
+  function generateSunRaysTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    const cx = 256;
+    const cy = 256;
+    
+    // Radial base glow
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 256);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    grad.addColorStop(0.12, 'rgba(255, 245, 220, 0.95)');
+    grad.addColorStop(0.28, 'rgba(255, 180, 50, 0.45)');
+    grad.addColorStop(0.55, 'rgba(255, 100, 20, 0.12)');
+    grad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // Add thin, wispy volumetric rays
+    const numRays = 48;
+    ctx.save();
+    ctx.translate(cx, cy);
+    for (let i = 0; i < numRays; i++) {
+      const angle = (i / numRays) * Math.PI * 2 + Math.sin(i * 3.7) * 0.1;
+      const length = 120 + Math.abs(Math.sin(i * 12.3)) * 130;
+      const width = 0.02 + Math.abs(Math.cos(i * 7.4)) * 0.05;
+      
+      const rayGrad = ctx.createLinearGradient(0, 0, 0, length);
+      rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.55)');
+      rayGrad.addColorStop(0.15, 'rgba(255, 225, 120, 0.35)');
+      rayGrad.addColorStop(0.5, 'rgba(255, 120, 30, 0.12)');
+      rayGrad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
+      
+      ctx.fillStyle = rayGrad;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      const xLeft = Math.cos(angle - width) * length;
+      const yLeft = Math.sin(angle - width) * length;
+      const xRight = Math.cos(angle + width) * length;
+      const yRight = Math.sin(angle + width) * length;
+      ctx.lineTo(xLeft, yLeft);
+      ctx.lineTo(xRight, yRight);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
+  }
+  
+  // Add volumetric solar ray sprite
+  const sunRayTexture = generateSunRaysTexture();
+  const sunRayMaterial = new THREE.SpriteMaterial({
+    map: sunRayTexture,
+    transparent: true,
+    opacity: 0.95,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const sunRaySprite = new THREE.Sprite(sunRayMaterial);
+  sunRaySprite.scale.set(110, 110, 1);
+  sunCore.add(sunRaySprite);
   
   // Corona layers
   const sunGlow = new THREE.Group();

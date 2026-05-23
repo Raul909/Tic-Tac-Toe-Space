@@ -141,7 +141,8 @@ a,
 /* ── Base glassmorphism ── */
 .glass {
   background: 
-    radial-gradient(circle, rgba(0, 212, 255, 0.04) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(rgba(0, 212, 255, 0.015) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(0, 212, 255, 0.015) 1px, transparent 1px) 0 0 / 32px 32px,
     var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -239,10 +240,11 @@ a,
   overflow: hidden;
   border: 1px solid rgba(0, 212, 255, 0.25) !important;
   background: 
-    linear-gradient(rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.2) 50%),
-    radial-gradient(circle, rgba(0, 212, 255, 0.05) 1px, transparent 1px) 0 0 / 12px 12px,
+    linear-gradient(rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 0.15) 50%),
+    linear-gradient(rgba(0, 212, 255, 0.02) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(0, 212, 255, 0.02) 1px, transparent 1px) 0 0 / 24px 24px,
     linear-gradient(135deg, rgba(0, 212, 255, 0.06) 0%, rgba(0, 5, 16, 0.85) 100%) !important;
-  background-size: 100% 4px, 12px 12px, 100% 100%;
+  background-size: 100% 4px, 24px 24px, 24px 24px, 100% 100%;
   backdrop-filter: blur(15px);
   -webkit-backdrop-filter: blur(15px);
   box-shadow:
@@ -705,7 +707,7 @@ textarea:focus {
 }
 
 .btn-hud:hover::before {
-  animation: hudSweep 0.45s steps(12) forwards;
+  animation: hudSweep 0.55s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
 
 /* ── Hover state ── */
