@@ -194,7 +194,7 @@
   setInterval(syncBackgroundWeather, 2000);
   
   // Starfield Layers (mobile-optimized)
-  function createStarLayer(count, size, range, colorFn) {
+  function createStarLayer(count, size, range, colorFn, useTexture = true) {
     const actualCount = isMobile ? Math.floor(count * 0.5) : count;
     const geo = new THREE.BufferGeometry();
     const pos = [];
@@ -210,11 +210,11 @@
       size: isMobile ? size * 1.5 : size, 
       vertexColors: true, 
       transparent: true, 
-      opacity: 0.6, 
+      opacity: useTexture ? 0.6 : 0.9, 
       sizeAttenuation: true, 
       blending: THREE.AdditiveBlending, 
       depthWrite: false,
-      map: createCircleTexture(), // Add circular texture for round stars
+      map: useTexture ? createCircleTexture() : null, // Add circular texture only if requested
       alphaTest: 0.01
     });
     const mesh = new THREE.Points(geo, mat);
@@ -241,18 +241,18 @@
   }
   
   const starLayers = [
-    createStarLayer(25000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff)),
-    createStarLayer(8000, 2.2, 3000, () => new THREE.Color(0xffffff)),
-    createStarLayer(30000, 0.6, 4500, () => new THREE.Color(0x445566)),
+    createStarLayer(25000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), false),
+    createStarLayer(8000, 2.2, 3000, () => new THREE.Color(0xffffff), true),
+    createStarLayer(30000, 0.6, 4500, () => new THREE.Color(0x445566), false),
     createStarLayer(4000, 3.5, 2500, () => {
       const r = Math.random();
       if (r < 0.25) return new THREE.Color(0xff9977); // Orange/Red giants
       if (r < 0.50) return new THREE.Color(0x88ddff); // Blue supergiants
       if (r < 0.75) return new THREE.Color(0xffe484); // Yellow dwarfs
       return new THREE.Color(0xffb7ff); // Purple stars
-    }),
+    }, true),
     // 5th Ultra-Dense Deep-Space Star Layer for massive background realism
-    createStarLayer(35000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15))
+    createStarLayer(35000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), false)
   ];
   const stars = starLayers[0]; // Reference for weather presets
   
@@ -281,10 +281,10 @@
   nebulaGeo.setAttribute('position', new THREE.Float32BufferAttribute(nebPos, 3));
   nebulaGeo.setAttribute('color', new THREE.Float32BufferAttribute(nebCol, 3));
   const nebula = new THREE.Points(nebulaGeo, new THREE.PointsMaterial({ 
-    size: 20, // slightly larger for smoother blending
+    size: 10, // slightly larger for smoother blending
     vertexColors: true, 
     transparent: true, 
-    opacity: 0.12, 
+    opacity: 0.04, 
     blending: THREE.AdditiveBlending, 
     depthWrite: false,
     map: createCircleTexture(),
@@ -306,10 +306,10 @@
   coreNebGeo.setAttribute('position', new THREE.Float32BufferAttribute(coreNebPos, 3));
   coreNebGeo.setAttribute('color', new THREE.Float32BufferAttribute(coreNebCol, 3));
   const coreNebula = new THREE.Points(coreNebGeo, new THREE.PointsMaterial({
-    size: 24,
+    size: 12,
     vertexColors: true,
     transparent: true,
-    opacity: 0.09,
+    opacity: 0.03,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     map: createCircleTexture(),
@@ -786,38 +786,38 @@
   // Volumetric solar rays texture generator for landing page Sun
   function generateSunRaysTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
+    canvas.width = 256;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d');
-    const cx = 256;
-    const cy = 256;
+    const cx = 128;
+    const cy = 128;
     
     // Set a heavy blur filter to make rays look soft, misty, and atmospheric
-    ctx.filter = 'blur(14px)';
+    ctx.filter = 'blur(6px)';
     
     // Radial base glow
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 200);
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 80);
     grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
     grad.addColorStop(0.15, 'rgba(255, 242, 200, 0.9)');
     grad.addColorStop(0.4, 'rgba(255, 160, 40, 0.4)');
     grad.addColorStop(0.7, 'rgba(255, 80, 10, 0.15)');
     grad.addColorStop(1, 'rgba(255, 40, 0, 0.0)');
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 512, 512);
+    ctx.fillRect(0, 0, 256, 256);
     
     // Add soft, feathered volumetric rays
-    const numRays = 32; // Fewer, wider, softer rays are much more realistic!
+    const numRays = 24; // Fewer, wider, softer rays are much more realistic!
     ctx.save();
     ctx.translate(cx, cy);
     for (let i = 0; i < numRays; i++) {
       const angle = (i / numRays) * Math.PI * 2 + Math.sin(i * 4.3) * 0.15;
-      const length = 110 + Math.abs(Math.sin(i * 7.7)) * 140;
-      const width = 0.08 + Math.abs(Math.cos(i * 5.2)) * 0.1; // Wider rays for soft blending
+      const length = 45 + Math.abs(Math.sin(i * 7.7)) * 40;
+      const width = 0.15 + Math.abs(Math.cos(i * 5.2)) * 0.12; // Wider rays for soft blending
       
       const rayGrad = ctx.createLinearGradient(0, 0, 0, length);
-      rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-      rayGrad.addColorStop(0.2, 'rgba(255, 220, 100, 0.25)');
-      rayGrad.addColorStop(0.6, 'rgba(255, 90, 20, 0.08)');
+      rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.40)');
+      rayGrad.addColorStop(0.2, 'rgba(255, 200, 80, 0.20)');
+      rayGrad.addColorStop(0.6, 'rgba(255, 70, 10, 0.05)');
       rayGrad.addColorStop(1, 'rgba(255, 30, 0, 0.0)');
       
       ctx.fillStyle = rayGrad;
@@ -848,7 +848,7 @@
     depthWrite: false
   });
   const sunRaySprite = new THREE.Sprite(sunRayMaterial);
-  sunRaySprite.scale.set(110, 110, 1);
+  sunRaySprite.scale.set(38, 38, 1);
   sunCore.add(sunRaySprite);
   
   // Corona layers
@@ -1033,7 +1033,7 @@
     // Organic shimmering and pulsing for volumetric sun rays
     if (typeof sunRaySprite !== 'undefined' && sunRaySprite) {
       const rayPulse = 1.0 + Math.sin(currentTime * 0.0015) * 0.05;
-      sunRaySprite.scale.set(110 * rayPulse, 110 * rayPulse, 1);
+      sunRaySprite.scale.set(38 * rayPulse, 38 * rayPulse, 1);
       sunRaySprite.material.rotation = Math.sin(currentTime * 0.0002) * 0.08;
       sunRaySprite.material.opacity = 0.8 + Math.cos(currentTime * 0.0007) * 0.12;
     }

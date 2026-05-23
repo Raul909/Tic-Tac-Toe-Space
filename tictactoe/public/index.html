@@ -696,7 +696,8 @@
              id="game-board" 
              class="rounded-lg p-2">
           <template x-for="(cell, i) in board" :key="i">
-            <button @click="makeMove(i)" 
+            <button @pointerdown.prevent="makeMove(i)"
+                    @click.prevent 
                     :disabled="!canMove(i)"
                     :data-cell-index="i"
                     :class="[
