@@ -918,76 +918,89 @@
     asteroids.push({ mesh: ast, rot: (Math.random()-0.5)*0.02, orb: 0.0001+Math.random()*0.0002, angle: angle, dist: dist });
   }
 
-  // Shooting Stars (Optimized Pool with Cinematic Fade-out Trails)
+  // ─── Shooting Stars ─────────────────────────────────────────────────────────
+  // Rare, solitary cinematic meteors with smooth 28-point gradient trails.
+  // One fires every 8–22 s. Direction mirrors real shower meteors (upper-right → lower-left).
+  const SS_TRAIL = 28; // trail segment count (head → tail)
+  const MAX_SS   = 2;  // max simultaneously active meteors
   const shootingStars = [];
-  const ssGeo = new THREE.BufferGeometry();
-  ssGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(6), 3)); // 2 points
-  ssGeo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(6), 3)); // 2 colors (RGB)
-  const ssMat = new THREE.LineBasicMaterial({
-    vertexColors: true,
-    transparent: true,
-    opacity: 0,
-    blending: THREE.AdditiveBlending
-  });
-  
-  // Create pool of 8 reuseable lines for gorgeous layering
-  for(let i=0; i<8; i++) {
-    const line = new THREE.Line(ssGeo.clone(), ssMat.clone());
+
+  // Real meteor chemical composition tints
+  const meteorTints = [
+    new THREE.Color(0xffffff), // iron-nickel  → pure white
+    new THREE.Color(0xc8e8ff), // sodium       → electric blue-white
+    new THREE.Color(0xfff5c0), // calcium      → warm golden
+    new THREE.Color(0xffe8f5), // magnesium    → soft violet-pink
+  ];
+
+  /** Build one reusable shooting-star object with its own multi-point geometry */
+  function createShootingStarObject() {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SS_TRAIL * 3), 3));
+    geo.setAttribute('color',    new THREE.BufferAttribute(new Float32Array(SS_TRAIL * 3), 3));
+    const mat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const line = new THREE.Line(geo, mat);
+    line.frustumCulled = false; // always drawn; it lives deep in the background
     scene.add(line);
-    shootingStars.push({ mesh: line, active: false, t: 0, speed: 1.0, tailLength: 0.1, start: new THREE.Vector3(), end: new THREE.Vector3() });
+    return {
+      mesh:      line,
+      active:    false,
+      t:         0,
+      speed:     0.18,
+      travel:    280,
+      direction: new THREE.Vector3(),
+      start:     new THREE.Vector3(),
+      tint:      meteorTints[0],
+      trail:     [], // ring buffer of THREE.Vector3
+    };
   }
-  
+
+  for (let i = 0; i < MAX_SS; i++) shootingStars.push(createShootingStarObject());
+
   function spawnShootingStar() {
     const star = shootingStars.find(s => !s.active);
-    if(!star) return;
-    
+    if (!star) return;
+
     star.active = true;
-    star.t = 0;
-    star.speed = 0.20 + Math.random() * 0.35; // Slow, cinematic deep-space meteors
-    star.tailLength = 0.04 + Math.random() * 0.10; // Longer visible tail for realism
-    
-    // Meteor composition color tints for premium glow
-    const chemicalTints = [
-      new THREE.Color(0xffffff), // Pure white
-      new THREE.Color(0xd5ffff), // Iron-nickel (electric blue)
-      new THREE.Color(0xffffd5), // Sodium (golden yellow)
-      new THREE.Color(0xffd5fa)  // Calcium (neon violet)
-    ];
-    const headColor = chemicalTints[Math.floor(Math.random() * chemicalTints.length)];
-    const tailColor = new THREE.Color(0x000000); // Fade to black at the tail!
-    
-    // Assign vertex colors for cinematic tail gradient
-    const colors = star.mesh.geometry.attributes.color;
-    colors.setXYZ(0, headColor.r, headColor.g, headColor.b); // Bright core
-    colors.setXYZ(1, tailColor.r, tailColor.g, tailColor.b); // Dissolving tail
-    colors.needsUpdate = true;
-    
-    // Spawn deep in the background far behind the planets (z = -600 to -1600)
-    // and randomly across a wide range (x = -400 to 400, y = 80 to 250)
-    const zDepth = -600 - Math.random() * 1000;
+    star.t      = 0;
+    star.speed  = 0.13 + Math.random() * 0.20; // slow & cinematic
+    star.tint   = meteorTints[Math.floor(Math.random() * meteorTints.length)];
+
+    // Spawn high in the sky, far into the background
+    const zDepth = -480 - Math.random() * 650;
     star.start.set(
-      (Math.random() - 0.5) * 800, // Random X spawn across the deep field
-      80 + Math.random() * 170,     // Random high Y altitude
-      zDepth                       // Far back in space
+      120 + Math.random() * 280,  // right portion of sky
+       80 + Math.random() * 120,  // high altitude
+      zDepth
     );
-    
-    // Fly in completely random diagonal downwards directions
-    const dir = new THREE.Vector3(
-      (Math.random() - 0.5) * 1.8, // Random X direction
-      -0.7 - Math.random() * 0.6,  // Downwards Y
-      (Math.random() - 0.5) * 0.8  // Random Z drift
+
+    // Consistent meteor direction: upper-right → lower-left (like real showers).
+    // Angle 25–45° below horizontal → looks natural to human eyes.
+    star.direction.set(
+      -(0.55 + Math.random() * 0.40), // always leftward
+      -(0.28 + Math.random() * 0.22), // always downward
+       (Math.random() - 0.5) * 0.12   // tiny depth variation
     ).normalize();
-    
-    const travel = 250 + Math.random() * 250; // Distance of travel
-    star.end.copy(star.start).add(dir.multiplyScalar(travel));
-    
-    star.mesh.material.opacity = 1;
-    star.mesh.geometry.attributes.position.setXYZ(0, star.start.x, star.start.y, star.start.z);
-    star.mesh.geometry.attributes.position.setXYZ(1, star.start.x, star.start.y, star.start.z);
-    star.mesh.geometry.attributes.position.needsUpdate = true;
+
+    star.travel = 200 + Math.random() * 210;
+
+    // Pre-fill trail ring buffer with the start position
+    star.trail = [];
+    for (let i = 0; i < SS_TRAIL; i++) star.trail.push(star.start.clone());
+
+    star.mesh.material.opacity = 0;
+    star.mesh.visible = true;
   }
-  // Cinematic slow shooting stars — rare, dramatic, deep-space feel
-  setInterval(() => { if(Math.random()<0.35) spawnShootingStar(); }, 3200);
+
+  // Timer: one solitary meteor every 8–22 seconds
+  let _ssElapsed = 0;
+  let _ssDelay   = 5 + Math.random() * 8; // first one appears within 5–13 s
 
   // Animation Loop - Optimized for 60fps
   const _v1 = new THREE.Vector3();
@@ -1091,27 +1104,56 @@
       a.mesh.rotation.y += rotDelta;
     });
     
-    // Shooting Stars Update - Only active ones with realistic speed & tail fade
-    for (let i = shootingStars.length - 1; i >= 0; i--) {
+    // ─── Shooting Stars Update ────────────────────────────────────────────────
+    _ssElapsed += dt;
+    if (_ssElapsed >= _ssDelay) {
+      _ssElapsed = 0;
+      _ssDelay   = 8 + Math.random() * 14; // next meteor in 8–22 s
+      spawnShootingStar();
+    }
+
+    for (let i = 0; i < shootingStars.length; i++) {
       const s = shootingStars[i];
       if (!s.active) continue;
-      
-      s.t += dt * 0.55 * (s.speed || 1.0);
-      if (s.t > 1) { 
-        s.active = false; 
-        s.mesh.material.opacity = 0; 
+
+      s.t += dt * s.speed;
+
+      // Fade in 0→0.18t, full 0.18→0.72t, fade out 0.72→1.3t
+      const fadeIn  = Math.min(s.t / 0.18, 1.0);
+      const fadeOut = s.t > 0.72 ? Math.max(0, 1 - (s.t - 0.72) / 0.58) : 1.0;
+      const brightness = fadeIn * fadeOut;
+
+      if (s.t > 1.3 || brightness <= 0.001) {
+        s.active = false;
+        s.mesh.material.opacity = 0;
+        s.mesh.visible = false;
         continue;
       }
-      
-      _v1.lerpVectors(s.start, s.end, s.t);
-      _v2.lerpVectors(s.start, s.end, Math.max(0, s.t - (s.tailLength || 0.1)));
-      
-      const positions = s.mesh.geometry.attributes.position;
-      positions.setXYZ(0, _v1.x, _v1.y, _v1.z);
-      positions.setXYZ(1, _v2.x, _v2.y, _v2.z);
-      positions.needsUpdate = true;
-      
-      s.mesh.material.opacity = Math.sin(s.t * Math.PI) * 0.9;
+
+      // Advance head along direction
+      _v1.copy(s.start).addScaledVector(s.direction, s.t * s.travel);
+
+      // Push new head into ring buffer, drop oldest tail point
+      s.trail.unshift(_v1.clone());
+      if (s.trail.length > SS_TRAIL) s.trail.pop();
+
+      // Write positions + vertex colors (quadratic falloff head → tail)
+      const pos = s.mesh.geometry.attributes.position;
+      const col = s.mesh.geometry.attributes.color;
+      for (let p = 0; p < SS_TRAIL; p++) {
+        const pt = s.trail[p];
+        pos.setXYZ(p, pt.x, pt.y, pt.z);
+        // p=0 is head (bright tint), p=SS_TRAIL-1 is tail (black)
+        const falloff = Math.pow(1 - p / (SS_TRAIL - 1), 2.4);
+        col.setXYZ(p,
+          s.tint.r * falloff * brightness,
+          s.tint.g * falloff * brightness,
+          s.tint.b * falloff * brightness
+        );
+      }
+      pos.needsUpdate = true;
+      col.needsUpdate = true;
+      s.mesh.material.opacity = brightness;
     }
     
     // Background weather particles
