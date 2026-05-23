@@ -969,26 +969,49 @@
 
     star.active = true;
     star.t      = 0;
-    star.speed  = 0.13 + Math.random() * 0.20; // slow & cinematic
     star.tint   = meteorTints[Math.floor(Math.random() * meteorTints.length)];
 
-    // Spawn high in the sky, far into the background
-    const zDepth = -480 - Math.random() * 650;
-    star.start.set(
-      120 + Math.random() * 280,  // right portion of sky
-       80 + Math.random() * 120,  // high altitude
-      zDepth
-    );
+    // 50% chance for a deep-space meteor, 50% chance for a close screen-space meteor dropping down
+    const isClose = Math.random() < 0.5;
 
-    // Consistent meteor direction: upper-right → lower-left (like real showers).
-    // Angle 25–45° below horizontal → looks natural to human eyes.
-    star.direction.set(
-      -(0.55 + Math.random() * 0.40), // always leftward
-      -(0.28 + Math.random() * 0.22), // always downward
-       (Math.random() - 0.5) * 0.12   // tiny depth variation
-    ).normalize();
+    if (isClose) {
+      // Screen-space close meteor: spawns close to camera, passes directly in front of the viewport/landing page
+      const zDepth = -90 - Math.random() * 70; // zDepth is between -160 and -90 (camera is at z=90)
+      const dist = 90 - zDepth; // distance from camera: 180 to 250 units
+      
+      // Spawn in the upper-right screen quadrant
+      const startX = dist * (0.25 + Math.random() * 0.35);
+      const startY = 25 + dist * (0.20 + Math.random() * 0.15);
+      
+      star.start.set(startX, startY, zDepth);
 
-    star.travel = 200 + Math.random() * 210;
+      // Travel diagonally downwards and leftwards across the display
+      star.direction.set(
+        -(0.75 + Math.random() * 0.20), // strongly leftward
+        -(0.45 + Math.random() * 0.20), // downward
+        -(0.05 + Math.random() * 0.10)  // very minor depth variation
+      ).normalize();
+
+      star.travel = dist * (0.9 + Math.random() * 0.5); // travels a good portion of the screen width
+      star.speed  = 0.22 + Math.random() * 0.18; // flies faster to match eye proximity
+    } else {
+      // Majestically slow, deep background meteor
+      const zDepth = -480 - Math.random() * 650;
+      star.start.set(
+        120 + Math.random() * 280,  // right portion of sky
+         80 + Math.random() * 120,  // high altitude
+        zDepth
+      );
+
+      star.direction.set(
+        -(0.55 + Math.random() * 0.40), // leftward
+        -(0.28 + Math.random() * 0.22), // downward
+         (Math.random() - 0.5) * 0.12   // minor depth variation
+      ).normalize();
+
+      star.travel = 200 + Math.random() * 210;
+      star.speed  = 0.11 + Math.random() * 0.15; // majestic, slow deep-space motion
+    }
 
     // Pre-fill trail ring buffer with the start position
     star.trail = [];
