@@ -4,6 +4,7 @@ function app() {
     screen: 'home',
     authTab: 'login',
     socket: null,
+    view3D: true,
     user: { 
       username: '', 
       stats: { wins: 0, draws: 0, losses: 0, gamesPlayed: 0, winStreak: 0, bestStreak: 0 },
@@ -294,7 +295,7 @@ function app() {
     
     connectSocket(token) {
       if (this.socket) { this.socket.disconnect(); this.socket = null; }
-      this.socket = io({
+      this.socket = io(window.BACKEND_URL || '', {
         autoConnect: true,
         reconnectionAttempts: 10,   // up to ~35s of retries — covers 30s server grace period
         reconnectionDelay: 1000,

@@ -89,6 +89,34 @@ After deployment, update the environment variable:
 3. Test creating/joining rooms
 4. Test AI mode
 
+## Hybrid Deployment: Cloudflare Pages (Frontend) + Render (Backend)
+
+For optimal, lag-free performance, it is highly recommended to host the static frontend on **Cloudflare Pages** and the Socket.io backend on **Render**. This leverages Cloudflare's ultra-fast global CDN for loading UI assets while keeping Render's persistent Node environment for game lobbies.
+
+### Step 1: Deploy Backend to Render
+1. Follow the **Deploy to Render** instructions above.
+2. Once deployed, note down your Render Web Service URL (e.g., `https://tictactoe-multiplayer.onrender.com`).
+
+### Step 2: Configure Backend CORS
+1. Go to your Render Web Service Dashboard → **Environment**.
+2. Set `ALLOWED_ORIGINS` = `https://your-project.pages.dev` (replace with your actual Cloudflare Pages URL once deployed).
+3. If you want to test locally while connecting to the production backend, you can set `ALLOWED_ORIGINS` = `https://your-project.pages.dev,http://localhost:3000`.
+
+### Step 3: Deploy Frontend to Cloudflare Pages
+1. Sign in to your [Cloudflare Dashboard](https://dash.cloudflare.com/) and go to **Workers & Pages**.
+2. Click **Create Application** → **Pages** → **Connect to Git**.
+3. Select your GitHub repository.
+4. Configure the build settings:
+   - **Project Name**: `tictactoe-multiplayer` (this determines your `pages.dev` URL)
+   - **Framework Preset**: `None` (Static HTML/JS app)
+   - **Build Command**: Leave blank (no build step is needed for this static frontend)
+   - **Build Output Directory**: `tictactoe/public` (points to the static public folder containing HTML, JS, and CSS)
+5. Click **Save and Deploy**.
+
+### Step 4: Verify Connection
+1. Visit your Cloudflare Pages URL (e.g., `https://tictactoe-multiplayer.pages.dev`).
+2. The frontend will dynamically connect to the Socket.io server running on Render.
+
 ## Important Notes
 
 ### Free Tier Limitations

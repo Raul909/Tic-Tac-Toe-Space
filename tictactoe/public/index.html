@@ -10,6 +10,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <link rel="stylesheet" href="/mobile-optimizations.css">
+  <link rel="stylesheet" href="/nasa-theme.css">
   <script>
     tailwind.config = {
       theme: {
@@ -428,7 +429,8 @@
         </div>
 
         <button @click="setScreen('auth')" 
-                class="w-full bg-gradient-to-r from-nasa to-earth text-black font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-lg text-lg sm:text-xl tracking-wider hover:shadow-lg hover:shadow-nasa/50 transition-all transform active:scale-95 sm:hover:scale-105">
+                style="--btn-shadow: #00a0c0;"
+                class="w-full btn-3d bg-gradient-to-r from-nasa to-earth text-black font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-lg text-lg sm:text-xl tracking-wider hover:shadow-lg hover:shadow-nasa/50 transition-all transform">
           🚀 LAUNCH MISSION
         </button>
       </div>
@@ -686,10 +688,14 @@
             </button>
           </div>
 
-          <button @click="startAI()" class="w-full bg-mars text-white font-bold py-3 sm:py-4 rounded hover:bg-mars/90 transition tracking-wide text-sm sm:text-base">
+          <button @click="startAI()" 
+                  style="--btn-shadow: #b33600;"
+                  class="w-full btn-3d bg-mars text-white font-bold py-3 sm:py-4 rounded tracking-wide text-sm sm:text-base">
             ENGAGE AI
           </button>
-          <button @click="openLeaderboard()" class="w-full bg-gray-800 text-nasa font-bold py-3 sm:py-4 rounded hover:bg-gray-700 transition tracking-wide mt-3 sm:mt-4 border border-nasa/30 text-sm sm:text-base">
+          <button @click="openLeaderboard()" 
+                  style="--btn-shadow: #111827;"
+                  class="w-full btn-3d bg-gray-800 text-nasa font-bold py-3 sm:py-4 rounded tracking-wide mt-4 border border-nasa/30 text-sm sm:text-base">
             📊 VIEW LEADERBOARD
           </button>
         </div>
@@ -911,9 +917,29 @@
         </div>
       </div>
       
-      <div class="relative max-w-md mx-auto mb-4 sm:mb-6 px-2 sm:px-0">
-        <div :class="'grid gap-2 sm:gap-3 grid-cols-' + boardSize" 
+      <!-- 3D/2D View Toggle -->
+      <div class="view-toggle mb-4 text-center">
+        <button @click="view3D = !view3D" 
+                class="glass px-4 py-1.5 rounded-full text-xs font-bold transition border border-nasa/30 hover:border-nasa text-nasa bg-nasa/5 hover:bg-nasa/10">
+          <span x-text="view3D ? '📐 3D VIEW ACTIVE' : '📐 2D VIEW ACTIVE'"></span>
+        </button>
+      </div>
+
+      <div class="relative max-w-md mx-auto mb-4 sm:mb-6 px-2 sm:px-0" :class="view3D ? 'board-3d-container' : ''"
+           x-on:mousemove="if (view3D) {
+             const rect = $el.getBoundingClientRect();
+             const x = (event.clientX - rect.left) / rect.width - 0.5;
+             const y = (event.clientY - rect.top) / rect.height - 0.5;
+             $refs.board.style.setProperty('--tilt-x', (x * 30).toFixed(1) + 'deg');
+             $refs.board.style.setProperty('--tilt-y', (-y * 30).toFixed(1) + 'deg');
+           }"
+           x-on:mouseleave="if (view3D) {
+             $refs.board.style.setProperty('--tilt-x', '-5deg');
+             $refs.board.style.setProperty('--tilt-y', '15deg');
+           }">
+        <div :class="['grid gap-2 sm:gap-3 grid-cols-' + boardSize, view3D ? 'board-3d' : '']" 
              :style="getThemeStyle()"
+             x-ref="board"
              id="game-board" 
              class="rounded-lg p-2">
           <template x-for="(cell, i) in board" :key="i">
@@ -922,6 +948,7 @@
                     :data-cell-index="i"
                     :class="[
                       'aspect-square glass nasa-bracket rounded-lg font-bold active:bg-gray-800/50 sm:hover:bg-gray-800/50 disabled:cursor-not-allowed transition-all shadow-lg touch-manipulation',
+                      view3D ? 'cell-3d' : '',
                       boardSize === 3 ? 'text-4xl sm:text-5xl md:text-6xl' : boardSize === 4 ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl',
                       cell === 'X' ? 'text-mars border-mars/50' : cell === 'O' ? 'text-earth border-earth/50' : 'border-nasa/30'
                     ]"
@@ -1267,9 +1294,22 @@
     </div>
   </div>
 
+  <script>
+    // Define backend URL dynamically (empty string for localhost, or absolute URL for Render backend)
+    window.BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? ''
+      : 'https://tictactoe-multiplayer.onrender.com'; // Replace with actual Render URL if different
+  </script>
   <script src="/space-3d.js"></script>
   <script src="/space-gallery-3d.js"></script>
-  <script src="/config.js"></script>
+  <script>
+    // Dynamically load config.js from backend (supports hybrid CDN deployment)
+    (function() {
+      const script = document.createElement('script');
+      script.src = (window.BACKEND_URL || '') + '/config.js';
+      document.head.appendChild(script);
+    })();
+  </script>
   <script src="/game-logic.js"></script>
   <script src="/sound-manager.js"></script>
   <script src="/app.js"></script>

@@ -9,6 +9,7 @@ module.exports = (socket, context) => {
     userSocket,
     socketRoom,
     rooms,
+    users,
     disconnectTimeouts,
     rateLimiter
   } = context;
@@ -28,7 +29,7 @@ module.exports = (socket, context) => {
         const room = rooms.get(code);
         if (room) {
           const disconnectedName = users[key]?.displayName || key;
-          socket.to(code).emit('game:opponent-disconnected', { name: disconnectedName });
+          socket.to(code).emit('game:opponent-disconnected', { name: disconnectedName, key });
 
           const timeout = setTimeout(() => {
             handlePlayerLeave(code, key, context);

@@ -10,6 +10,9 @@
     selectedObj: null,
     raycaster: null,
     mouse: null,
+    cameraTargetPos: new THREE.Vector3(0, 100, 300),
+    controlsTargetPos: new THREE.Vector3(0, 0, 0),
+    isGliding: false,
     
     solarSystem: [
       { name: 'Sun', type: 'Star', radius: 20, distance: 0, color: 0xFDB813, temp: '5778K', mass: '1.989×10³⁰ kg' },
@@ -102,6 +105,14 @@
       this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
       window.addEventListener('resize', () => this.onResize());
       
+      // Add tactical 3D coordinate grid helper
+      const gridHelper = new THREE.GridHelper(1000, 50, 0x00d4ff, 0x002244);
+      gridHelper.position.y = -50;
+      gridHelper.material.opacity = 0.25;
+      gridHelper.material.transparent = true;
+      gridHelper.material.depthWrite = false;
+      this.scene.add(gridHelper);
+
       // Load initial tab
       this.loadTab('solar');
       this.animate();
@@ -229,6 +240,7 @@
         this.scene.remove(this.weatherParticles);
         this.weatherParticles.geometry.dispose();
         this.weatherParticles.material.dispose();
+        this.weatherParticles = null;
       }
       
       if (this.currentWeather === 'clear') {
@@ -239,7 +251,6 @@
       const particleCount = this.currentWeather === 'cloudy' ? 500 : 1000;
       const geometry = new THREE.BufferGeometry();
       const positions = [];
-      const velocities = [];
       
       for (let i = 0; i < particleCount; i++) {
         positions.push(
@@ -247,39 +258,55 @@
           Math.random() * 500,
           (Math.random() - 0.5) * 1000
         );
-        
-        if (this.currentWeather === 'cloudy') {
-          velocities.push(
-            (Math.random() - 0.5) * 0.2,
-            -0.1 - Math.random() * 0.1,
-            (Math.random() - 0.5) * 0.2
-          );
-        } else if (this.currentWeather === 'rain') {
-          velocities.push(
-            (Math.random() - 0.5) * 0.5,
-            -2 - Math.random() * 2,
-            (Math.random() - 0.5) * 0.5
-          );
-        } else { // snow
-          velocities.push(
-            (Math.random() - 0.5) * 0.5,
-            -0.5 - Math.random() * 0.5,
-            (Math.random() - 0.5) * 0.5
-          );
-        }
       }
       
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
       
+      let vy = -0.75;
+      if (this.currentWeather === 'cloudy') vy = -0.15;
+      else if (this.currentWeather === 'rain') vy = -3.0;
+
       const material = new THREE.PointsMaterial({
-        size: this.currentWeather === 'rain' ? 1 : this.currentWeather === 'cloudy' ? 5 : 3,
-        color: this.currentWeather === 'rain' ? 0x4A90E2 : this.currentWeather === 'cloudy' ? 0x888888 : 0xFFFFFF,
+        size: this.currentWeather === 'rain' ? 1.5 : this.currentWeather === 'cloudy' ? 6 : 4,
+        color: this.currentWeather === 'rain' ? 0x4A90E2 : this.currentWeather === 'cloudy' ? 0x666666 : 0xFFFFFF,
         transparent: true,
-        opacity: this.currentWeather === 'rain' ? 0.6 : this.currentWeather === 'cloudy' ? 0.3 : 0.8,
+        opacity: this.currentWeather === 'rain' ? 0.6 : this.currentWeather === 'cloudy' ? 0.25 : 0.8,
         blending: THREE.AdditiveBlending,
         depthWrite: false
       });
+      
+      material.onBeforeCompile = (shader) => {
+        shader.uniforms.uTime = { value: 0 };
+        shader.uniforms.uSpeed = { value: vy };
+        shader.uniforms.uRangeY = { value: 550.0 };
+        shader.uniforms.uStartY = { value: 500.0 };
+
+        material.userData.shader = shader;
+
+        shader.vertexShader = 'uniform float uTime;\nuniform float uSpeed;\nuniform float uRangeY;\nuniform float uStartY;\n' + shader.vertexShader;
+
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <begin_vertex>',
+          `
+          vec3 transformed = vec3( position );
+          float traveled = uSpeed * uTime;
+          float newY = position.y + traveled;
+
+          float distFromTop = uStartY - newY;
+          float lap = floor(distFromTop / uRangeY);
+
+          transformed.y = uStartY - mod(distFromTop, uRangeY);
+
+          if (lap > 0.0) {
+            vec2 seed = position.xz + vec2(lap * 17.3, lap * 9.1);
+            float randX = fract(sin(dot(seed, vec2(12.9898, 78.233))) * 43758.5453);
+            float randZ = fract(sin(dot(seed, vec2(39.7867, 27.345))) * 23456.7891);
+            transformed.x = (randX - 0.5) * 1000.0;
+            transformed.z = (randZ - 0.5) * 1000.0;
+          }
+          `
+        );
+      };
       
       this.weatherParticles = new THREE.Points(geometry, material);
       this.scene.add(this.weatherParticles);
@@ -703,6 +730,20 @@
         el.classList.toggle('active', i === id);
       });
       this.showDetails(this.selectedObj?.userData);
+
+      if (this.selectedObj) {
+        const radius = this.selectedObj.userData.radius || 10;
+        const targetPos = new THREE.Vector3();
+        this.selectedObj.getWorldPosition(targetPos);
+        
+        this.controlsTargetPos.copy(targetPos);
+        this.cameraTargetPos.copy(targetPos).add(new THREE.Vector3(0, radius * 3.5, radius * 5));
+        this.isGliding = true;
+        
+        if (this.controls) {
+          this.controls.autoRotate = false;
+        }
+      }
     },
     
     showDetails(data) {
@@ -783,25 +824,24 @@
       // Update HUD in real-time
       this.updateHUD();
       
-      // Update weather particles
-      if (this.weatherParticles) {
-        const positions = this.weatherParticles.geometry.attributes.position.array;
-        const velocities = this.weatherParticles.geometry.attributes.velocity.array;
-        
-        for (let i = 0; i < positions.length; i += 3) {
-          positions[i] += velocities[i];
-          positions[i + 1] += velocities[i + 1];
-          positions[i + 2] += velocities[i + 2];
-          
-          // Reset particle if it falls below
-          if (positions[i + 1] < -50) {
-            positions[i + 1] = 500;
-            positions[i] = (Math.random() - 0.5) * 1000;
-            positions[i + 2] = (Math.random() - 0.5) * 1000;
-          }
+      // Update weather particles shader uniform
+      if (this.weatherParticles && this.weatherParticles.material.userData.shader) {
+        this.weatherParticles.material.userData.shader.uniforms.uTime.value = performance.now() * 0.05;
+      }
+      
+      // Smooth camera focus glide
+      if (this.isGliding) {
+        const lerpFactor = 0.05; // smooth speed
+        this.camera.position.lerp(this.cameraTargetPos, lerpFactor);
+        if (this.controls) {
+          this.controls.target.lerp(this.controlsTargetPos, lerpFactor);
         }
         
-        this.weatherParticles.geometry.attributes.position.needsUpdate = true;
+        // If very close, stop gliding
+        if (this.camera.position.distanceTo(this.cameraTargetPos) < 1.0 &&
+            (!this.controls || this.controls.target.distanceTo(this.controlsTargetPos) < 1.0)) {
+          this.isGliding = false;
+        }
       }
       
       // Rotate reference Earth (removed location indicator)
@@ -833,9 +873,10 @@
     },
     
     reset() {
-      this.camera.position.set(0, 100, 300);
+      this.cameraTargetPos.set(0, 100, 300);
+      this.controlsTargetPos.set(0, 0, 0);
+      this.isGliding = true;
       if (this.controls) {
-        this.controls.reset();
         this.controls.autoRotate = true;
       }
       this.selectedObj = null;
