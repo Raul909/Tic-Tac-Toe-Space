@@ -26,6 +26,22 @@
 
 ---
 
+## 🌌 Visual Tour
+
+Here is a visual showcase of the premium, celestial interface you will experience in **Tic Tac Toe - Mission Control**:
+
+| 👤 Authentication Portal | 🚀 Active Mission Control |
+|:---:|:---:|
+| ![Authentication Portal](screenshots/auth-screen.png) | ![Active Mission Control](screenshots/game-board.png) |
+| *Log in as an authorized operator or tap Guest Play to launch instantly into space.* | *Interact with zero input latency upon pointer contact under a tight volumetric solar corona.* |
+
+| 🌌 Celestial Space Explorer | 🏆 Standoff & Victory Telemetry |
+|:---:|:---:|
+| ![Celestial Space Explorer](screenshots/space-explorer.png) | ![Victory Telemetry](screenshots/victory-share.png) |
+| *Embark on a real-time, interactive tour of the Solar System, stars, constellations, and gaseous nebulae.* | *Achieve victory to view dynamic telemetry, score updates, and engaging space facts.* |
+
+---
+
 ## 🛠️ Technology Stack
 
 * **Frontend**: Alpine.js, Tailwind CSS, Three.js (WebGL 3D Space Gallery)
@@ -37,7 +53,13 @@
 
 ## 📦 Environment Variables
 
-To run the application locally or in production, configure the following variables:
+> [!CAUTION]
+> ### 🛡️ Critical Security Warning for Public Repositories
+> Since this repository is public, **NEVER** hardcode or commit actual credentials, passwords, or secrets (such as your private MongoDB Atlas connection strings or API keys) directly inside your codebase or documentation.
+> - **Local Development**: Keep all credentials confined inside a local `.env` file. This file is safely listed in `.gitignore` and will never be pushed to your public GitHub repository.
+> - **Production Deployment**: Inject your actual secret keys dynamically via your hosting provider's dashboard (e.g. Render Dashboard under environment variables, or Cloudflare Pages secrets).
+
+To run the application locally or in production, configure the following variables inside your private `.env` file:
 
 | Variable | Description | Default / Fallback |
 |---|---|---|

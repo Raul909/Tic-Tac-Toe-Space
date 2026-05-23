@@ -650,36 +650,39 @@
 
     drawStarGlow() {
       const canvas = document.createElement('canvas');
-      canvas.width = 512; // High resolution for ultra-sharp, gorgeous volumetric rays
-      canvas.height = 512;
+      canvas.width = 256; // High performance, gorgeous feathered volumetric rays
+      canvas.height = 256;
       const ctx = canvas.getContext('2d');
-      const cx = 256;
-      const cy = 256;
+      const cx = 128;
+      const cy = 128;
       
       // 1. Soft radial base glow
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 256);
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 80);
       grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
       grad.addColorStop(0.12, 'rgba(255, 245, 220, 0.95)');
-      grad.addColorStop(0.28, 'rgba(255, 180, 50, 0.45)');
-      grad.addColorStop(0.55, 'rgba(255, 100, 20, 0.12)');
+      grad.addColorStop(0.35, 'rgba(255, 175, 45, 0.45)');
+      grad.addColorStop(0.65, 'rgba(255, 80, 10, 0.12)');
       grad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 512, 512);
+      ctx.fillRect(0, 0, 256, 256);
+      
+      // Set a soft blur filter to make rays look cinematic and atmospheric
+      ctx.filter = 'blur(6px)';
       
       // 2. Volumetric Solar Rays (shafts of light extending dynamically)
-      const numRays = 48;
+      const numRays = 24;
       ctx.save();
       ctx.translate(cx, cy);
       
       for (let i = 0; i < numRays; i++) {
         const angle = (i / numRays) * Math.PI * 2 + Math.sin(i * 3.7) * 0.1;
-        const length = 120 + Math.abs(Math.sin(i * 12.3)) * 130;
-        const width = 0.02 + Math.abs(Math.cos(i * 7.4)) * 0.05; // sharp, wispy rays
+        const length = 45 + Math.abs(Math.sin(i * 12.3)) * 40;
+        const width = 0.15 + Math.abs(Math.cos(i * 7.4)) * 0.10; // feathered, wider sectors
         
         const rayGrad = ctx.createLinearGradient(0, 0, 0, length);
-        rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.55)');
-        rayGrad.addColorStop(0.15, 'rgba(255, 225, 120, 0.35)');
-        rayGrad.addColorStop(0.5, 'rgba(255, 120, 30, 0.12)');
+        rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.40)');
+        rayGrad.addColorStop(0.2, 'rgba(255, 215, 100, 0.25)');
+        rayGrad.addColorStop(0.6, 'rgba(255, 100, 20, 0.08)');
         rayGrad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
         
         ctx.fillStyle = rayGrad;
@@ -810,7 +813,7 @@
       
       // Scene
       this.scene = new THREE.Scene();
-      this.scene.fog = new THREE.FogExp2(0x000208, 0.0008);
+      this.scene.fog = new THREE.FogExp2(0x000208, 0.0003);
       
       // Weather system
       this.weatherParticles = null;
@@ -1269,7 +1272,8 @@
             blending: THREE.AdditiveBlending
           });
           const glow = new THREE.Sprite(glowMaterial);
-          glow.scale.set(data.radius * 3.8, data.radius * 3.8, 1);
+          glow.scale.set(data.radius * 2.2, data.radius * 2.2, 1);
+          glow.name = 'sunCoronaRay';
           sun.add(glow);
         } else {
           const geometry = new THREE.SphereGeometry(data.radius, 48, 48);
@@ -2066,6 +2070,18 @@
           obj.rotation.y += 0.005;
           if (obj.userData.clouds) {
             obj.userData.clouds.rotation.y += 0.007;
+          }
+        }
+
+        // Animate space explorer Sun's corona organically matching the backdrop
+        if (obj.userData.name === 'Sun') {
+          const sunCoronaRay = obj.getObjectByName('sunCoronaRay');
+          if (sunCoronaRay) {
+            const currentTime = performance.now();
+            const rayPulse = 1.0 + Math.sin(currentTime * 0.0015) * 0.05;
+            sunCoronaRay.scale.set(obj.userData.radius * 2.2 * rayPulse, obj.userData.radius * 2.2 * rayPulse, 1);
+            sunCoronaRay.material.rotation = Math.sin(currentTime * 0.0002) * 0.08;
+            sunCoronaRay.material.opacity = 0.8 + Math.cos(currentTime * 0.0007) * 0.12;
           }
         }
       });
