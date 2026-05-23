@@ -200,7 +200,15 @@
     const pos = [];
     const col = [];
     for (let i = 0; i < actualCount; i++) {
-      pos.push((Math.random() - 0.5) * range, (Math.random() - 0.5) * range, (Math.random() - 0.5) * range);
+      let x, y, z;
+      // Exclude lens-proximity zone around camera (0, 25, 90) to prevent giant blurry or blocky particles
+      do {
+        x = (Math.random() - 0.5) * range;
+        y = (Math.random() - 0.5) * range;
+        z = (Math.random() - 0.5) * range;
+      } while (Math.sqrt(x*x + (y-25)*(y-25) + (z-90)*(z-90)) < 350);
+
+      pos.push(x, y, z);
       const c = colorFn();
       col.push(c.r, c.g, c.b);
     }
@@ -242,15 +250,15 @@
   
   const starLayers = [
     createStarLayer(25000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), false),
-    createStarLayer(8000, 2.2, 3000, () => new THREE.Color(0xffffff), true),
+    createStarLayer(8000, 1.6, 3000, () => new THREE.Color(0xffffff), false),
     createStarLayer(30000, 0.6, 4500, () => new THREE.Color(0x445566), false),
-    createStarLayer(4000, 3.5, 2500, () => {
+    createStarLayer(4000, 2.4, 2500, () => {
       const r = Math.random();
       if (r < 0.25) return new THREE.Color(0xff9977); // Orange/Red giants
       if (r < 0.50) return new THREE.Color(0x88ddff); // Blue supergiants
       if (r < 0.75) return new THREE.Color(0xffe484); // Yellow dwarfs
       return new THREE.Color(0xffb7ff); // Purple stars
-    }, true),
+    }, false),
     // 5th Ultra-Dense Deep-Space Star Layer for massive background realism
     createStarLayer(35000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), false)
   ];
@@ -928,34 +936,35 @@
     
     star.active = true;
     star.t = 0;
-    star.speed = 0.85 + Math.random() * 1.5; // Random speed factor
-    star.tailLength = 0.06 + Math.random() * 0.14; // Random tail length
+    star.speed = 1.2 + Math.random() * 1.8; // Distant meteors are extremely fast needle streaks!
+    star.tailLength = 0.02 + Math.random() * 0.06; // Ultra-thin, realistic short tails for deep space
     
     // Meteor composition color tints
     const chemicalTints = [
       0xffffff, // White
-      0xd4ffff, // Iron/Nickel (bluish-cyan)
-      0xffffd4, // Sodium (yellowish)
-      0xffd4fa  // Calcium (violet-pink)
+      0xd5ffff, // bluish-cyan
+      0xffffd5, // yellowish
+      0xffd5fa  // violet-pink
     ];
     star.mesh.material.color.setHex(chemicalTints[Math.floor(Math.random() * chemicalTints.length)]);
     
-    // Spawn off-screen to one side, crossing in front of camera
-    const side = Math.random() < 0.5 ? -1 : 1;
+    // Spawn deep in the background far behind the planets (z = -600 to -1600)
+    // and randomly across a wide range (x = -400 to 400, y = 80 to 250)
+    const zDepth = -600 - Math.random() * 1000;
     star.start.set(
-      side * (120 + Math.random() * 150), // Start far left or right
-      60 + Math.random() * 70,            // Spawn at high altitude
-      -100 - Math.random() * 320           // Directly in front of camera field
+      (Math.random() - 0.5) * 800, // Random X spawn across the deep field
+      80 + Math.random() * 170,     // Random high Y altitude
+      zDepth                       // Far back in space
     );
     
-    // Fly diagonally across the center camera field
+    // Fly in completely random diagonal downwards directions
     const dir = new THREE.Vector3(
-      -side * (0.6 + Math.random() * 0.8), // Fly to opposite side
-      -0.45 - Math.random() * 0.65,        // Fly downwards
-      (Math.random() - 0.5) * 0.4          // Faint Z-depth shift
+      (Math.random() - 0.5) * 1.8, // Random X direction
+      -0.7 - Math.random() * 0.6,  // Downwards Y
+      (Math.random() - 0.5) * 0.8  // Random Z drift
     ).normalize();
     
-    const travel = 220 + Math.random() * 180; // Distance of travel
+    const travel = 250 + Math.random() * 250; // Distance of travel
     star.end.copy(star.start).add(dir.multiplyScalar(travel));
     
     star.mesh.material.opacity = 1;
