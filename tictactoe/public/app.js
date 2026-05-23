@@ -190,6 +190,7 @@ function app() {
       this.initSpaceGallery();
       this.initGoogleSignIn();
       this.initWeatherSync();
+      this.initGyroscope();
       
       // Load saved stats and achievements
       this.loadStats();
@@ -232,6 +233,33 @@ function app() {
         );
       } else {
         this.applyWeatherPreset('clear');
+      }
+    },
+
+    initGyroscope() {
+      if (window.DeviceOrientationEvent) {
+        window.addEventListener('deviceorientation', (event) => {
+          if (this.screen !== 'game' || !this.view3D) return;
+          
+          let beta = event.beta;
+          let gamma = event.gamma;
+          
+          if (beta === null || gamma === null) return;
+          
+          // Clamp and offset values to comfortable portrait holding angles
+          // Phone tilted forward/backward (pitch, beta) - target holds around 60 deg
+          const pitchDiff = beta - 60;
+          
+          // Map to maximum 25 deg tilt limits
+          const tiltX = Math.max(-25, Math.min(25, gamma * 0.8));
+          const tiltY = Math.max(-25, Math.min(25, -pitchDiff * 0.8));
+          
+          const boardEl = document.getElementById('game-board');
+          if (boardEl) {
+            boardEl.style.setProperty('--tilt-x', `${tiltX.toFixed(1)}deg`);
+            boardEl.style.setProperty('--tilt-y', `${tiltY.toFixed(1)}deg`);
+          }
+        });
       }
     },
 
@@ -674,17 +702,59 @@ function app() {
       this.setScreen('game');
       this.updateGameStatus();
     },
+
+    startOffline() {
+      this.clearWinningCells();
+      this.stopBlitzTimer();
+      this.mode = 'offline';
+      this.mySymbol = 'X';
+      const size = this.boardSize * this.boardSize;
+      this.board = Array(size).fill(null);
+      this.currentTurn = 'X';
+      this.gameActive = true;
+      this.gameStartTime = Date.now();
+      this.scores = { X: 0, O: 0, D: 0 };
+      
+      if (this.gameMode === 'blitz') {
+        this.startBlitzTimer();
+      }
+      
+      if (this.gameMode === 'educational') {
+        this.showRandomSpaceFact();
+      }
+      
+      this.setScreen('game');
+      this.updateGameStatus();
+    },
     
     canMove(index) {
-      return this.gameActive && !this.board[index] && 
-             (this.mode === 'ai' ? this.currentTurn === 'X' : this.currentTurn === this.mySymbol);
+      if (!this.gameActive || this.board[index]) return false;
+      if (this.mode === 'offline') return true;
+      return (this.mode === 'ai' ? this.currentTurn === 'X' : this.currentTurn === this.mySymbol);
     },
     
     makeMove(index) {
       if (!this.canMove(index)) return;
       window.SoundManager.play('click');
       
-      if (this.mode === 'ai') {
+      if (this.mode === 'offline') {
+        const symbol = this.currentTurn;
+        this.board[index] = symbol;
+        const winLine = this.checkWin(symbol);
+        if (winLine) {
+          this.scores[symbol]++;
+          this.animateWinningLine(winLine);
+          setTimeout(() => this.showGameOver(symbol, false), 500);
+          return;
+        }
+        if (this.board.every(c => c)) {
+          this.scores.D++;
+          this.showGameOver(null, true);
+          return;
+        }
+        this.currentTurn = symbol === 'X' ? 'O' : 'X';
+        this.updateGameStatus();
+      } else if (this.mode === 'ai') {
         this.board[index] = 'X';
         const winLine = this.checkWin('X');
         if (winLine) {
@@ -799,7 +869,9 @@ function app() {
     },
     
     updateGameStatus() {
-      if (this.mode === 'ai') {
+      if (this.mode === 'offline') {
+        this.gameStatus = `PLAYER ${this.currentTurn}'S TURN`;
+      } else if (this.mode === 'ai') {
         this.gameStatus = this.currentTurn === 'X' ? 'YOUR TURN' : 'AI THINKING...';
       } else {
         this.gameStatus = this.currentTurn === this.mySymbol ? 'YOUR TURN' : 'OPPONENT TURN';
@@ -825,6 +897,11 @@ function app() {
         this.gameOverSubtitle = 'MISSION DRAW';
         this.user.stats.draws++;
         this.user.stats.winStreak = 0;
+      } else if (this.mode === 'offline') {
+        window.SoundManager.play('win'); this.gameOverEmoji = '🏆';
+        this.gameOverTitle = `PLAYER ${winner} WINS`;
+        this.gameOverSubtitle = 'VICTORY ACHIEVED';
+        this.user.stats.wins++;
       } else if (winner === this.mySymbol || (this.mode === 'ai' && winner === 'X')) {
         window.SoundManager.play('win'); this.gameOverEmoji = '🏆';
         this.gameOverTitle = 'MISSION COMPLETE';
@@ -1179,7 +1256,7 @@ function app() {
       this.gameOver = false;
       this.rematchRequested = false;
       this.rematchFrom = '';
-      if (this.mode === 'ai') {
+      if (this.mode === 'ai' || this.mode === 'offline') {
         const size = this.boardSize * this.boardSize;
         this.board = Array(size).fill(null);
         this.currentTurn = 'X';

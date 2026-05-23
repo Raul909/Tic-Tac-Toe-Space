@@ -792,30 +792,33 @@
     const cx = 256;
     const cy = 256;
     
+    // Set a heavy blur filter to make rays look soft, misty, and atmospheric
+    ctx.filter = 'blur(14px)';
+    
     // Radial base glow
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 256);
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 200);
     grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-    grad.addColorStop(0.12, 'rgba(255, 245, 220, 0.95)');
-    grad.addColorStop(0.28, 'rgba(255, 180, 50, 0.45)');
-    grad.addColorStop(0.55, 'rgba(255, 100, 20, 0.12)');
-    grad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
+    grad.addColorStop(0.15, 'rgba(255, 242, 200, 0.9)');
+    grad.addColorStop(0.4, 'rgba(255, 160, 40, 0.4)');
+    grad.addColorStop(0.7, 'rgba(255, 80, 10, 0.15)');
+    grad.addColorStop(1, 'rgba(255, 40, 0, 0.0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 512);
     
-    // Add thin, wispy volumetric rays
-    const numRays = 48;
+    // Add soft, feathered volumetric rays
+    const numRays = 32; // Fewer, wider, softer rays are much more realistic!
     ctx.save();
     ctx.translate(cx, cy);
     for (let i = 0; i < numRays; i++) {
-      const angle = (i / numRays) * Math.PI * 2 + Math.sin(i * 3.7) * 0.1;
-      const length = 120 + Math.abs(Math.sin(i * 12.3)) * 130;
-      const width = 0.02 + Math.abs(Math.cos(i * 7.4)) * 0.05;
+      const angle = (i / numRays) * Math.PI * 2 + Math.sin(i * 4.3) * 0.15;
+      const length = 110 + Math.abs(Math.sin(i * 7.7)) * 140;
+      const width = 0.08 + Math.abs(Math.cos(i * 5.2)) * 0.1; // Wider rays for soft blending
       
       const rayGrad = ctx.createLinearGradient(0, 0, 0, length);
-      rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.55)');
-      rayGrad.addColorStop(0.15, 'rgba(255, 225, 120, 0.35)');
-      rayGrad.addColorStop(0.5, 'rgba(255, 120, 30, 0.12)');
-      rayGrad.addColorStop(1, 'rgba(255, 50, 0, 0.0)');
+      rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+      rayGrad.addColorStop(0.2, 'rgba(255, 220, 100, 0.25)');
+      rayGrad.addColorStop(0.6, 'rgba(255, 90, 20, 0.08)');
+      rayGrad.addColorStop(1, 'rgba(255, 30, 0, 0.0)');
       
       ctx.fillStyle = rayGrad;
       ctx.beginPath();
@@ -1026,6 +1029,14 @@
     sun.rotation.y += 0.001 * scale;
     sunGlow.rotation.y -= 0.0015 * scale;
     sunGlow.rotation.z += 0.0008 * scale;
+    
+    // Organic shimmering and pulsing for volumetric sun rays
+    if (typeof sunRaySprite !== 'undefined' && sunRaySprite) {
+      const rayPulse = 1.0 + Math.sin(currentTime * 0.0015) * 0.05;
+      sunRaySprite.scale.set(110 * rayPulse, 110 * rayPulse, 1);
+      sunRaySprite.material.rotation = Math.sin(currentTime * 0.0002) * 0.08;
+      sunRaySprite.material.opacity = 0.8 + Math.cos(currentTime * 0.0007) * 0.12;
+    }
     
     // Planets - Batch update
     const cx = sun.position.x, cz = sun.position.z;
