@@ -9,6 +9,8 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <!-- Google Identity Services — needed for loginWithGoogle() in app.js -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link rel="stylesheet" href="/mobile-optimizations.css">
   <link rel="stylesheet" href="/nasa-theme.css">
   <script>
@@ -25,360 +27,61 @@
       }
     }
   </script>
+  <!--
+    All theme styles live in /nasa-theme.css — see that file for the full
+    design system (tokens, animations, HUD buttons, responsive rules).
+
+    This inline block contains ONLY:
+      • The @keyframes / classes that Alpine.js renders dynamically
+        (e.g. winning-cell, title-glow, victoryBounce) so they are always
+        present in the document regardless of external CSS load order.
+      • The Tailwind escape-hatch selectors (colorblind backslash escapes)
+        that cannot survive a CSS file round-trip reliably in all browsers.
+  -->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Space+Mono&display=swap');
-    
-    * {
-      -webkit-tap-highlight-color: transparent;
-    }
-    
-    body { 
-      font-family: 'Space Mono', monospace;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    
-    h1, h2, h3 { font-family: 'Exo 2', sans-serif; }
-    
-    button, a, [x-on\\:click] {
-      transform: translateZ(0);
-      backface-visibility: hidden;
-    }
-    
-    #three-canvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-      will-change: transform;
-      transform: translateZ(0);
-    }
-    
-    .content-layer {
-      position: relative;
-      z-index: 1;
-      transform: translateZ(0);
-      backface-visibility: hidden;
-      -webkit-font-smoothing: antialiased;
-    }
-    
-    [x-cloak] { display: none !important; }
-    
-    /* Loading screen */
-    #loading-screen {
-      position: fixed;
-      inset: 0;
-      background: #000510;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      transition: opacity 0.3s ease-out;
-    }
-    
-    #loading-screen.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-    
-    .nasa-bracket {
-      position: relative;
-    }
-    .nasa-bracket::before,
-    .nasa-bracket::after {
-      content: '';
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      border: 2px solid #00d4ff;
-    }
-    .nasa-bracket::before {
-      top: -1px;
-      left: -1px;
-      border-right: none;
-      border-bottom: none;
-    }
-    .nasa-bracket::after {
-      bottom: -1px;
-      right: -1px;
-      border-left: none;
-      border-top: none;
-    }
-    
-    .glass {
-      background: rgba(0, 5, 16, 0.85);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
-      border: 1px solid rgba(0, 212, 255, 0.3);
-      will-change: transform;
-      transform: translateZ(0);
-    }
-    
-    @keyframes scan {
-      0% { transform: translateY(-100%); }
-      100% { transform: translateY(100vh); }
-    }
-    .scan-line {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 2px;
-      background: linear-gradient(to bottom, transparent, rgba(0, 212, 255, 0.5), transparent);
-      animation: scan 8s linear infinite;
-      pointer-events: none;
-      z-index: 100;
-    }
-    
-    /* Mobile optimizations */
-    @media (max-width: 640px) {
-      #three-canvas {
-        transform: scale(1.1);
-      }
-      .glass {
-        backdrop-filter: blur(8px);
-      }
-    }
-    
-    /* Touch-friendly interactions */
-    .touch-manipulation {
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-    }
-    
-    #space-gallery-canvas {
-      width: 100%;
-      height: 500px;
-      border-radius: 0.5rem;
-      cursor: grab;
-    }
-    #space-gallery-canvas:active {
-      cursor: grabbing;
-    }
-    
-    .space-object-item {
-      padding: 0.75rem;
-      background: rgba(0, 212, 255, 0.05);
-      border: 1px solid rgba(0, 212, 255, 0.2);
-      border-radius: 0.5rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .space-object-item:hover {
-      background: rgba(0, 212, 255, 0.15);
-      border-color: rgba(0, 212, 255, 0.5);
-    }
-    .space-object-item.active {
-      background: rgba(0, 212, 255, 0.25);
-      border-color: #00d4ff;
-    }
-    
-    /* Winning Animation */
+    /* ── Winning animations (referenced by Alpine x-bind:class) ─────────── */
     @keyframes winPulse {
-      0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 rgba(0, 212, 255, 0);
-      }
-      25% {
-        transform: scale(1.1);
-        box-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
-      }
-      50% {
-        transform: scale(1.05);
-        box-shadow: 0 0 50px rgba(0, 212, 255, 1);
-      }
-      75% {
-        transform: scale(1.1);
-        box-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
-      }
+      0%, 100% { transform: scale(1);    box-shadow: 0 0  0px rgba(0,212,255,0);   }
+      25%, 75% { transform: scale(1.1);  box-shadow: 0 0 30px rgba(0,212,255,0.8); }
+      50%      { transform: scale(1.05); box-shadow: 0 0 50px rgba(0,212,255,1);   }
     }
-    
     @keyframes winGlow {
-      0%, 100% {
-        filter: brightness(1);
-      }
-      50% {
-        filter: brightness(2);
-      }
+      0%, 100% { filter: brightness(1); }
+      50%      { filter: brightness(2); }
     }
-    
     @keyframes titleGlow {
-      0%, 100% {
-        text-shadow: 0 0 20px rgba(0, 212, 255, 0.8), 0 0 40px rgba(0, 212, 255, 0.4);
-      }
-      50% {
-        text-shadow: 0 0 30px rgba(0, 212, 255, 1), 0 0 60px rgba(0, 212, 255, 0.6), 0 0 80px rgba(77, 255, 219, 0.4);
-      }
+      0%, 100% { text-shadow: 0 0 20px rgba(0,212,255,.8), 0 0 40px rgba(0,212,255,.4); }
+      50%      { text-shadow: 0 0 30px rgba(0,212,255,1),  0 0 60px rgba(0,212,255,.6), 0 0 80px rgba(77,255,219,.4); }
     }
-    
-    .title-glow {
-      animation: titleGlow 3s ease-in-out infinite;
-    }
-    
-    .winning-cell {
-      animation: winPulse 0.6s ease-in-out, winGlow 1s ease-in-out infinite !important;
-      background: rgba(0, 212, 255, 0.3) !important;
-      border-color: #00d4ff !important;
-      box-shadow: 0 0 30px rgba(0, 212, 255, 0.8) !important;
-    }
-
-    #winning-line {
-      opacity: 0;
-      transition: opacity 0.3s ease-out;
-    }
-
-    #winning-line.active {
-      opacity: 1;
-      animation: neonPulse 1.5s ease-in-out infinite;
-    }
-
     @keyframes neonPulse {
-      0%, 100% {
-        filter: drop-shadow(0 0 8px #00d4ff) drop-shadow(0 0 15px #00d4ff);
-      }
-      50% {
-        filter: drop-shadow(0 0 15px #00ffff) drop-shadow(0 0 25px #00ffff);
-      }
+      0%, 100% { filter: drop-shadow(0 0  8px #00d4ff) drop-shadow(0 0 15px #00d4ff); }
+      50%      { filter: drop-shadow(0 0 15px #00ffff)  drop-shadow(0 0 25px #00ffff); }
+    }
+    @keyframes drawLine    { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+    @keyframes victoryBounce {
+      0%, 100% { transform: scale(1)   rotate(0deg);  }
+      25%, 75% { transform: scale(1.2) rotate(-5deg); }
+      50%      { transform: scale(1.1) rotate(5deg);  }
+    }
+    @keyframes victoryShake {
+      0%, 100%               { transform: translateX(0);   }
+      10%,30%,50%,70%,90%   { transform: translateX(-5px); }
+      20%,40%,60%,80%        { transform: translateX(5px);  }
     }
 
-    @keyframes drawLine {
-      from {
-        stroke-dashoffset: 1000;
-      }
-      to {
-        stroke-dashoffset: 0;
-      }
+    .title-glow   { animation: titleGlow 3s ease-in-out infinite; }
+    .winning-cell {
+      animation: winPulse .6s ease-in-out, winGlow 1s ease-in-out infinite !important;
+      background: rgba(0,212,255,.3) !important;
+      border-color: #00d4ff !important;
+      box-shadow: 0 0 30px rgba(0,212,255,.8) !important;
     }
-    
-    /* Accessibility Modes */
-    body.high-contrast {
-      --nasa: #00ffff;
-      --earth: #00ff00;
-      --mars: #ff0000;
-    }
-    
-    body.high-contrast .glass {
-      background: rgba(0, 0, 0, 0.95);
-      border: 2px solid #00ffff;
-    }
-    
-    body.colorblind .text-mars {
-      color: #0066ff !important;
-    }
-    
-    body.colorblind .text-earth {
-      color: #ffaa00 !important;
-    }
-    
-    body.colorblind .border-mars\\/50 {
-      border-color: rgba(0, 102, 255, 0.5) !important;
-    }
-    
-    body.colorblind .border-earth\\/50 {
-      border-color: rgba(255, 170, 0, 0.5) !important;
-    }
-    
-    /* Victory Screen Animation */
-    @keyframes victoryBounce {
-      0%, 100% {
-        transform: scale(1) rotate(0deg);
-      }
-      25% {
-        transform: scale(1.2) rotate(-5deg);
-      }
-      50% {
-        transform: scale(1.1) rotate(5deg);
-      }
-      75% {
-        transform: scale(1.2) rotate(-5deg);
-      }
-    }
-    
-    @keyframes victoryShake {
-      0%, 100% { transform: translateX(0); }
-      10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-      20%, 40%, 60%, 80% { transform: translateX(5px); }
-    }
-    
-    /* Mobile Responsiveness */
-    @media (max-width: 768px) {
-      body {
-        font-size: 14px;
-      }
-      
-      h1 {
-        font-size: 1.5rem !important;
-      }
-      
-      h2 {
-        font-size: 1.25rem !important;
-      }
-      
-      .glass {
-        padding: 1rem !important;
-      }
-      
-      button:not(.aspect-square) {
-        padding: 0.5rem 1rem !important;
-        font-size: 0.875rem !important;
-      }
-      
-      #space-gallery-3d {
-        height: 300px !important;
-      }
-      
-      .space-object-item {
-        padding: 0.5rem !important;
-        font-size: 0.875rem !important;
-      }
-      
-      /* Game board mobile */
-      .grid-cols-3 {
-        gap: 0.5rem !important;
-      }
-      
-      /* Hide scan line on mobile for performance */
-      .scan-line {
-        display: none;
-      }
-    }
-    
-    @media (max-width: 480px) {
-      h1 {
-        font-size: 1.25rem !important;
-      }
-      
-      .glass {
-        padding: 0.75rem !important;
-      }
-      
-      button:not(.aspect-square) {
-        padding: 0.4rem 0.8rem !important;
-        font-size: 0.75rem !important;
-      }
-      
-      #space-gallery-3d {
-        height: 250px !important;
-      }
-      
-      input {
-        font-size: 14px !important;
-      }
-    }
-    
-    /* Touch-friendly interactions */
-    @media (hover: none) and (pointer: coarse) {
-      button, .space-object-item {
-        min-height: 44px;
-        min-width: 44px;
-      }
-      
-      .space-object-item {
-        padding: 1rem !important;
-      }
-    }
+    #winning-line          { opacity: 0; transition: opacity .25s ease-out; }
+    #winning-line.active   { opacity: 1; animation: neonPulse 1.5s ease-in-out infinite; }
+
+    /* ── Tailwind escape-hatch selectors (colorblind mode) ──────────────── */
+    body.colorblind .border-mars\/50  { border-color: rgba(0,102,255,.5)   !important; }
+    body.colorblind .border-earth\/50 { border-color: rgba(255,170,0,.5)   !important; }
   </style>
 </head>
 <body class="bg-space text-white min-h-screen overflow-x-hidden" x-data="app()" x-init="init()" x-cloak>
