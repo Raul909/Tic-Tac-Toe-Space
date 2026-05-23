@@ -873,17 +873,21 @@ function app() {
       // Dynamic styling and visual transitions matching each sound pack profile
       const soundPack = (this.user && this.user.profile && this.user.profile.soundPack) || 'scifi';
       let colors = { start: '#00d4ff', mid: '#00ffff', end: '#00d4ff' };
-      let transitionStyle = 'stroke-dashoffset 0.45s ease-out';
+      let durationStr = '0.45s';
+      let easingStr = 'ease-out';
 
       if (soundPack === 'retro') {
         colors = { start: '#ff003c', mid: '#ffbb00', end: '#ff003c' }; // retro pixel red/orange
-        transitionStyle = 'stroke-dashoffset 0.38s steps(12, end)'; // blocky arcade sweep
+        durationStr = '0.38s';
+        easingStr = 'steps(12, end)'; // blocky arcade sweep
       } else if (soundPack === 'realistic') {
         colors = { start: '#ff9000', mid: '#ffd700', end: '#ff9000' }; // physical golden solar ray
-        transitionStyle = 'stroke-dashoffset 0.52s cubic-bezier(0.25, 0.8, 0.25, 1)';
+        durationStr = '0.52s';
+        easingStr = 'cubic-bezier(0.25, 0.8, 0.25, 1)';
       } else if (soundPack === 'minimal') {
         colors = { start: '#ffffff', mid: '#d1d5db', end: '#ffffff' }; // sleek silver-white strip
-        transitionStyle = 'stroke-dashoffset 0.22s cubic-bezier(0.1, 0.9, 0.2, 1)'; // ultra-fast snap
+        durationStr = '0.22s';
+        easingStr = 'cubic-bezier(0.1, 0.9, 0.2, 1)'; // ultra-fast snap
       }
 
       // Update neonGradient colors in-place
@@ -899,12 +903,30 @@ function app() {
       // Dynamic color for drop-shadow resolving (currentColor)
       svgLine.style.color = colors.mid;
 
+      // ── Glowing Tip Setup ──────────────────────────────────────────────────
+      let winTip = svg.querySelector('#win-tip');
+      if (!winTip) {
+        winTip = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        winTip.id = 'win-tip';
+        winTip.setAttribute('r', '7');
+        winTip.setAttribute('fill', '#ffffff');
+        winTip.style.filter = 'drop-shadow(0 0 10px currentColor)';
+        svg.appendChild(winTip);
+      }
+      winTip.style.color = colors.mid;
+      winTip.setAttribute('cx', x1);
+      winTip.setAttribute('cy', y1);
+      winTip.style.opacity = '1';
+      winTip.style.transition = 'none';
+
+      // ── Line Initial State Setup ──────────────────────────────────────────
       svgLine.setAttribute('x1', x1);
       svgLine.setAttribute('y1', y1);
-      svgLine.setAttribute('x2', x1);
-      svgLine.setAttribute('y2', y1);
+      svgLine.setAttribute('x2', x2);
+      svgLine.setAttribute('y2', y2);
       svgLine.style.strokeDasharray = length;
       svgLine.style.strokeDashoffset = length;
+      svgLine.style.transition = 'none';
 
       svg.classList.add('active');
 
@@ -913,12 +935,54 @@ function app() {
         window.SoundManager.play('zip');
       }
 
+      // Double requestAnimationFrame ensures initial layout styles are registered by browser
       requestAnimationFrame(() => {
-        svgLine.setAttribute('x2', x2);
-        svgLine.setAttribute('y2', y2);
-        svgLine.style.transition = transitionStyle;
-        svgLine.style.strokeDashoffset = '0';
+        requestAnimationFrame(() => {
+          svgLine.style.transition = `stroke-dashoffset ${durationStr} ${easingStr}`;
+          svgLine.style.strokeDashoffset = '0';
+
+          winTip.style.transition = `cx ${durationStr} ${easingStr}, cy ${durationStr} ${easingStr}, opacity 0.15s`;
+          winTip.setAttribute('cx', x2);
+          winTip.setAttribute('cy', y2);
+        });
       });
+
+      // ── Sparkle Burst at the Finish Point ──────────────────────────────────
+      setTimeout(() => {
+        winTip.style.opacity = '0';
+
+        const sparkCount = 15;
+        for (let i = 0; i < sparkCount; i++) {
+          const spark = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          spark.setAttribute('cx', x2);
+          spark.setAttribute('cy', y2);
+          spark.setAttribute('r', 2.5 + Math.random() * 3);
+          spark.setAttribute('fill', Math.random() < 0.5 ? colors.mid : colors.start);
+          spark.style.filter = 'drop-shadow(0 0 5px currentColor)';
+          spark.style.color = colors.mid;
+          spark.style.opacity = '1';
+          spark.style.transition = 'all 0.65s cubic-bezier(0.1, 0.8, 0.2, 1)';
+          svg.appendChild(spark);
+
+          // Random blast angles and velocities
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 25 + Math.random() * 45;
+          const targetX = x2 + Math.cos(angle) * speed;
+          const targetY = y2 + Math.sin(angle) * speed;
+
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              spark.setAttribute('cx', targetX);
+              spark.setAttribute('cy', targetY);
+              spark.setAttribute('r', '0.1');
+              spark.style.opacity = '0';
+            });
+          });
+
+          // Garbage-collect spark circle element
+          setTimeout(() => spark.remove(), 750);
+        }
+      }, parseFloat(durationStr) * 1000);
     },
     
     updateGameStatus() {
