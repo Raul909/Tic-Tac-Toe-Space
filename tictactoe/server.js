@@ -444,14 +444,23 @@ app.post('/api/auth/google', async (req, res) => {
             sessionStore: { sessions, sessionSet, uuidv4 }
           });
         } catch (e) {
-          console.error('Google auth error:', e);
+          console.error('Google auth processing error:', e);
+          if (!res.headersSent) {
+            res.status(500).json({ ok: false, error: 'Failed to process Google authentication' });
+          }
         }
       });
     }).on('error', (e) => {
       console.error('Google token verification error:', e);
+      if (!res.headersSent) {
+        res.status(502).json({ ok: false, error: 'Google authentication service unreachable' });
+      }
     });
   } catch (e) {
     console.error('Google OAuth error:', e);
+    if (!res.headersSent) {
+      res.status(500).json({ ok: false, error: 'Google OAuth initialization failed' });
+    }
   }
 });
 
@@ -491,14 +500,23 @@ app.post('/api/auth/facebook', async (req, res) => {
             sessionStore: { sessions, sessionSet, uuidv4 }
           });
         } catch (e) {
-          console.error('Facebook auth error:', e);
+          console.error('Facebook auth processing error:', e);
+          if (!res.headersSent) {
+            res.status(500).json({ ok: false, error: 'Failed to process Facebook authentication' });
+          }
         }
       });
     }).on('error', (e) => {
       console.error('Facebook token verification error:', e);
+      if (!res.headersSent) {
+        res.status(502).json({ ok: false, error: 'Facebook authentication service unreachable' });
+      }
     });
   } catch (e) {
     console.error('Facebook OAuth error:', e);
+    if (!res.headersSent) {
+      res.status(500).json({ ok: false, error: 'Facebook OAuth initialization failed' });
+    }
   }
 });
 
@@ -554,6 +572,15 @@ const context = {
 };
 
 setupSocket(io, context);
+
+// Clean up active timers/handles on server shutdown (prevents hanging tests and leaks)
+server.on('close', () => {
+  clearTimeout(saveTimer);
+  for (const timeoutId of disconnectTimeouts.values()) {
+    clearTimeout(timeoutId);
+  }
+  disconnectTimeouts.clear();
+});
 
 // ── HEALTH CHECK ──────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', uptime: process.uptime() }));
