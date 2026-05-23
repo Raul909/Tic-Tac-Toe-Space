@@ -149,7 +149,34 @@ app.get('/config.js', (req, res) => {
   `);
 });
 
+// Serve static assets (CSS, JS, images) — needed by the frontend at load time
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── Frontend redirect ────────────────────────────────────────────────────────
+// The UI lives on Cloudflare Pages. Visiting the Render backend URL directly
+// (i.e. a browser navigating to /) should redirect there rather than serving
+// a duplicate copy of the game. Static assets and API routes still work as
+// normal — only top-level HTML navigation requests are redirected.
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://tic-tac-toe-space.pages.dev';
+
+app.get('/', (req, res) => {
+  // Only redirect real browser visits (Accept: text/html). API probes that
+  // hit / (e.g. UptimeRobot) receive a lightweight JSON health response.
+  const wantsHtml = req.headers.accept && req.headers.accept.includes('text/html');
+  if (wantsHtml) {
+    return res.redirect(301, FRONTEND_URL);
+  }
+  res.json({ status: 'ok', service: 'tic-tac-toe backend' });
+});
+
+// Catch-all: any unmatched HTML navigation → redirect to frontend
+app.use((req, res, next) => {
+  const wantsHtml = req.headers.accept && req.headers.accept.includes('text/html');
+  if (wantsHtml) {
+    return res.redirect(301, FRONTEND_URL);
+  }
+  next();
+});
 
 // Rate limiting
 const authLimiter = rateLimit({
