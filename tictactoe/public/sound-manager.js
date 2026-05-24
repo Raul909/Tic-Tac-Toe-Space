@@ -8,6 +8,15 @@ class SoundManager {
     this.bgFilter = null;
     this.customMusicName = '';
     this.customSfx = null; // Stores extracted AudioBuffers
+    
+    // Web Audio Background Music Properties (Fix for looping bug)
+    this.bgBufferSource = null;
+    this.bgMusicBuffer = null;
+    this.bgPlayhead = 0;
+    this.bgStartTime = 0;
+    this.bgPlaying = false;
+    this.bgGainNode = null;
+    
     this.init();
   }
 
@@ -23,18 +32,8 @@ class SoundManager {
   }
 
   setupBgAudioSource() {
-    if (!this.audioCtx || !this.bgAudio || this.bgAudioSource) return;
-    try {
-      this.bgAudioSource = this.audioCtx.createMediaElementSource(this.bgAudio);
-      this.bgFilter = this.audioCtx.createBiquadFilter();
-      this.bgFilter.type = 'lowpass';
-      this.bgFilter.frequency.setValueAtTime(20000, this.audioCtx.currentTime); // fully open
-      
-      this.bgAudioSource.connect(this.bgFilter);
-      this.bgFilter.connect(this.audioCtx.destination);
-    } catch (e) {
-      console.warn("setupBgAudioSource failed:", e);
-    }
+    // No-op: We now play background music directly via AudioBufferSourceNode
+    // to bypass the browser HTML5 MediaElementAudioSourceNode looping bug.
   }
 
   setFilterActive(active) {
@@ -52,11 +51,7 @@ class SoundManager {
   }
 
   playCustomMusic(file) {
-    if (this.bgAudio) {
-      this.bgAudio.pause();
-      this.bgAudio.src = '';
-      this.bgAudio = null;
-    }
+    this.stopCustomMusic();
     
     // Notify Alpine UI to open loading mini-game modal
     if (window.appInstance) {
@@ -65,24 +60,63 @@ class SoundManager {
       window.appInstance.showRetroGame = true;
     }
 
+    // Set a dummy audio object to make app.js state checks happy
     this.bgAudio = new Audio();
-    this.bgAudio.loop = true;
-    this.bgAudio.crossOrigin = "anonymous";
-    this.bgAudio.volume = this.muted ? 0 : 0.45;
-    this.bgAudio.src = URL.createObjectURL(file);
     this.customMusicName = file.name;
-    
-    this.bgAudioSource = null;
-    this.bgFilter = null;
-    this.setupBgAudioSource();
-
-    const playPromise = this.bgAudio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(e => console.warn("Background music play failed:", e));
-    }
 
     // Decode and analyze the file for SFX slicing
     this.decodeAndAnalyze(file);
+  }
+
+  playBgBuffer(offset = 0) {
+    if (!this.audioCtx || !this.bgMusicBuffer) return;
+    
+    if (this.bgBufferSource) {
+      try {
+        this.bgBufferSource.stop();
+      } catch(e) {}
+      this.bgBufferSource = null;
+    }
+    
+    this.bgBufferSource = this.audioCtx.createBufferSource();
+    this.bgBufferSource.buffer = this.bgMusicBuffer;
+    this.bgBufferSource.loop = true;
+    
+    if (!this.bgGainNode) {
+      this.bgGainNode = this.audioCtx.createGain();
+    }
+    this.bgGainNode.gain.setValueAtTime(this.muted ? 0 : 0.45, this.audioCtx.currentTime);
+    
+    if (!this.bgFilter) {
+      this.bgFilter = this.audioCtx.createBiquadFilter();
+      this.bgFilter.type = 'lowpass';
+      this.bgFilter.frequency.setValueAtTime(20000, this.audioCtx.currentTime);
+    }
+    
+    this.bgBufferSource.connect(this.bgGainNode);
+    this.bgGainNode.connect(this.bgFilter);
+    this.bgFilter.connect(this.audioCtx.destination);
+    
+    this.bgStartTime = this.audioCtx.currentTime - offset;
+    this.bgBufferSource.start(0, offset % this.bgMusicBuffer.duration);
+    this.bgPlaying = true;
+  }
+
+  pauseBgMusic() {
+    if (this.bgBufferSource && this.bgPlaying) {
+      this.bgPlayhead = this.audioCtx.currentTime - this.bgStartTime;
+      try {
+        this.bgBufferSource.stop();
+      } catch(e) {}
+      this.bgBufferSource = null;
+      this.bgPlaying = false;
+    }
+  }
+
+  resumeBgMusic() {
+    if (this.bgMusicBuffer && !this.bgPlaying) {
+      this.playBgBuffer(this.bgPlayhead || 0);
+    }
   }
 
   decodeAndAnalyze(file) {
@@ -276,6 +310,10 @@ class SoundManager {
 
     console.log("[AI Judge] Extracted 8 dynamic SFX buffers from custom track.");
     
+    // Save the main audio buffer for looping background playback
+    this.bgMusicBuffer = audioBuffer;
+    this.bgPlayhead = 0;
+    
     // Set current pack to custom
     this.changePack('custom');
     
@@ -288,6 +326,9 @@ class SoundManager {
         window.appInstance.soundPacks.push('custom');
       }
     }
+    
+    // Start background music loop playback!
+    this.playBgBuffer(0);
   }
 
   playCustomBuffer(buffer) {
@@ -303,48 +344,51 @@ class SoundManager {
   }
 
   toggleBgMusic() {
-    if (!this.bgAudio) return false;
-    if (this.bgAudio.paused) {
-      if (this.audioCtx && this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume();
-      }
-      this.bgAudio.play().catch(e => console.warn(e));
-      return true;
-    } else {
-      this.bgAudio.pause();
+    if (!this.bgMusicBuffer) return false;
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
+    if (this.bgPlaying) {
+      this.pauseBgMusic();
       return false;
+    } else {
+      this.resumeBgMusic();
+      return true;
     }
   }
 
   stopCustomMusic() {
-    if (this.bgAudio) {
-      this.bgAudio.pause();
-      this.bgAudio.src = '';
-      this.bgAudio = null;
-      this.bgAudioSource = null;
-      this.bgFilter = null;
-      this.customMusicName = '';
-      this.customSfx = null;
-      
-      // Revert sound pack if currently set to custom
-      if (this.currentPack === 'custom') {
-        this.changePack('scifi');
-        if (window.appInstance) {
-          window.appInstance.user.profile.soundPack = 'scifi';
-          const customIdx = window.appInstance.soundPacks.indexOf('custom');
-          if (customIdx > -1) {
-            window.appInstance.soundPacks.splice(customIdx, 1);
-          }
+    if (this.bgBufferSource) {
+      try {
+        this.bgBufferSource.stop();
+      } catch(e) {}
+      this.bgBufferSource = null;
+    }
+    this.bgMusicBuffer = null;
+    this.bgPlayhead = 0;
+    this.bgPlaying = false;
+    this.bgAudio = null;
+    this.customMusicName = '';
+    this.customSfx = null;
+    
+    // Revert sound pack if currently set to custom
+    if (this.currentPack === 'custom') {
+      this.changePack('scifi');
+      if (window.appInstance) {
+        window.appInstance.user.profile.soundPack = 'scifi';
+        const customIdx = window.appInstance.soundPacks.indexOf('custom');
+        if (customIdx > -1) {
+          window.appInstance.soundPacks.splice(customIdx, 1);
         }
       }
-      window.customMusicVibe = null;
     }
+    window.customMusicVibe = null;
   }
 
   toggleMute() {
     this.muted = !this.muted;
-    if (this.bgAudio) {
-      this.bgAudio.volume = this.muted ? 0 : 0.45;
+    if (this.bgGainNode) {
+      this.bgGainNode.gain.setValueAtTime(this.muted ? 0 : 0.45, this.audioCtx.currentTime);
     }
     return this.muted;
   }
