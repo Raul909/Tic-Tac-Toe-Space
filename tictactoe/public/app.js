@@ -935,6 +935,7 @@ function app() {
     spaceZoom: 1,
     spaceSpeed: 1,
     selectedObject: null,
+    spacePOVTarget: 'Sun',
     
     // Weather & UI Presets
     weather: 'clear',
@@ -2505,10 +2506,18 @@ function app() {
       }, 250);
     },
     
-    resetSpaceView() {
+     resetSpaceView() {
       this.selectedObject = null;
+      this.spacePOVTarget = 'Sun';
       if (window.SpaceGallery3D) {
         window.SpaceGallery3D.reset();
+      }
+    },
+    
+    changeSpacePOV(target) {
+      this.spacePOVTarget = target;
+      if (window.SpaceGallery3D) {
+        window.SpaceGallery3D.setPOVTarget(target);
       }
     },
     

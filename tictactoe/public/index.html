@@ -894,8 +894,28 @@
               <div id="hud-zoom" class="text-gray-300">ZOOM: 1.0x</div>
             </div>
             
-            <div class="flex flex-wrap gap-2 sm:gap-4 mt-3 sm:mt-4">
+            <div class="flex flex-wrap gap-2 sm:gap-4 mt-3 sm:mt-4 items-center">
               <button @click="resetSpaceView()" class="bg-gray-800 px-4 sm:px-6 py-2 rounded hover:bg-gray-700 transition font-retro text-[9px]">🔄 RESET VIEW</button>
+              
+              <!-- POV Focus Selection Dropdown -->
+              <div x-show="spaceTab === 'solar'" class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:border-nasa/50 transition">
+                <label class="text-[8px] text-gray-400 font-retro tracking-wider uppercase select-none">POV FOCUS:</label>
+                <select :value="spacePOVTarget" @change="changeSpacePOV($event.target.value)" class="bg-transparent text-nasa text-[9px] font-retro focus:outline-none border-none cursor-pointer py-0.5 pr-2 focus:ring-0">
+                  <option value="Sun" class="bg-black text-nasa">SUN (STAR)</option>
+                  <option value="Mercury" class="bg-black text-nasa">MERCURY</option>
+                  <option value="Venus" class="bg-black text-nasa">VENUS</option>
+                  <option value="Earth" class="bg-black text-nasa">EARTH</option>
+                  <option value="Mars" class="bg-black text-nasa">MARS</option>
+                  <option value="Ceres" class="bg-black text-nasa">CERES</option>
+                  <option value="Jupiter" class="bg-black text-nasa">JUPITER</option>
+                  <option value="Saturn" class="bg-black text-nasa">SATURN</option>
+                  <option value="Uranus" class="bg-black text-nasa">URANUS</option>
+                  <option value="Neptune" class="bg-black text-nasa">NEPTUNE</option>
+                  <option value="Pluto" class="bg-black text-nasa">PLUTO</option>
+                  <option value="Eris" class="bg-black text-nasa">ERIS</option>
+                </select>
+              </div>
+
               <div class="text-[10px] sm:text-xs text-gray-400 flex flex-wrap items-center gap-2 sm:gap-4">
                 <span>🖱️ Drag</span>
                 <span>🔍 Zoom</span>

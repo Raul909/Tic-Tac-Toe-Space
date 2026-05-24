@@ -25,7 +25,7 @@
   }
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x000208, 0.0003);
+  scene.fog = new THREE.FogExp2(0x000000, 0.00035);
   
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 4000);
   const renderer = new THREE.WebGLRenderer({ 
@@ -553,16 +553,16 @@
       
       // Apply color tints
       if (preset.name === 'storm') {
-        scene.fog.color.setHex(0x000510);
+        scene.fog.color.setHex(0x000103);
         renderer.toneMappingExposure = 1.0;
       } else if (preset.name === 'frozen') {
-        scene.fog.color.setHex(0x000820);
+        scene.fog.color.setHex(0x000105);
         renderer.toneMappingExposure = 1.0;
       } else if (preset.name === 'misty') {
-        scene.fog.color.setHex(0x000308);
+        scene.fog.color.setHex(0x000002);
         renderer.toneMappingExposure = 1.1;
       } else {
-        scene.fog.color.setHex(0x000208);
+        scene.fog.color.setHex(0x000000);
         renderer.toneMappingExposure = 1.0;
       }
     }
@@ -595,10 +595,10 @@
     
     // Toggle nebula gas density
     if (nebula) {
-      nebula.material.opacity = (mode === 'HD') ? 0.025 : 0.008;
+      nebula.material.opacity = (mode === 'HD') ? 0.012 : 0.005;
     }
     if (coreNebula) {
-      coreNebula.material.opacity = (mode === 'HD') ? 0.035 : 0.012;
+      coreNebula.material.opacity = (mode === 'HD') ? 0.009 : 0.004;
     }
   };
 
@@ -660,6 +660,9 @@
   let sunProceduralGroup = null;
   let sunModelGroup = null;
   let shootingStarModel = null;
+  let earthGroup = null;
+  let earthProceduralGroup = null;
+  let earthModelGroup = null;
   let proximaCentauri = null;
   let alphaCentauriA = null;
   let alphaCentauriB = null;
@@ -868,7 +871,7 @@
     size: 70, // large overlapping puffs for volumetric cloud merging
     vertexColors: true, 
     transparent: true, 
-    opacity: 0.02, 
+    opacity: 0.012, 
     blending: THREE.AdditiveBlending, 
     depthWrite: false,
     map: _nebulaCloudTex,
@@ -893,7 +896,7 @@
     size: 90, // even larger core puffs for dense volumetric glow
     vertexColors: true,
     transparent: true,
-    opacity: 0.015,
+    opacity: 0.009,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     map: _nebulaCloudTex,
@@ -1581,10 +1584,113 @@
   planets.push({ mesh: mercury, speed: 0.0015, radius: 30, angle: 0, rotationSpeed: 0.004 });
   const venus = createPlanet('venus', 3.8, 0xFFC649, {x:25, y:10, z:-50}, false, true, 0xFFE4B5);
   planets.push({ mesh: venus, speed: 0.001, radius: 40, angle: Math.PI/4, rotationSpeed: 0.005 });
-  const earth = createPlanet('earth', 4.5, 0x2E5F8C, {x:40, y:-15, z:-60}, false, true, 0x4A90E2);
-  planets.push({ mesh: earth, speed: 0.0008, radius: 50, angle: 0, rotationSpeed: 0.01 });
+  earthGroup = new THREE.Group();
+  earthGroup.position.set(40, -15, -60);
+  scene.add(earthGroup);
+
+  earthProceduralGroup = new THREE.Group();
+  earthGroup.add(earthProceduralGroup);
+
+  earthModelGroup = new THREE.Group();
+  earthModelGroup.visible = false;
+  earthGroup.add(earthModelGroup);
+
+  const earth = createPlanet('earth', 4.5, 0x2E5F8C, {x:0, y:0, z:0}, false, true, 0x4A90E2);
+  earthProceduralGroup.add(earth);
+  
   const moon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), new THREE.MeshStandardMaterial({ color: 0xCCCCCC }));
-  moon.castShadow = true; earth.add(moon); moon.position.set(8,0,0);
+  moon.castShadow = true; 
+  earth.add(moon); 
+  moon.position.set(8, 0, 0);
+
+  planets.push({ mesh: earthGroup, speed: 0.0008, radius: 50, angle: 0, rotationSpeed: 0.01 });
+
+  // ── Asynchronously Load 3D Earth & Moon Eclipse Model ──
+  if (typeof THREE.GLTFLoader !== 'undefined') {
+    const gltfLoader = new THREE.GLTFLoader();
+    const getModelUrl = (path) => {
+      if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
+        const base = window.BACKEND_URL.replace(/\/$/, '');
+        const cleanPath = path.startsWith('/') ? path : '/' + path;
+        return base + cleanPath;
+      }
+      return path;
+    };
+    const earthMoonPaths = [
+      getModelUrl('/models/earth_moon.glb'),
+      getModelUrl('/models/earthmoon.glb'),
+      getModelUrl('/models/earth_moon/scene.gltf')
+    ];
+    let earthMoonAttempt = 0;
+
+    function loadEarthMoonModel(path) {
+      console.log(`[GLTFLoader] Backdrop: Attempting to load 3D Earth & Moon model from: ${path}`);
+      gltfLoader.load(
+        path,
+        (gltf) => {
+          console.log(`[GLTFLoader] Backdrop: Successfully loaded Earth & Moon model from: ${path}`);
+          while (earthModelGroup.children.length > 0) {
+            earthModelGroup.remove(earthModelGroup.children[0]);
+          }
+
+          const modelScene = gltf.scene;
+
+          // Compute bounding box for auto-scaling and auto-centering
+          const box = new THREE.Box3().setFromObject(modelScene);
+          const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+
+          // Standardize size to fit Earth radius of 4.5 (overall bounding box target of ~16 units)
+          const targetDim = 16.0;
+          const scale = maxDim > 0 ? targetDim / maxDim : 1.0;
+          
+          modelScene.scale.set(scale, scale, scale);
+          modelScene.position.sub(center.multiplyScalar(scale));
+
+          // Set up AnimationMixer if it has built-in orbit animations
+          if (gltf.animations && gltf.animations.length > 0) {
+            const mixer = new THREE.AnimationMixer(modelScene);
+            const action = mixer.clipAction(gltf.animations[0]);
+            action.play();
+            if (!window.spaceMixers) window.spaceMixers = [];
+            window.spaceMixers.push(mixer);
+          }
+
+          modelScene.traverse((node) => {
+            if (node.isMesh) {
+              node.castShadow = false;
+              node.receiveShadow = false;
+              if (node.material) {
+                node.material.side = THREE.DoubleSide;
+                if (node.material.transparent) {
+                  node.material.depthWrite = false;
+                }
+              }
+            }
+          });
+
+          earthModelGroup.add(modelScene);
+          earthModelGroup.visible = true;
+
+          // Hide procedural layers
+          earthProceduralGroup.visible = false;
+        },
+        undefined,
+        (error) => {
+          console.warn(`[GLTFLoader] Backdrop: Failed to load Earth & Moon model from ${path}:`, error);
+          earthMoonAttempt++;
+          if (earthMoonAttempt < earthMoonPaths.length) {
+            loadEarthMoonModel(earthMoonPaths[earthMoonAttempt]);
+          } else {
+            console.log('[GLTFLoader] Backdrop: Earth & Moon model fallback active.');
+          }
+        }
+      );
+    }
+
+    loadEarthMoonModel(earthMoonPaths[earthMoonAttempt]);
+  }
   const mars = createPlanet('mars', 3.2, 0xCD5C5C, {x:-50, y:20, z:-70});
   planets.push({ mesh: mars, speed: 0.0005, radius: 65, angle: Math.PI, rotationSpeed: 0.008 });
   
@@ -2103,6 +2209,13 @@
     const dt = Math.min((currentTime - lastTime) / 1000, 0.05);
     lastTime = currentTime;
     const scale = dt * 60;
+
+    // Update active GLTF animation mixers (for Earth/Moon orbit and eclipse)
+    if (window.spaceMixers) {
+      for (let i = 0; i < window.spaceMixers.length; i++) {
+        window.spaceMixers[i].update(dt);
+      }
+    }
 
     // Adaptive FPS throttle: if sustained < 35fps, skip every other frame
     _fpsFrames++;

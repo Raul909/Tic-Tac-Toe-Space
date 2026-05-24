@@ -119,6 +119,9 @@
           return this.drawNebulaGas();
         case 'circle-particle-albedo':
           return this.drawCircleParticle();
+        case 'moon-albedo':
+          this.drawMoonAlbedo(ctx, w, h);
+          break;
         default:
           if (type === 'bump') {
             ctx.fillStyle = '#808080';
@@ -790,6 +793,33 @@
     drawDefault(ctx, w, h) {
       ctx.fillStyle = '#374151';
       ctx.fillRect(0, 0, w, h);
+    },
+
+    drawMoonAlbedo(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          const val = fbm3D(px * 16, py * 16, pz * 16, 4);
+          const idx = (y * w + x) * 4;
+          
+          const col = Math.floor(70 + val * 100);
+          data[idx] = col;
+          data[idx+1] = col;
+          data[idx+2] = col;
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+      this.drawCraters(ctx, w, h, 'rgba(40,40,40,0.7)', 'rgba(200,200,200,0.5)');
     }
   };
 
@@ -802,12 +832,37 @@
     }
   }
 
+  const moonConfigs = [
+    { name: 'Phobos', parent: 'Mars', radius: 0.5, distance: 6, orbit: 1.0, color: 0x8b8589 },
+    { name: 'Deimos', parent: 'Mars', radius: 0.3, distance: 9, orbit: 0.5, color: 0xa9a5a6 },
+    { name: 'Io', parent: 'Jupiter', radius: 1.0, distance: 26, orbit: 1.8, color: 0xe5e059 },
+    { name: 'Europa', parent: 'Jupiter', radius: 0.9, distance: 31, orbit: 1.4, color: 0x9fbcd1 },
+    { name: 'Ganymede', parent: 'Jupiter', radius: 1.3, distance: 37, orbit: 1.0, color: 0x8a7f72 },
+    { name: 'Callisto', parent: 'Jupiter', radius: 1.2, distance: 44, orbit: 0.7, color: 0x5a554a },
+    { name: 'Titan', parent: 'Saturn', radius: 1.4, distance: 42, orbit: 1.0, color: 0xdfa34b },
+    { name: 'Rhea', parent: 'Saturn', radius: 0.8, distance: 28, orbit: 1.5, color: 0xc0c0c0 },
+    { name: 'Dione', parent: 'Saturn', radius: 0.7, distance: 32, orbit: 1.2, color: 0xa0a0a0 },
+    { name: 'Tethys', parent: 'Saturn', radius: 0.6, distance: 24, orbit: 1.8, color: 0xb0b0b0 },
+    { name: 'Titania', parent: 'Uranus', radius: 0.9, distance: 18, orbit: 1.0, color: 0xabc2d6 },
+    { name: 'Oberon', parent: 'Uranus', radius: 0.8, distance: 22, orbit: 0.8, color: 0x9ab2c6 },
+    { name: 'Ariel', parent: 'Uranus', radius: 0.7, distance: 13, orbit: 1.5, color: 0xbcd2e6 },
+    { name: 'Umbriel', parent: 'Uranus', radius: 0.7, distance: 15, orbit: 1.2, color: 0x7a8c9e },
+    { name: 'Triton', parent: 'Neptune', radius: 1.0, distance: 16, orbit: -1.2, color: 0xc5dcc5 },
+    { name: 'Charon', parent: 'Pluto', radius: 0.7, distance: 4.5, orbit: 1.0, color: 0x9fa4a6 },
+    { name: 'Dysnomia', parent: 'Eris', radius: 0.4, distance: 4.0, orbit: 1.0, color: 0x8a8a8a }
+  ];
+
   window.SpaceGallery3D = {
     scene: null,
     camera: null,
     renderer: null,
     controls: null,
     objects: [],
+    clock: null,
+    mixers: [],
+    povTargetObject: null,
+    lastPOVPos: new THREE.Vector3(),
+    povOffset: new THREE.Vector3(),
     currentTab: 'solar',
     selectedObj: null,
     raycaster: null,
@@ -887,7 +942,9 @@
 
       // Scene
       this.scene = new THREE.Scene();
-      this.scene.fog = new THREE.FogExp2(0x000208, 0.0003);
+      this.scene.fog = new THREE.FogExp2(0x000000, 0.00035);
+      this.clock = new THREE.Clock();
+      this.mixers = [];
       
       // Weather system
       this.weatherParticles = null;
@@ -939,6 +996,7 @@
     loadTab(tab) {
       this.currentTab = tab;
       this.clearScene();
+      this.createGalleryStarField(); // Add custom AMOLED/OLED high-contrast parallax stars!
       this.setupLighting();
       this.addReferencePoint();
       this.addGridHelper();
@@ -1213,6 +1271,50 @@
       if (alpineEl && alpineEl.__x__ && alpineEl.__x__.$data) {
         alpineEl.__x__.$data.selectedObject = null;
       }
+    },
+    
+    createGalleryStarField() {
+      const count = 15000;
+      const positions = new Float32Array(count * 3);
+      const colors = new Float32Array(count * 3);
+      
+      const colorOptions = [
+        new THREE.Color(0xffffff),
+        new THREE.Color(0x88ccff),
+        new THREE.Color(0xffddaa)
+      ];
+      
+      for (let i = 0; i < count; i++) {
+        const r = 500 + Math.random() * 800; // further out
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        
+        positions[i*3] = r * Math.sin(phi) * Math.cos(theta);
+        positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+        positions[i*3+2] = r * Math.cos(phi);
+        
+        const col = colorOptions[Math.floor(Math.random() * colorOptions.length)];
+        colors[i*3] = col.r;
+        colors[i*3+1] = col.g;
+        colors[i*3+2] = col.b;
+      }
+      
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      
+      const material = new THREE.PointsMaterial({
+        size: 1.0,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        sizeAttenuation: true
+      });
+      
+      this.galleryStarField = new THREE.Points(geometry, material);
+      this.scene.add(this.galleryStarField);
     },
     
     setupLighting() {
@@ -1498,8 +1600,209 @@
               sunGroup.remove(sunLoader);
             }
           }
+        } else if (data.name === 'Earth') {
+          const earthGroup = new THREE.Group();
+          earthGroup.userData = { ...data, id: i };
+          earthGroup.name = 'Earth';
+          this.scene.add(earthGroup);
+          this.objects.push(earthGroup);
+
+          const proceduralGroup = new THREE.Group();
+          proceduralGroup.name = 'earthProceduralGroup';
+          earthGroup.add(proceduralGroup);
+
+          const modelGroup = new THREE.Group();
+          modelGroup.name = 'earthModelGroup';
+          modelGroup.visible = false;
+          earthGroup.add(modelGroup);
+
+          // Procedural Earth sphere
+          const geometry = new THREE.SphereGeometry(data.radius, 32, 32);
+          const texture = TextureGenerator.generate(data.name, 'albedo');
+          const matParams = {
+            map: texture,
+            emissive: data.color,
+            emissiveIntensity: 0.02,
+            roughnessMap: TextureGenerator.generate(data.name, 'roughness'),
+            metalness: 0.12,
+            bumpMap: TextureGenerator.generate(data.name, 'bump'),
+            bumpScale: 0.85
+          };
+          const material = new THREE.MeshStandardMaterial(matParams);
+          const planetMesh = new THREE.Mesh(geometry, material);
+          planetMesh.name = 'EarthMesh';
+          planetMesh.castShadow = true;
+          planetMesh.receiveShadow = true;
+          proceduralGroup.add(planetMesh);
+          
+          // Clouds (reduced opacity to 0.32 per user request)
+          const cloudGeo = new THREE.SphereGeometry(data.radius + 0.2, 32, 32);
+          const cloudTex = TextureGenerator.generate('earth-clouds', 'albedo');
+          const cloudMat = new THREE.MeshStandardMaterial({
+            map: cloudTex,
+            transparent: true,
+            opacity: 0.32,
+            depthWrite: false,
+            blending: THREE.NormalBlending
+          });
+          const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+          clouds.name = 'earthClouds';
+          proceduralGroup.add(clouds);
+          planetMesh.userData = { clouds }; // sync rotation
+          
+          // Procedural Moon
+          const moonGeo = new THREE.SphereGeometry(1.5, 32, 32);
+          const moonMat = new THREE.MeshStandardMaterial({
+            map: TextureGenerator.generate('Moon', 'albedo'),
+            roughness: 0.9
+          });
+          const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+          moonMesh.name = 'Moon';
+          moonMesh.position.set(13.0, 0, 0);
+          moonMesh.userData = {
+            isMoon: true,
+            name: 'Moon',
+            angle: 0,
+            distance: 13.0,
+            speed: 0.015
+          };
+          proceduralGroup.add(moonMesh);
+
+          // Initial positions
+          const angle = Math.random() * Math.PI * 2;
+          earthGroup.position.x = Math.cos(angle) * data.distance;
+          earthGroup.position.z = Math.sin(angle) * data.distance;
+          earthGroup.userData.angle = angle;
+
+          // ── 3D Torus Loading Animation (Cyan/Blue) ──
+          const loaderGeo = new THREE.TorusGeometry(data.radius * 1.2, data.radius * 0.03, 8, 32);
+          const loaderMat = new THREE.MeshBasicMaterial({
+            color: 0x00d4ff,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+          });
+          const earthLoader = new THREE.Mesh(loaderGeo, loaderMat);
+          earthLoader.name = 'earthLoader';
+          earthGroup.add(earthLoader);
+
+          // ── Asynchronously Load 3D Earth & Moon Eclipse Model ──
+          if (typeof THREE.GLTFLoader !== 'undefined') {
+            const gltfLoader = new THREE.GLTFLoader();
+            const getModelUrl = (path) => {
+              if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
+                const base = window.BACKEND_URL.replace(/\/$/, '');
+                const cleanPath = path.startsWith('/') ? path : '/' + path;
+                return base + cleanPath;
+              }
+              return path;
+            };
+            const earthMoonPaths = [
+              getModelUrl('/models/earth_moon.glb'),
+              getModelUrl('/models/earthmoon.glb'),
+              getModelUrl('/models/earth_moon/scene.gltf')
+            ];
+            let earthMoonAttempt = 0;
+
+            const loadEarthGallery = (path) => {
+              console.log(`[GLTFLoader] Space Gallery: Attempting to load 3D Earth & Moon model from: ${path}`);
+              gltfLoader.load(
+                path,
+                (gltf) => {
+                  console.log(`[GLTFLoader] Space Gallery: Successfully loaded Earth & Moon model from: ${path}`);
+                  while (modelGroup.children.length > 0) {
+                    modelGroup.remove(modelGroup.children[0]);
+                  }
+                  
+                  const modelScene = gltf.scene;
+                  const box = new THREE.Box3().setFromObject(modelScene);
+                  const size = box.getSize(new THREE.Vector3());
+                  const center = box.getCenter(new THREE.Vector3());
+                  const maxDim = Math.max(size.x, size.y, size.z);
+                  
+                  // Scale to fit target dimension (~24 units)
+                  const targetDim = 24.0; 
+                  const scale = maxDim > 0 ? targetDim / maxDim : 1.0;
+                  modelScene.scale.set(scale, scale, scale);
+                  modelScene.position.sub(center.multiplyScalar(scale));
+                  
+                  // Play built-in orbital/eclipse animations
+                  if (gltf.animations && gltf.animations.length > 0) {
+                    const mixer = new THREE.AnimationMixer(modelScene);
+                    const action = mixer.clipAction(gltf.animations[0]);
+                    action.play();
+                    this.mixers.push(mixer);
+                    modelScene.userData.mixer = mixer;
+                  }
+
+                  modelScene.traverse((node) => {
+                    if (node.isMesh) {
+                      node.castShadow = false;
+                      node.receiveShadow = false;
+                      if (node.material) {
+                        node.material.side = THREE.DoubleSide;
+                        if (node.material.transparent) {
+                          node.material.depthWrite = false;
+                        }
+                      }
+                    }
+                  });
+                  
+                  modelGroup.add(modelScene);
+                  modelGroup.visible = true;
+                  proceduralGroup.visible = false;
+                  
+                  if (earthLoader) {
+                    earthLoader.visible = false;
+                    earthGroup.remove(earthLoader);
+                  }
+                },
+                undefined,
+                (error) => {
+                  console.warn(`[GLTFLoader] Space Gallery: Failed to load Earth & Moon model from ${path}:`, error);
+                  earthMoonAttempt++;
+                  if (earthMoonAttempt < earthMoonPaths.length) {
+                    loadEarthGallery(earthMoonPaths[earthMoonAttempt]);
+                  } else {
+                    console.log('[GLTFLoader] Space Gallery: Earth & Moon model fallback active.');
+                    if (earthLoader) {
+                      earthLoader.visible = false;
+                      earthGroup.remove(earthLoader);
+                    }
+                  }
+                }
+              );
+            };
+
+            loadEarthGallery(earthMoonPaths[earthMoonAttempt]);
+          } else {
+            console.warn('[GLTFLoader] THREE.GLTFLoader is undefined in Space Gallery. Fallback.');
+            if (earthLoader) {
+              earthLoader.visible = false;
+              earthGroup.remove(earthLoader);
+            }
+          }
+
+          // Orbit path line
+          const orbitGeometry = new THREE.RingGeometry(data.distance - 0.5, data.distance + 0.5, 128);
+          const orbitMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00d4ff,
+            transparent: true,
+            opacity: 0.15,
+            side: THREE.DoubleSide
+          });
+          const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
+          orbit.rotation.x = Math.PI / 2;
+          this.scene.add(orbit);
         } else {
-          const geometry = new THREE.SphereGeometry(data.radius, 32, 32); // 32 segs
+          const planetGroup = new THREE.Group();
+          planetGroup.userData = { ...data, id: i };
+          planetGroup.name = data.name;
+          this.scene.add(planetGroup);
+          this.objects.push(planetGroup);
+
+          const geometry = new THREE.SphereGeometry(data.radius, 32, 32);
           const texture = TextureGenerator.generate(data.name, 'albedo');
           
           const matParams = {
@@ -1508,46 +1811,25 @@
             emissiveIntensity: 0.02
           };
 
-          if (data.name === 'Earth' || data.name === 'Mars' || data.name === 'Mercury') {
+          if (data.name === 'Mars' || data.name === 'Mercury') {
             matParams.bumpMap = TextureGenerator.generate(data.name, 'bump');
-            matParams.bumpScale = data.name === 'Earth' ? 0.85 : data.name === 'Mars' ? 0.45 : 0.35;
+            matParams.bumpScale = data.name === 'Mars' ? 0.45 : 0.35;
           }
 
-          if (data.name === 'Earth') {
-            matParams.roughnessMap = TextureGenerator.generate(data.name, 'roughness');
-            matParams.metalness = 0.12;
-          } else {
-            matParams.roughness = (data.name === 'Venus' || data.name === 'Jupiter' || data.name === 'Saturn') ? 0.95 : 0.8;
-            matParams.metalness = 0.0;
-          }
+          matParams.roughness = (data.name === 'Venus' || data.name === 'Jupiter' || data.name === 'Saturn') ? 0.95 : 0.8;
+          matParams.metalness = 0.0;
 
           const material = new THREE.MeshStandardMaterial(matParams);
-          const planet = new THREE.Mesh(geometry, material);
-          planet.castShadow = true;
-          planet.receiveShadow = true;
+          const planetMesh = new THREE.Mesh(geometry, material);
+          planetMesh.name = data.name + 'Mesh';
+          planetMesh.castShadow = true;
+          planetMesh.receiveShadow = true;
+          planetGroup.add(planetMesh);
           
           const angle = Math.random() * Math.PI * 2;
-          planet.position.x = Math.cos(angle) * data.distance;
-          planet.position.z = Math.sin(angle) * data.distance;
-          planet.userData = { ...data, id: i, angle };
-          
-          if (data.name === 'Earth') {
-            const cloudGeo = new THREE.SphereGeometry(data.radius + 0.2, 32, 32);
-            const cloudTex = TextureGenerator.generate('earth-clouds', 'albedo');
-            const cloudMat = new THREE.MeshStandardMaterial({
-              map: cloudTex,
-              transparent: true,
-              opacity: 0.5,
-              depthWrite: false,
-              blending: THREE.NormalBlending
-            });
-            const clouds = new THREE.Mesh(cloudGeo, cloudMat);
-            planet.add(clouds);
-            planet.userData.clouds = clouds;
-          }
-          
-          this.scene.add(planet);
-          this.objects.push(planet);
+          planetGroup.position.x = Math.cos(angle) * data.distance;
+          planetGroup.position.z = Math.sin(angle) * data.distance;
+          planetGroup.userData.angle = angle;
           
           if (data.rings) {
             const ringGeometry = new THREE.RingGeometry(data.radius * 1.4, data.radius * 2.4, 64);
@@ -1576,8 +1858,35 @@
             });
             const ring = new THREE.Mesh(ringGeometry, ringMaterial);
             ring.rotation.x = Math.PI / 2.2;
-            planet.add(ring);
+            planetGroup.add(ring);
           }
+          
+          // Add Moons for Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, Eris
+          const moonsForPlanet = moonConfigs.filter(m => m.parent === data.name);
+          moonsForPlanet.forEach(moon => {
+            const moonGeo = new THREE.SphereGeometry(moon.radius, 16, 16);
+            const moonMat = new THREE.MeshStandardMaterial({
+              map: TextureGenerator.generate('Moon', 'albedo'),
+              color: moon.color,
+              roughness: 0.9
+            });
+            const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+            moonMesh.name = moon.name;
+            
+            const moonAngle = Math.random() * Math.PI * 2;
+            moonMesh.position.x = Math.cos(moonAngle) * moon.distance;
+            moonMesh.position.z = Math.sin(moonAngle) * moon.distance;
+            
+            moonMesh.userData = {
+              isMoon: true,
+              name: moon.name,
+              angle: moonAngle,
+              distance: moon.distance,
+              speed: moon.orbit * 0.015
+            };
+            
+            planetGroup.add(moonMesh);
+          });
           
           const orbitGeometry = new THREE.RingGeometry(data.distance - 0.5, data.distance + 0.5, 128);
           const orbitMaterial = new THREE.MeshBasicMaterial({
@@ -1948,7 +2257,7 @@
           uniforms: {
             uMap: { value: particleTexture },
             uBaseSize: { value: data.radius * 0.26 },
-            uOpacity: { value: isHorsehead ? 0.8 : 0.18 },
+            uOpacity: { value: isHorsehead ? 0.55 : 0.11 },
             uPixelRatio: { value: Math.min(window.devicePixelRatio, 1.5) },
             uTime: { value: 0 }
           },
@@ -2191,38 +2500,106 @@
         alpineEl.__x__.$data.selectedObject = this.selectedObj?.userData || null;
       }
 
-      // Only glide camera if triggered from sidebar (not canvas click)
-      if (fromSidebar && this.selectedObj) {
-        const radius = this.selectedObj.userData.radius || 10;
-        const targetPos = new THREE.Vector3();
-        this.selectedObj.getWorldPosition(targetPos);
-        
-        this.controlsTargetPos.copy(targetPos);
-        
-        // Highly accurate, custom camera angle locks for specific objects
-        if (this.selectedObj.userData.id === 'your-location') {
-          this.cameraTargetPos.copy(targetPos).add(new THREE.Vector3(0, radius * 2.8, radius * 4.0));
-        } else if (this.selectedObj.userData.type === 'Constellation') {
-          const name = this.selectedObj.userData.name;
-          let offset;
-          if (name === 'Orion') {
-            offset = new THREE.Vector3(0, radius * 1.15, radius * 2.25);
-          } else if (name === 'Ursa Major') {
-            offset = new THREE.Vector3(radius * 0.4, radius * 1.8, radius * 1.8);
-          } else if (name === 'Cassiopeia') {
-            offset = new THREE.Vector3(radius * 1.25, radius * 1.0, radius * 1.95);
-          } else {
-            offset = new THREE.Vector3(0, radius * 1.5, radius * 2.5);
+      if (this.selectedObj) {
+        const name = this.selectedObj.userData.name;
+        if (this.currentTab === 'solar' && name) {
+          // Sync POV dropdown with Alpine
+          if (alpineEl && alpineEl.__x__ && alpineEl.__x__.$data) {
+            alpineEl.__x__.$data.spacePOVTarget = name;
           }
-          this.cameraTargetPos.copy(targetPos).add(offset);
-        } else {
-          this.cameraTargetPos.copy(targetPos).add(new THREE.Vector3(0, radius * 3.5, radius * 5));
+          
+          const radius = this.selectedObj.userData.radius || 10;
+          this.povTargetObject = this.selectedObj;
+          
+          if (fromSidebar) {
+            const targetPos = new THREE.Vector3();
+            this.selectedObj.getWorldPosition(targetPos);
+            this.controlsTargetPos.copy(targetPos);
+            
+            // Custom camera offset angles
+            if (this.selectedObj.userData.id === 'your-location') {
+              this.povOffset.set(0, radius * 2.8, radius * 4.0);
+            } else {
+              this.povOffset.set(0, radius * 3.5, radius * 5);
+            }
+            this.cameraTargetPos.copy(targetPos).add(this.povOffset);
+            
+            this.isGliding = true;
+            if (this.controls) {
+              this.controls.autoRotate = false;
+            }
+            this.lastPOVPos.copy(targetPos);
+          } else {
+            // Canvas click: lock onto moving reference frame without gliding/jumping
+            const targetPos = new THREE.Vector3();
+            this.selectedObj.getWorldPosition(targetPos);
+            this.povOffset.subVectors(this.camera.position, targetPos);
+            this.lastPOVPos.copy(targetPos);
+            this.isGliding = false;
+            if (this.controls) {
+              this.controls.autoRotate = false;
+              this.controls.target.copy(targetPos);
+            }
+          }
+        } else if (fromSidebar) {
+          // Constellations, Nearby Stars, Nebulae (non-solar or no-tracking tabs)
+          const radius = this.selectedObj.userData.radius || 10;
+          const targetPos = new THREE.Vector3();
+          this.selectedObj.getWorldPosition(targetPos);
+          this.controlsTargetPos.copy(targetPos);
+          
+          if (this.selectedObj.userData.type === 'Constellation') {
+            const name = this.selectedObj.userData.name;
+            let offset;
+            if (name === 'Orion') {
+              offset = new THREE.Vector3(0, radius * 1.15, radius * 2.25);
+            } else if (name === 'Ursa Major') {
+              offset = new THREE.Vector3(radius * 0.4, radius * 1.8, radius * 1.8);
+            } else if (name === 'Cassiopeia') {
+              offset = new THREE.Vector3(radius * 1.25, radius * 1.0, radius * 1.95);
+            } else {
+              offset = new THREE.Vector3(0, radius * 1.5, radius * 2.5);
+            }
+            this.cameraTargetPos.copy(targetPos).add(offset);
+          } else {
+            this.cameraTargetPos.copy(targetPos).add(new THREE.Vector3(0, radius * 3.5, radius * 5));
+          }
+          
+          this.povTargetObject = null; // not tracking
+          this.isGliding = true;
+          if (this.controls) {
+            this.controls.autoRotate = false;
+          }
         }
+      }
+    },
+
+    setPOVTarget(name) {
+      if (name === 'Sun' || !name) {
+        this.povTargetObject = null;
+        this.controlsTargetPos.set(0, 0, 0);
+        this.povOffset.set(0, 150, 450); // Default start camera view
+        this.cameraTargetPos.set(0, 150, 450);
+        this.isGliding = true;
+        if (this.controls) {
+          this.controls.autoRotate = true;
+        }
+        return;
+      }
+      
+      const target = this.objects.find(o => o.userData && o.userData.name === name);
+      if (target) {
+        this.povTargetObject = target;
+        const radius = target.userData.radius || 10;
+        this.povOffset.set(0, radius * 3.5, radius * 5);
+        this.controlsTargetPos.copy(target.position);
+        this.cameraTargetPos.copy(target.position).add(this.povOffset);
         
         this.isGliding = true;
         if (this.controls) {
           this.controls.autoRotate = false;
         }
+        this.lastPOVPos.copy(target.position);
       }
     },
     
@@ -2311,6 +2688,19 @@
       const container = this.container;
       if (!container || container.offsetParent === null) return;
       
+      const currentTime = performance.now();
+      const dt = this.clock ? Math.min(this.clock.getDelta(), 0.05) : 0.016;
+
+      // Update active GLTF mixers (for Earth and Sun animations)
+      if (this.mixers) {
+        this.mixers.forEach(mixer => mixer.update(dt));
+      }
+
+      // Rotate gallery starfield very slowly
+      if (this.galleryStarField) {
+        this.galleryStarField.rotation.y += 0.00015;
+      }
+
       // Update controls for smooth damping
       if (this.controls) {
         this.controls.update();
@@ -2325,23 +2715,45 @@
       
       // Update weather particles shader uniform
       if (this.weatherParticles && this.weatherParticles.material.userData.shader) {
-        this.weatherParticles.material.userData.shader.uniforms.uTime.value = performance.now() * 0.05;
+        this.weatherParticles.material.userData.shader.uniforms.uTime.value = currentTime * 0.05;
+      }
+      
+      // Compute current POV tracking position
+      const currentPOVPos = new THREE.Vector3(0, 0, 0);
+      if (this.povTargetObject) {
+        this.povTargetObject.getWorldPosition(currentPOVPos);
       }
       
       // Smooth camera focus glide
       if (this.isGliding) {
         const lerpFactor = 0.05; // smooth speed
+        
+        // Dynamically update glide targets to match the moving planet
+        this.controlsTargetPos.copy(currentPOVPos);
+        this.cameraTargetPos.copy(currentPOVPos).add(this.povOffset);
+        
         this.camera.position.lerp(this.cameraTargetPos, lerpFactor);
         if (this.controls) {
           this.controls.target.lerp(this.controlsTargetPos, lerpFactor);
         }
         
         // If very close, stop gliding
-        if (this.camera.position.distanceTo(this.cameraTargetPos) < 1.0 &&
-            (!this.controls || this.controls.target.distanceTo(this.controlsTargetPos) < 1.0)) {
+        if (this.camera.position.distanceTo(this.cameraTargetPos) < 1.5 &&
+            (!this.controls || this.controls.target.distanceTo(this.controlsTargetPos) < 1.5)) {
           this.isGliding = false;
         }
+      } else if (this.povTargetObject) {
+        // If we are locked and not gliding, lock camera to moving reference frame of the planet
+        if (this.lastPOVPos) {
+          const delta = new THREE.Vector3().subVectors(currentPOVPos, this.lastPOVPos);
+          this.camera.position.add(delta);
+        }
+        if (this.controls) {
+          this.controls.target.copy(currentPOVPos);
+        }
       }
+      
+      this.lastPOVPos.copy(currentPOVPos);
       
       // Rotate reference Earth (Your Location) and its clouds dynamically
       if (this.referenceEarth) {
@@ -2360,18 +2772,57 @@
           obj.position.z = Math.sin(obj.userData.angle) * obj.userData.distance;
         }
         
-        // Skip double-rotating the reference Earth as it is animated separately
-        if (obj !== this.referenceEarth) {
-          obj.rotation.y += 0.005;
-          if (obj.userData.clouds) {
-            obj.userData.clouds.rotation.y += 0.007;
+        // Rotate planet mesh or child procedural Earth layers
+        if (obj.name === 'Earth') {
+          // Rotate Earth procedural components
+          const pMesh = obj.getObjectByName('EarthMesh');
+          if (pMesh) {
+            pMesh.rotation.y += 0.005;
+            const clouds = obj.getObjectByName('earthClouds');
+            if (clouds) {
+              clouds.rotation.y += 0.007;
+            }
           }
+          // Rotate Earth 3D model if active
+          const modelGroup = obj.getObjectByName('earthModelGroup');
+          if (modelGroup && modelGroup.visible) {
+            modelGroup.rotation.y += 0.002;
+          }
+          // Earth Moon procedural orbit (if procedural group is visible)
+          const pMoon = obj.getObjectByName('Moon');
+          if (pMoon && pMoon.userData && pMoon.userData.isMoon) {
+            pMoon.userData.angle += pMoon.userData.speed;
+            pMoon.position.x = Math.cos(pMoon.userData.angle) * pMoon.userData.distance;
+            pMoon.position.z = Math.sin(pMoon.userData.angle) * pMoon.userData.distance;
+            pMoon.rotation.y += 0.01;
+          }
+          // Animate Earth loader ring
+          const earthLoader = obj.getObjectByName('earthLoader');
+          if (earthLoader && earthLoader.visible) {
+            earthLoader.rotation.z += 0.04;
+            earthLoader.rotation.x = Math.sin(currentTime * 0.003) * 0.2;
+            earthLoader.scale.setScalar(1.0 + Math.sin(currentTime * 0.005) * 0.1);
+          }
+        } else if (obj.userData.type === 'Planet' || obj.userData.type === 'Dwarf Planet') {
+          // Rotate standard planet mesh
+          const mesh = obj.getObjectByName(obj.userData.name + 'Mesh');
+          if (mesh) {
+            mesh.rotation.y += 0.005;
+          }
+          
+          // Orbit and rotate its moons
+          obj.children.forEach(child => {
+            if (child.userData && child.userData.isMoon) {
+              child.userData.angle += child.userData.speed;
+              child.position.x = Math.cos(child.userData.angle) * child.userData.distance;
+              child.position.z = Math.sin(child.userData.angle) * child.userData.distance;
+              child.rotation.y += 0.01;
+            }
+          });
         }
 
         // Animate space explorer Sun's corona organically matching the backdrop
         if (obj.userData.name === 'Sun') {
-          const currentTime = performance.now();
-          
           // Animate procedural sun shader
           const proceduralMesh = obj.getObjectByName('sunProceduralMesh');
           if (proceduralMesh && proceduralMesh.material && proceduralMesh.material.uniforms && proceduralMesh.material.uniforms.time) {
@@ -2428,7 +2879,6 @@
         if (obj.userData.type && (obj.userData.type.includes('Star') || obj.userData.type.includes('Dwarf'))) {
           const glow = obj.getObjectByName('starGlow');
           if (glow) {
-            const currentTime = performance.now();
             const pulse = 1.0 + Math.sin(currentTime * 0.002 + obj.userData.id * 1.5) * 0.08;
             glow.scale.set(obj.userData.radius * 4.5 * pulse, obj.userData.radius * 4.5 * pulse, 1);
             glow.material.opacity = 0.65 + Math.cos(currentTime * 0.001 + obj.userData.id * 2.1) * 0.15;
@@ -2437,12 +2887,11 @@
 
         // Update custom volumetric shader uTime uniform for nebulae particles
         if (obj instanceof THREE.Points && obj.material.uniforms && obj.material.uniforms.uTime) {
-          obj.material.uniforms.uTime.value = performance.now() * 0.01;
+          obj.material.uniforms.uTime.value = currentTime * 0.01;
         }
 
         // Shimmer constellation connection lines
         if (obj.userData.type === 'Constellation') {
-          const currentTime = performance.now();
           obj.children.forEach(child => {
             if (child.material && child.material.name === 'constellationLine') {
               child.material.opacity = 0.35 + Math.sin(currentTime * 0.0018 + obj.userData.id * 1.2) * 0.2;
@@ -2486,6 +2935,7 @@
     },
     
     reset() {
+      this.povTargetObject = null;
       this.cameraTargetPos.set(0, 100, 300);
       this.controlsTargetPos.set(0, 0, 0);
       this.isGliding = true;
