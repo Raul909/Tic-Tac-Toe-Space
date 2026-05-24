@@ -46,7 +46,7 @@
   renderer.outputEncoding = THREE.sRGBEncoding;
   camera.position.set(0, 25, 90);
   
-  // Bright round star particle texture — solid glowing core with smooth radial falloff
+  // Bright round star particle texture — solid 3D-shaded sphere with off-center specular highlight
   function createCircleTexture() {
     const S = 32;
     const canvas = document.createElement('canvas');
@@ -54,12 +54,13 @@
     canvas.height = S;
     const ctx = canvas.getContext('2d');
     const cx = S / 2;
-    const gradient = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
-    gradient.addColorStop(0,    'rgba(255,255,255,1)');
-    gradient.addColorStop(0.35, 'rgba(255,255,255,0.9)');
-    gradient.addColorStop(0.65, 'rgba(255,255,255,0.35)');
-    gradient.addColorStop(0.85, 'rgba(255,255,255,0.08)');
-    gradient.addColorStop(1,    'rgba(255,255,255,0)');
+    // Specular light source offset to (cx-5, cx-5) for beautiful 3D volumetric sphere appearance
+    const gradient = ctx.createRadialGradient(cx - 5, cx - 5, 0, cx, cx, cx);
+    gradient.addColorStop(0,    'rgba(255,255,255,1.0)'); // Specular highlight
+    gradient.addColorStop(0.35, 'rgba(255,255,255,0.95)'); // Core body
+    gradient.addColorStop(0.7,  'rgba(240,245,255,0.85)'); // Translucent midtone
+    gradient.addColorStop(0.9,  'rgba(215,225,255,0.4)');  // Soft edge shadow
+    gradient.addColorStop(1,    'rgba(255,255,255,0)');    // Alpha fade
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, S, S);
     const tex = new THREE.CanvasTexture(canvas);
@@ -651,13 +652,10 @@
   let andromedaGalaxy = null;
   let eventHorizon = null;
   let accretionDisk = null;
-  let sgrParticles = null;
-  let andromedaDust = null;
   let lensedAccretionDisk = null;
-  let sgrPartData = [];
-  const sgrPartCount = 400;
-  let androDustData = [];
-  const androDustCount = 350;
+  let blackHoleGroup = null;
+  let proceduralGroup = null;
+  let modelGroup = null;
   let proximaCentauri = null;
   let alphaCentauriA = null;
   let alphaCentauriB = null;
@@ -1602,16 +1600,28 @@
   andromedaGalaxy.rotation.set(Math.PI / 4.5, -Math.PI / 5, Math.PI / 7);
   scene.add(andromedaGalaxy);
 
-  // ── Sagittarius A* Black Hole — Clean Interstellar-style design ──
-  // Pure black event horizon sphere with a thin elegant accretion disk and a photon ring.
-  // No orbiting gas particle clouds — just a clean, cinematic silhouette.
+  // ── Sagittarius A* Black Hole — Clean Interstellar-style design with 3D model loader fallback ──
+  // We use blackHoleGroup at (-190, 38, -290) as parent.
+  // Under it:
+  // - proceduralGroup: Procedural horizon + photon rim + accretion disks.
+  // - modelGroup: Loaded 3D GLB model from Sketchfab.
   
+  blackHoleGroup = new THREE.Group();
+  blackHoleGroup.position.set(-190, 38, -290);
+  scene.add(blackHoleGroup);
+
+  proceduralGroup = new THREE.Group();
+  blackHoleGroup.add(proceduralGroup);
+
+  modelGroup = new THREE.Group();
+  modelGroup.visible = false;
+  blackHoleGroup.add(modelGroup);
+
   // Event Horizon — perfectly absorbing black sphere
   const eventHorizonGeo = new THREE.SphereGeometry(6.0, 64, 64);
   const eventHorizonMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
   eventHorizon = new THREE.Mesh(eventHorizonGeo, eventHorizonMat);
-  eventHorizon.position.set(-190, 38, -290);
-  scene.add(eventHorizon);
+  proceduralGroup.add(eventHorizon);
 
   // Thin photon-ring glow rim — sharp Fresnel edge, NOT a fat orange ball
   const photonRimGeo = new THREE.SphereGeometry(6.35, 64, 64);
@@ -1659,6 +1669,75 @@
   lensedAccretionDisk.lookAt(camera.position);
   lensedAccretionDisk.visible = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
   eventHorizon.add(lensedAccretionDisk);
+
+  // ── Asynchronously Load Sketchfab 3D Model ──
+  if (typeof THREE.GLTFLoader !== 'undefined') {
+    const gltfLoader = new THREE.GLTFLoader();
+    const modelPaths = ['/models/blackhole.glb', '/models/blackhole/scene.gltf'];
+    let attemptIndex = 0;
+
+    function loadModel(path) {
+      console.log(`[GLTFLoader] Attempting to load 3D black hole model from: ${path}`);
+      gltfLoader.load(
+        path,
+        (gltf) => {
+          console.log(`[GLTFLoader] Successfully loaded model from: ${path}`);
+          
+          while (modelGroup.children.length > 0) {
+            modelGroup.remove(modelGroup.children[0]);
+          }
+
+          const modelScene = gltf.scene;
+
+          // Compute bounding box for auto-scaling and auto-centering
+          const box = new THREE.Box3().setFromObject(modelScene);
+          const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+
+          // Standardize size to fit procedural scale of ~36 units
+          const targetDim = 36.0;
+          const scale = maxDim > 0 ? targetDim / maxDim : 1.0;
+          
+          modelScene.scale.set(scale, scale, scale);
+          modelScene.position.sub(center.multiplyScalar(scale));
+
+          modelScene.traverse((node) => {
+            if (node.isMesh) {
+              node.castShadow = false;
+              node.receiveShadow = false;
+              if (node.material) {
+                node.material.side = THREE.DoubleSide;
+                if (node.material.transparent) {
+                  node.material.depthWrite = false;
+                }
+              }
+            }
+          });
+
+          modelGroup.add(modelScene);
+          modelGroup.visible = true;
+
+          // Hide procedural layers
+          proceduralGroup.visible = false;
+        },
+        undefined,
+        (error) => {
+          console.warn(`[GLTFLoader] Failed to load model from ${path}:`, error);
+          attemptIndex++;
+          if (attemptIndex < modelPaths.length) {
+            loadModel(modelPaths[attemptIndex]);
+          } else {
+            console.log('[GLTFLoader] No 3D model files found. Standing by on high-fidelity procedural fallback.');
+          }
+        }
+      );
+    }
+    
+    loadModel(modelPaths[attemptIndex]);
+  } else {
+    console.warn('[GLTFLoader] THREE.GLTFLoader is undefined. Standardizing on procedural fallback.');
+  }
 
   // ─── Shooting Stars ─────────────────────────────────────────────────────────
   // Rare, solitary cinematic meteors with smooth 28-point gradient trails.
@@ -1918,6 +1997,16 @@
       eventHorizon.rotation.y += 0.0003 * scale;
       eventHorizon.rotation.x = Math.sin(currentTime * 0.0004) * 0.02;
     }
+    // Animate loaded 3D model rotation if active
+    if (modelGroup && modelGroup.visible) {
+      // Rotate the entire model slowly around its local Y/Z axis
+      modelGroup.rotation.y += 0.002 * scale;
+      modelGroup.traverse((node) => {
+        if (node.isMesh && (node.name.toLowerCase().includes('disk') || node.name.toLowerCase().includes('ring') || node.name.toLowerCase().includes('accretion') || node.name.toLowerCase().includes('plasma'))) {
+          node.rotation.z += 0.006 * scale;
+        }
+      });
+    }
     if (andromedaGalaxy) {
       andromedaGalaxy.rotation.z += 0.00012 * scale;
     }
@@ -2017,7 +2106,18 @@
       
       const targets = [];
       if (andromedaGalaxy) targets.push(andromedaGalaxy);
-      if (eventHorizon) targets.push(eventHorizon);
+      
+      // Black hole targets (detect procedural or loaded model)
+      if (proceduralGroup && proceduralGroup.visible && eventHorizon) {
+        targets.push(eventHorizon);
+      } else if (modelGroup && modelGroup.visible) {
+        modelGroup.traverse((node) => {
+          if (node.isMesh) {
+            targets.push(node);
+          }
+        });
+      }
+      
       if (typeof sun !== 'undefined' && sun) targets.push(sun);
       
       planets.forEach(p => {
@@ -2042,9 +2142,21 @@
         const obj = intersects[0].object;
         let nameText = "";
         
+        let isBlackHole = (obj === eventHorizon);
+        if (!isBlackHole && modelGroup && modelGroup.visible) {
+          let parent = obj.parent;
+          while (parent) {
+            if (parent === modelGroup) {
+              isBlackHole = true;
+              break;
+            }
+            parent = parent.parent;
+          }
+        }
+        
         if (obj === andromedaGalaxy) {
           nameText = "ANDROMEDA GALAXY";
-        } else if (obj === eventHorizon) {
+        } else if (isBlackHole) {
           nameText = "SAGITTARIUS A* BLACK HOLE";
         } else if (typeof sun !== 'undefined' && obj === sun) {
           nameText = "THE SUN (STAR)";
