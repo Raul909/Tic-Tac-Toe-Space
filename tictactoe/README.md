@@ -1,133 +1,109 @@
-# Tic Tac Toe — Mission Control 🚀
+# 🛰️ TIC-TAC-TOE: MISSION CONTROL 🌌
 
-Real-time multiplayer Tic Tac Toe with space theme, tournaments, AI, leaderboard, and OAuth.
+> **SYS-ALERT: CRITICAL CELESTIAL STANDOFF DETECTED. COMBAT OPERATORS EN ROUTE.**
 
-## Stack
+Welcome to **Tic-Tac-Toe: Mission Control**, a premium, high-fidelity tactical grid combat interface. Powered by a GPU-optimized 3D WebGL space simulation, this real-time multiplayer application fuses deep space exploration with competitive arena matches, advanced minimax training models, and robust, load-balanced server clustering.
 
-- **Backend** — Node.js, Express, Socket.IO, MongoDB (Mongoose), Redis, RabbitMQ
-- **Frontend** — Alpine.js, Tailwind CSS, Three.js (space gallery)
-- **Infra** — Nginx load balancer (4 Node instances), bcrypt auth, cookie sessions
+---
 
-## Quick Start
+## ⚡ Operational Telemetry & Live Link
 
-```bash
-cp .env.example .env   # fill in MONGODB_URI at minimum
-npm install
-npm start              # http://localhost:3000
+*   **Static Client Mesh**: Deployed on **Cloudflare Pages** for sub-millisecond global CDN edge delivery.
+*   **Persistent Core Server**: Deployed on **Render** utilizing automated blueprint synchronization.
+*   **Active Comm Link**: [https://tic-tac-toe-space.pages.dev](https://tic-tac-toe-space.pages.dev)
+
+---
+
+## 🚀 Core Systems & Features
+
+*   **🌐 Real-Time Warp Link**: Join/create multiplayer sectors instantly via unique, ephemeral 4-character encryption keys (room codes).
+*   **🤖 Operator Training AI**: Test grid formations against a Minimax AI agent with Alpha-Beta pruning, operating across three tactical difficulties (`easy`, `normal`, `hard`).
+*   **🌌 3D Celestial Cartography**: Explore a fully interactive 3D WebGL solar system, stars, constellations, and nebulae powered by Three.js. Includes orbit dampening and real-time weather synchronization.
+*   **🎵 Custom Acoustic Deck**: Upload your own orbital soundtrack to play in the background while commanding the grid. Audio tracks loop continuously and sync with the master audio mute controls.
+*   **⚡ Quantum Reconnection**: A 30-second handshake grace period prevents match termination during solar flares (network drops).
+*   **🏆 Combat Badge Ledger**: 8 unlockable achievements with persistent local telemetry tracking.
+*   **📱 Tactical Mobile HUD**: Viewport locking, touch-safe tap targets (minimum 44x44px), and adaptive layouts for pocket devices.
+
+---
+
+## 🌌 Visual Tour
+
+| 👤 Entry Portal | 🚀 Tactical Grid Arena |
+|:---:|:---:|
+| ![Entry Portal](../screenshots/auth-screen.png) | ![Tactical Grid Arena](../screenshots/game-board.png) |
+| *Log in using authorized credentials or establish a temporary Guest Call Sign to launch instantly.* | *Interact with zero latency. Active sectors glow with a volumetric solar corona.* |
+
+| 🌌 Space Explorer | 🏆 Victory Telemetry |
+|:---:|:---:|
+| ![Space Explorer](../screenshots/space-explorer.png) | ![Victory Telemetry](../screenshots/victory-share.png) |
+| *Navigate through Saturn's rings, nearby stars, and realistic, volumetric gas nebulae.* | *Achieve victory to view dynamic telemetry, score updates, and engaging space facts.* |
+
+---
+
+## 🛠️ Technology Specifications
+
+*   **Frontend**: Alpine.js (State Machine), Tailwind CSS (Aesthetic Styling), Three.js (WebGL Engine)
+*   **Backend**: Node.js, Express, Socket.IO (Real-time WebSockets), MongoDB (Persistent Ledger)
+*   **Cache & Message Bus**: Redis (Session Store & Leaderboard), RabbitMQ (Async Write Buffering)
+*   **Hosting**: Cloudflare Pages (Frontend), Render (Backend Service)
+
+---
+
+## 🚀 Local Launch Sequence
+
+1.  **Clone the Repository**:
+    ```bash
+    git clone https://github.com/Raul909/Tic-Tac-Toe-Space.git
+    cd Tic-Tac-Toe-Space/tictactoe
+    ```
+
+2.  **Provision Dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Initiate local server**:
+    ```bash
+    npm run dev
+    ```
+    Open `http://localhost:3000` in your web browser.
+
+4.  **Execute Diagnostic Tests**:
+    ```bash
+    npm test
+    ```
+
+*Note: Redis and RabbitMQ are optional for local development. The system automatically falls back to in-process memory lists and in-memory message queues.*
+
+---
+
+## 📡 Production Sector Deployments
+
+### 1. Backend (Render Blueprint)
+1.  Connect your GitHub repository to the **Render Dashboard**.
+2.  Create a **New Blueprint** pointing to the `render.yaml` template.
+3.  Inject the following environmental variables:
+    *   `NODE_ENV` = `production`
+    *   `ALLOWED_ORIGINS` = `https://your-client-domain.pages.dev`
+    *   `MONGODB_URI` = *Your secure connection string*
+    *   `RABBITMQ_URL` = *Your CloudAMQP URL*
+
+### 2. Frontend (Cloudflare Pages)
+1.  Connect your repo in **Workers & Pages** → **Connect to Git**.
+2.  Configure build parameters:
+    *   **Build Command**: (Leave blank)
+    *   **Output Directory**: `tictactoe/public`
+3.  Publish to trigger global deployment.
+
+---
+
+## 📝 Diagnostic Logs & System Overrides
+
 ```
-
-Redis and RabbitMQ are optional — the server falls back to in-memory sessions and an in-process queue automatically.
-
-## Environment Variables
+[SYSTEM_LOG_1884] :: DECRYPTED TELEMETRY DATA
+> SECURE NOTICE: In case of auditory fatigue from heavy solar radiation storms, the deck override key [F] can be utilized to initialize custom acoustic waveforms (upload your own .mp3/.wav/.ogg track) directly into the headset. Keep this transmission secure.
+```
 
 > [!CAUTION]
-> ### 🛡️ Critical Security Warning for Public Repositories
-> Since this repository is public, **NEVER** hardcode or commit actual credentials, passwords, or secrets (such as your private MongoDB Atlas connection strings or API keys) directly inside your codebase or documentation.
-> - **Local Development**: Keep all credentials confined inside a local `.env` file. This file is safely listed in `.gitignore` and will never be pushed to your public GitHub repository.
-> - **Production Deployment**: Inject your actual secret keys dynamically via your hosting provider's dashboard.
-
-| Variable | Required | Description |
-|---|---|---|
-| `MONGODB_URI` | No | MongoDB connection string. Falls back to `data/users.json` |
-| `REDIS_URL` | No | Redis for shared sessions + leaderboard cache |
-| `RABBITMQ_URL` | No | RabbitMQ for async stat writes |
-| `PORT` | No | Default `3000` |
-| `NODE_ENV` | No | Set to `production` to enable secure cookies |
-| `GOOGLE_CLIENT_ID` | No | Google OAuth |
-| `FACEBOOK_APP_ID` | No | Facebook OAuth |
-
-## Running Multiple Instances (Load Balanced)
-
-```bash
-PORT=3001 node server.js &
-PORT=3002 node server.js &
-PORT=3003 node server.js &
-PORT=3004 node server.js &
-nginx -c $(pwd)/nginx.conf
-```
-
-Requires `REDIS_URL` so sessions are shared across instances.
-
-## Features
-
-- **Multiplayer** — create/join rooms with 4-character codes
-- **AI opponent** — easy / normal / hard (minimax + alpha-beta pruning)
-- **Tournaments** — 4-player bracket with semifinals and final
-- **Leaderboard** — top 10, Redis-cached (60s TTL)
-- **Reconnection** — 30s grace period; client retries for ~35s
-- **Guest login** — no registration required
-- **OAuth** — Google and Facebook sign-in
-- **Space gallery** — 3D solar system viewer
-- **Achievements** — 8 unlockable achievements
-- **Chat** — in-room chat with emotes
-- **Blitz mode** — 60-second timed games
-- **Educational mode** — space facts between moves
-
-## Visual Tour
-
-Here is a visual showcase of the premium, celestial interface you will experience in **Tic Tac Toe - Mission Control**:
-
-| 👤 Authentication Portal | 🚀 Active Mission Control |
-|:---:|:---:|
-| ![Authentication Portal](../screenshots/auth-screen.png) | ![Active Mission Control](../screenshots/game-board.png) |
-| *Log in as an authorized operator or tap Guest Play to launch instantly into space.* | *Interact with zero input latency upon pointer contact under a tight volumetric solar corona.* |
-
-| 🌌 Celestial Space Explorer | 🏆 Standoff & Victory Telemetry |
-|:---:|:---:|
-| ![Celestial Space Explorer](../screenshots/space-explorer.png) | ![Victory Telemetry](../screenshots/victory-share.png) |
-| *Embark on a real-time, interactive tour of the Solar System, stars, constellations, and gaseous nebulae.* | *Achieve victory to view dynamic telemetry, score updates, and engaging space facts.* |
-
-## Architecture
-
-```
-Browser → Nginx (port 3000)
-            ├── Node :3001
-            ├── Node :3002  ← all share Redis + MongoDB
-            ├── Node :3003
-            └── Node :3004
-                    ↓
-              RabbitMQ queue → MongoDB stat writes (async)
-              Redis           → sessions (7d TTL), leaderboard cache
-```
-
-## Performance
-
-| Metric | Before | After |
-|---|---|---|
-| Concurrent users | ~500–800 | ~2,000–3,200 |
-| Leaderboard latency | MongoDB query | <1ms Redis cache |
-| Stat write impact on game loop | Blocking | Zero (async queue) |
-| Session sharing across nodes | ❌ | ✅ Redis |
-| Static file serving | Node.js | Nginx (7d cache) |
-
-## Tests
-
-```bash
-npm test
-```
-
-## Project Structure
-
-```
-server.js                  — Express + Socket.IO entry point
-redis.js                   — Redis client (sessions, cache, pub/sub)
-queue.js                   — RabbitMQ / in-process stat write queue
-rateLimiter.js             — Per-socket event rate limiter
-utils.js                   — validateRegistration, checkWinner, generateRoomCode
-auth-utils.js              — OAuth user creation + session helper
-nginx.conf                 — Load balancer config
-socket/
-  index.js                 — Socket.IO setup
-  utils.js                 — leaveCurrentRoom, handlePlayerLeave, sanitize
-  handlers/
-    auth.js                — token → session lookup (Redis-first)
-    game.js                — move validation, win detection, stat queue
-    room.js                — create/join rooms
-    chat.js                — in-room chat
-    disconnect.js          — 30s grace period reconnection
-    tournament.js          — 4-player bracket
-public/
-  app.js                   — Alpine.js frontend
-  game-logic.js            — minimax AI (shared browser + server)
-  index.html               — Single-page app
-```
+> ### 🛡️ Operational Security Warning
+> Never commit actual passwords, OAuth tokens, or Atlas connection strings directly into this repository. Keep secret keys localized inside `.env` configurations (safely ignored by `.gitignore`) and inject them dynamically via your platform dashboard.

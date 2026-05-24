@@ -1,98 +1,109 @@
-# 🎮 Tic Tac Toe - Mission Control 🌌
+# 🛰️ TIC-TAC-TOE: MISSION CONTROL 🌌
 
-**A premium, real-time multiplayer Tic-Tac-Toe space experience featuring a GPU-optimized 3D celestial gallery, tournament brackets, and a robust socket-reconnection architecture.**
+> **SYS-ALERT: CRITICAL CELESTIAL STANDOFF DETECTED. COMBAT OPERATORS EN ROUTE.**
 
----
-
-## ⚡ Deployment Status
-
-* **Static Frontend**: Hosted on **Cloudflare Pages** for ultra-low latency global CDN delivery.
-* **Persistent Backend**: Hosted on **Render** (Free Tier Web Service) for WebSocket handling, lobbies, and database synchronization.
-* **Live App**: [https://tic-tac-toe-space.pages.dev](https://tic-tac-toe-space.pages.dev)
+Welcome to **Tic-Tac-Toe: Mission Control**, a premium, high-fidelity tactical grid combat interface. Powered by a GPU-optimized 3D WebGL space simulation, this real-time multiplayer application fuses deep space exploration with competitive arena matches, advanced minimax training models, and robust, load-balanced server clustering.
 
 ---
 
-## ✨ Features
+## ⚡ Operational Telemetry & Live Link
 
-* **🌐 Real-Time Multiplayer** — Lobby creation and join features using unique 4-character room codes.
-* **🤖 Advanced AI Operator** — Challenging minimax AI opponent with customizable difficulties (`easy`, `normal`, `hard`).
-* **👥 Guest Access** — One-tap CODM/PUBG-style guest login with auto-assigned callsigns.
-* **🌌 Celestial Space Gallery** — GPU-accelerated WebGL solar system with cinematic camera glide controls and dynamic weather.
-* **🏆 Badge Achievements** — 8 lockable operator badges with progress indicators.
-* **🎵 Ambient Sound Themes** — 4 audio sound packs (SciFi, Retro, Realistic, Minimal) powered by a custom SoundManager.
-* **📱 Mobile UI Optimization** — Touch-friendly tap targets (min 44x44px), viewport locking, and readable glassmorphism panels.
-* **⚡ Graceful Reconnection** — 30-second disconnect grace period allowing players to rejoin active matches seamlessly.
+*   **Static Client Mesh**: Deployed on **Cloudflare Pages** for sub-millisecond global CDN edge delivery.
+*   **Persistent Core Server**: Deployed on **Render** utilizing automated blueprint synchronization.
+*   **Active Comm Link**: [https://tic-tac-toe-space.pages.dev](https://tic-tac-toe-space.pages.dev)
+
+---
+
+## 🚀 Core Systems & Features
+
+*   **🌐 Real-Time Warp Link**: Join/create multiplayer sectors instantly via unique, ephemeral 4-character encryption keys (room codes).
+*   **🤖 Operator Training AI**: Test grid formations against a Minimax AI agent with Alpha-Beta pruning, operating across three tactical difficulties (`easy`, `normal`, `hard`).
+*   **🌌 3D Celestial Cartography**: Explore a fully interactive 3D WebGL solar system, stars, constellations, and nebulae powered by Three.js. Includes orbit dampening and real-time weather synchronization.
+*   **🎵 Custom Acoustic Deck**: Upload your own orbital soundtrack to play in the background while commanding the grid. Audio tracks loop continuously and sync with the master audio mute controls.
+*   **⚡ Quantum Reconnection**: A 30-second handshake grace period prevents match termination during solar flares (network drops).
+*   **🏆 Combat Badge Ledger**: 8 unlockable achievements with persistent local telemetry tracking.
+*   **📱 Tactical Mobile HUD**: Viewport locking, touch-safe tap targets (minimum 44x44px), and adaptive layouts for pocket devices.
 
 ---
 
 ## 🌌 Visual Tour
 
-Here is a visual showcase of the premium, celestial interface you will experience in **Tic Tac Toe - Mission Control**:
-
-| 👤 Authentication Portal | 🚀 Active Mission Control |
+| 👤 Entry Portal | 🚀 Tactical Grid Arena |
 |:---:|:---:|
-| ![Authentication Portal](screenshots/auth-screen.png) | ![Active Mission Control](screenshots/game-board.png) |
-| *Log in as an authorized operator or tap Guest Play to launch instantly into space.* | *Interact with zero input latency upon pointer contact under a tight volumetric solar corona.* |
+| ![Entry Portal](screenshots/auth-screen.png) | ![Tactical Grid Arena](screenshots/game-board.png) |
+| *Log in using authorized credentials or establish a temporary Guest Call Sign to launch instantly.* | *Interact with zero latency. Active sectors glow with a volumetric solar corona.* |
 
-| 🌌 Celestial Space Explorer | 🏆 Standoff & Victory Telemetry |
+| 🌌 Space Explorer | 🏆 Victory Telemetry |
 |:---:|:---:|
-| ![Celestial Space Explorer](screenshots/space-explorer.png) | ![Victory Telemetry](screenshots/victory-share.png) |
-| *Embark on a real-time, interactive tour of the Solar System, stars, constellations, and gaseous nebulae.* | *Achieve victory to view dynamic telemetry, score updates, and engaging space facts.* |
+| ![Space Explorer](screenshots/space-explorer.png) | ![Victory Telemetry](screenshots/victory-share.png) |
+| *Navigate through Saturn's rings, nearby stars, and realistic, volumetric gas nebulae.* | *Achieve victory to view dynamic telemetry, score updates, and engaging space facts.* |
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ Technology Specifications
 
-* **Frontend**: Alpine.js, Tailwind CSS, Three.js (WebGL 3D Space Gallery)
-* **Backend**: Node.js, Express, Socket.IO, MongoDB (Mongoose)
-* **Queuing & Cache**: RabbitMQ (CloudAMQP), Redis
-* **Hosting**: Cloudflare Pages (Frontend), Render (Backend)
-
----
-
-
-## 🚀 Local Development
-
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/Raul909/Tic-Tac-Toe-Space.git
-   cd Tic-Tac-Toe-Space/tictactoe
-   ```
-
-2. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Start the Development Server**:
-   ```bash
-   npm run dev
-   ```
-   Open `http://localhost:3000` in your web browser.
-
-4. **Run Verification Tests**:
-   ```bash
-   npm test
-   ```
+*   **Frontend**: Alpine.js (State Machine), Tailwind CSS (Aesthetic Styling), Three.js (WebGL Engine)
+*   **Backend**: Node.js, Express, Socket.IO (Real-time WebSockets), MongoDB (Persistent Ledger)
+*   **Cache & Message Bus**: Redis (Session Store & Leaderboard), RabbitMQ (Async Write Buffering)
+*   **Hosting**: Cloudflare Pages (Frontend), Render (Backend Service)
 
 ---
 
-## 🌍 Production Deployments
+## 🚀 Local Launch Sequence
 
-### 1. Backend (Render)
-1. Log in to the **Render Dashboard** and select **New +** → **Blueprint**.
-2. Connect your GitHub repository. Render will automatically parse the `render.yaml` blueprint.
-3. In the environment variables configuration on your dashboard, set:
-   * `NODE_ENV` = `production`
-   * `ALLOWED_ORIGINS` = `https://your-app.pages.dev` (your Cloudflare Pages URL)
-   * `MONGODB_URI` = *Your MongoDB Atlas Connection String*
-   * `RABBITMQ_URL` = *Your CloudAMQP Connection URL*
+1.  **Clone the Repository**:
+    ```bash
+    git clone https://github.com/Raul909/Tic-Tac-Toe-Space.git
+    cd Tic-Tac-Toe-Space/tictactoe
+    ```
+
+2.  **Provision Dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Initiate local server**:
+    ```bash
+    npm run dev
+    ```
+    Open `http://localhost:3000` in your web browser.
+
+4.  **Execute Diagnostic Tests**:
+    ```bash
+    npm test
+    ```
+
+*Note: Redis and RabbitMQ are optional for local development. The system automatically falls back to in-process memory lists and in-memory message queues.*
+
+---
+
+## 📡 Production Sector Deployments
+
+### 1. Backend (Render Blueprint)
+1.  Connect your GitHub repository to the **Render Dashboard**.
+2.  Create a **New Blueprint** pointing to the `render.yaml` template.
+3.  Inject the following environmental variables:
+    *   `NODE_ENV` = `production`
+    *   `ALLOWED_ORIGINS` = `https://your-client-domain.pages.dev`
+    *   `MONGODB_URI` = *Your secure connection string*
+    *   `RABBITMQ_URL` = *Your CloudAMQP URL*
 
 ### 2. Frontend (Cloudflare Pages)
-1. Log in to the **Cloudflare Dashboard** → **Workers & Pages** → **Connect to Git**.
-2. Select your repository.
-3. Configure the Build settings:
-   * **Framework Preset**: `None`
-   * **Build Command**: (Leave blank)
-   * **Build Output Directory**: `tictactoe/public`
-4. Deploy. Cloudflare will automatically build and publish your static assets globally.
+1.  Connect your repo in **Workers & Pages** → **Connect to Git**.
+2.  Configure build parameters:
+    *   **Build Command**: (Leave blank)
+    *   **Output Directory**: `tictactoe/public`
+3.  Publish to trigger global deployment.
+
+---
+
+## 📝 Diagnostic Logs & System Overrides
+
+```
+[SYSTEM_LOG_1884] :: DECRYPTED TELEMETRY DATA
+> SECURE NOTICE: In case of auditory fatigue from heavy solar radiation storms, the deck override key [F] can be utilized to initialize custom acoustic waveforms (upload your own .mp3/.wav/.ogg track) directly into the headset. Keep this transmission secure.
+```
+
+> [!CAUTION]
+> ### 🛡️ Operational Security Warning
+> Never commit actual passwords, OAuth tokens, or Atlas connection strings directly into this repository. Keep secret keys localized inside `.env` configurations (safely ignored by `.gitignore`) and inject them dynamically via your platform dashboard.

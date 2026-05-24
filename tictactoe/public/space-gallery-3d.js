@@ -719,7 +719,7 @@
       // Soft outer vignette to blend edges
       const vg = ctx.createRadialGradient(cx, cy, S * 0.2, cx, cy, S * 0.5);
       vg.addColorStop(0, 'rgba(0,0,0,0)');
-      vg.addColorStop(1, 'rgba(0,0,0,0.65)');
+      vg.addColorStop(1, 'rgba(0,0,0,1)');
       ctx.globalCompositeOperation = 'destination-out';
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, S, S);
@@ -1831,7 +1831,7 @@
           uniforms: {
             uMap: { value: particleTexture },
             uBaseSize: { value: data.radius * 0.26 },
-            uOpacity: { value: isHorsehead ? 0.95 : 0.65 },
+            uOpacity: { value: isHorsehead ? 0.8 : 0.18 },
             uPixelRatio: { value: Math.min(window.devicePixelRatio, 1.5) }
           },
           vertexShader: `

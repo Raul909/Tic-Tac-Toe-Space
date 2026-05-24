@@ -157,6 +157,41 @@ function app() {
     muted: false,
     toggleMute() { this.muted = window.SoundManager.toggleMute(); },
     
+    // Custom Background Music State
+    customMusicPlaying: false,
+    customMusicName: '',
+    
+    triggerMusicUpload() {
+      const fileInput = document.getElementById('bg-music-input');
+      if (fileInput) {
+        fileInput.click();
+      }
+    },
+    handleMusicUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        window.SoundManager.playCustomMusic(file);
+        this.customMusicPlaying = true;
+        this.customMusicName = file.name;
+      }
+    },
+    toggleCustomMusic() {
+      if (window.SoundManager.bgAudio) {
+        this.customMusicPlaying = window.SoundManager.toggleBgMusic();
+      } else {
+        this.triggerMusicUpload();
+      }
+    },
+    clearCustomMusic() {
+      window.SoundManager.stopCustomMusic();
+      this.customMusicPlaying = false;
+      this.customMusicName = '';
+      const fileInput = document.getElementById('bg-music-input');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    },
+    
     // Space Gallery
     spaceTab: 'solar',
     spaceZoom: 1,
@@ -180,27 +215,52 @@ function app() {
         }
       }
       
+      // Toggle space-3d rendering and apply cinematic blur & drift transition on pause
+      if (window.CinematicSpace) {
+        const shouldPause = (screenName === 'space');
+        window.CinematicSpace.paused = shouldPause;
+        
+        const canvas = document.getElementById('three-canvas');
+        if (canvas) {
+          if (shouldPause) {
+            // Render exactly one frame to keep visual background, then blur and drift
+            if (typeof window.CinematicSpace.renderFrame === 'function') {
+              window.CinematicSpace.renderFrame();
+            }
+            canvas.classList.add('canvas-cinematic-paused');
+          } else {
+            canvas.classList.remove('canvas-cinematic-paused');
+          }
+        }
+      }
+      
       if (window.CinematicSpace && typeof window.CinematicSpace.triggerWarp === 'function') {
         window.CinematicSpace.triggerWarp();
       }
     },
 
     init() {
-      // Keyboard fullscreen toggle using F key
+      // Keyboard shortcuts: F for custom music upload/toggle, Shift+F for fullscreen
       document.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
           return;
         }
         if (e.key.toLowerCase() === 'f') {
           e.preventDefault();
-          if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-              console.error(`Error attempting to enable fullscreen: ${err.message}`);
-            });
-          } else {
-            if (document.exitFullscreen) {
-              document.exitFullscreen();
+          if (e.shiftKey) {
+            // Fullscreen toggle on Shift+F
+            if (!document.fullscreenElement) {
+              document.documentElement.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+              });
+            } else {
+              if (document.exitFullscreen) {
+                document.exitFullscreen();
+              }
             }
+          } else {
+            // Trigger custom music upload or play/pause toggle
+            this.toggleCustomMusic();
           }
         }
       });

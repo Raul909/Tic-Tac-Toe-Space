@@ -86,7 +86,7 @@
     // Soft outer vignette to blend edges
     const vg = ctx.createRadialGradient(cx, cy, S * 0.25, cx, cy, S * 0.5);
     vg.addColorStop(0, 'rgba(0,0,0,0)');
-    vg.addColorStop(1, 'rgba(0,0,0,0.7)');
+    vg.addColorStop(1, 'rgba(0,0,0,1)');
     ctx.globalCompositeOperation = 'destination-out';
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, S, S);
@@ -170,6 +170,7 @@
   
   // Cinematic Controller
   const cinematic = {
+    paused: false,
     warpFactor: 0,
     targetWarp: 0,
     baseSpeed: 1,
@@ -211,6 +212,9 @@
     }
   };
   window.CinematicSpace = cinematic;
+  cinematic.renderFrame = () => {
+    renderer.render(scene, camera);
+  };
 
   // Interactive Mouse & Mobile Parallax Effects
   const mouse = { x: 0, y: 0 };
@@ -443,7 +447,7 @@
     size: 70, // large overlapping puffs for volumetric cloud merging
     vertexColors: true, 
     transparent: true, 
-    opacity: 0.065, 
+    opacity: 0.02, 
     blending: THREE.AdditiveBlending, 
     depthWrite: false,
     map: _nebulaCloudTex,
@@ -468,7 +472,7 @@
     size: 90, // even larger core puffs for dense volumetric glow
     vertexColors: true,
     transparent: true,
-    opacity: 0.05,
+    opacity: 0.015,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     map: _nebulaCloudTex,
@@ -1184,8 +1188,8 @@
   function animate(currentTime) {
     requestAnimationFrame(animate);
 
-    // Pause render when tab is hidden — zero GPU cost
-    if (!_tabVisible) return;
+    // Pause render when tab is hidden or scene is paused externally — zero GPU cost
+    if (!_tabVisible || cinematic.paused) return;
 
     const dt = Math.min((currentTime - lastTime) / 1000, 0.05);
     lastTime = currentTime;

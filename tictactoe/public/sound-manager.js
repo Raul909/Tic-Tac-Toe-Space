@@ -3,6 +3,8 @@ class SoundManager {
     this.audioCtx = null;
     this.muted = false;
     this.currentPack = 'scifi'; // Default sound pack
+    this.bgAudio = null;
+    this.customMusicName = '';
     this.init();
   }
 
@@ -17,8 +19,51 @@ class SoundManager {
     }
   }
 
+  playCustomMusic(file) {
+    if (this.bgAudio) {
+      this.bgAudio.pause();
+      this.bgAudio.src = '';
+      this.bgAudio = null;
+    }
+    this.bgAudio = new Audio();
+    this.bgAudio.loop = true;
+    this.bgAudio.volume = this.muted ? 0 : 0.45;
+    this.bgAudio.src = URL.createObjectURL(file);
+    this.customMusicName = file.name;
+    const playPromise = this.bgAudio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(e => console.warn("Background music play failed:", e));
+    }
+  }
+
+  toggleBgMusic() {
+    if (!this.bgAudio) return false;
+    if (this.bgAudio.paused) {
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
+      }
+      this.bgAudio.play().catch(e => console.warn(e));
+      return true;
+    } else {
+      this.bgAudio.pause();
+      return false;
+    }
+  }
+
+  stopCustomMusic() {
+    if (this.bgAudio) {
+      this.bgAudio.pause();
+      this.bgAudio.src = '';
+      this.bgAudio = null;
+      this.customMusicName = '';
+    }
+  }
+
   toggleMute() {
     this.muted = !this.muted;
+    if (this.bgAudio) {
+      this.bgAudio.volume = this.muted ? 0 : 0.45;
+    }
     return this.muted;
   }
 

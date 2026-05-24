@@ -998,3 +998,40 @@ input:focus, select:focus, textarea:focus {
   background: rgba(0, 212, 255, 0.12) !important;
 }
 
+/* ── Custom Background Music Spin & Cinematic Blur Drift animations ── */
+.animate-spin-slow {
+  animation: spin 10s linear infinite;
+}
+
+.style-paused {
+  animation-play-state: paused !important;
+}
+
+#three-canvas {
+  transition: filter 1.2s cubic-bezier(0.25, 1, 0.5, 1), transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+#three-canvas.canvas-cinematic-paused {
+  filter: blur(12px) brightness(0.45);
+  animation: cinematicDrift 25s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes cinematicDrift {
+  0% {
+    transform: scale(1.06) translate(0px, 0px) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.10) translate(-10px, 8px) rotate(0.4deg);
+  }
+  50% {
+    transform: scale(1.07) translate(8px, -12px) rotate(-0.3deg);
+  }
+  75% {
+    transform: scale(1.11) translate(-6px, -5px) rotate(0.2deg);
+  }
+  100% {
+    transform: scale(1.06) translate(0px, 0px) rotate(0deg);
+  }
+}
+
