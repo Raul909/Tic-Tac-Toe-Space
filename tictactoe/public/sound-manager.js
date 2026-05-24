@@ -8,6 +8,7 @@ class SoundManager {
     this.bgFilter = null;
     this.customMusicName = '';
     this.customSfx = null; // Stores extracted AudioBuffers
+    this.analyser = null; // Extracts real-time frequency data
     
     // Web Audio Background Music Properties (Fix for looping bug)
     this.bgBufferSource = null;
@@ -93,8 +94,14 @@ class SoundManager {
       this.bgFilter.frequency.setValueAtTime(20000, this.audioCtx.currentTime);
     }
     
+    if (!this.analyser) {
+      this.analyser = this.audioCtx.createAnalyser();
+      this.analyser.fftSize = 64;
+    }
+    
     this.bgBufferSource.connect(this.bgGainNode);
-    this.bgGainNode.connect(this.bgFilter);
+    this.bgGainNode.connect(this.analyser);
+    this.analyser.connect(this.bgFilter);
     this.bgFilter.connect(this.audioCtx.destination);
     
     this.bgStartTime = this.audioCtx.currentTime - offset;

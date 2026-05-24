@@ -746,6 +746,9 @@
   
   // Custom Space Background Objects
   let andromedaGalaxy = null;
+  let andromedaGroup = null;
+  let andromedaProceduralGroup = null;
+  let andromedaModelGroup = null;
   let eventHorizon = null;
   let accretionDisk = null;
   let lensedAccretionDisk = null;
@@ -1435,6 +1438,7 @@
       new THREE.SphereGeometry(radius, segments, segments), 
       new THREE.MeshStandardMaterial(matParams)
     );
+    mesh.name = name.toLowerCase() + 'Mesh';
     mesh.position.set(pos.x, pos.y, pos.z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -1802,6 +1806,14 @@
       if (modelName === 'the_moon_sharp') {
         rawPaths.push(getModelUrl('/models/the_moon_sharp.glb'));
       }
+      if (modelName === 'earth_moon') {
+        rawPaths.push(getModelUrl('/models/earth.glb'));
+      }
+      if (modelName === 'andromeda') {
+        rawPaths.push(getModelUrl('/models/andromeda_galaxy.glb'));
+        rawPaths.push(getModelUrl('/models/7de529db0d384e118b7ae8d63a8bab80.glb'));
+        rawPaths.push(getModelUrl('/models/andromeda.glb'));
+      }
       
       rawPaths.push(getModelUrl(`/models/${modelName}.glb`));
       rawPaths.push(getModelUrl(`/models/${modelName.replace('_', '')}.glb`));
@@ -2151,7 +2163,7 @@
     'proxima centauri': proximaCentauri,
     'alpha centauri a': alphaCentauriA,
     'sagittarius a*': blackHoleGroup,
-    'andromeda': andromedaGalaxy
+    'andromeda': andromedaGroup
   };
 
   window.Space3D = {
@@ -2159,6 +2171,7 @@
     focusedRadius: 150,
     zoomDistance: 250,
     lookTarget: new THREE.Vector3(0, 10, -150),
+    isGliding: false,
     getTargetObject: function(name) {
       return targetObjects[name.toLowerCase()] || null;
     },
@@ -2167,6 +2180,8 @@
       window.Space3D.povTarget = nameLower;
       const radius = targetRadii[nameLower] || 5;
       window.Space3D.focusedRadius = radius;
+      window.Space3D.isGliding = true; // Trigger smooth glide transition
+      window.Space3D.glideTime = 1.0; // snap camera after 1.0 second
       
       if (nameLower === 'system') {
         window.Space3D.zoomDistance = 250;
@@ -2202,7 +2217,13 @@
 
     // Build list of targets
     const targets = [];
-    if (andromedaGalaxy) targets.push(andromedaGalaxy);
+    if (andromedaGroup) {
+      if (andromedaModelGroup && andromedaModelGroup.visible) {
+        andromedaModelGroup.traverse((node) => { if (node.isMesh) targets.push(node); });
+      } else if (andromedaGalaxy) {
+        targets.push(andromedaGalaxy);
+      }
+    }
     if (proceduralGroup && proceduralGroup.visible && eventHorizon) {
       targets.push(eventHorizon);
     } else if (modelGroup && modelGroup.visible) {
@@ -2250,7 +2271,16 @@
         }
       }
 
-      if (obj === andromedaGalaxy) {
+      let isAndromeda = (obj === andromedaGalaxy);
+      if (!isAndromeda && andromedaModelGroup && andromedaModelGroup.visible) {
+        let parent = obj.parent;
+        while (parent) {
+          if (parent === andromedaModelGroup) { isAndromeda = true; break; }
+          parent = parent.parent;
+        }
+      }
+
+      if (isAndromeda) {
         window.Space3D.setPOVTarget('andromeda');
       } else if (isBlackHole) {
         window.Space3D.setPOVTarget('sagittarius a*');
@@ -2374,7 +2404,20 @@
   }
   astInstanced.instanceMatrix.needsUpdate = true;
 
-  // ── Andromeda Galaxy Mesh Setup ──
+  // ── Andromeda Galaxy Setup ──
+  andromedaGroup = new THREE.Group();
+  andromedaGroup.position.set(250, 50, -380); // Pushed further back for depth
+  andromedaGroup.rotation.set(Math.PI / 5, -Math.PI / 5.5, Math.PI / 7);
+  andromedaGroup.userData = { name: 'ANDROMEDA' };
+  scene.add(andromedaGroup);
+
+  andromedaProceduralGroup = new THREE.Group();
+  andromedaGroup.add(andromedaProceduralGroup);
+
+  andromedaModelGroup = new THREE.Group();
+  andromedaModelGroup.visible = false;
+  andromedaGroup.add(andromedaModelGroup);
+
   const andromedaTexture = createAndromedaTexture();
   const andromedaGeo = new THREE.PlaneGeometry(110, 110);
   const andromedaMaterial = new THREE.MeshBasicMaterial({
@@ -2386,9 +2429,85 @@
     depthWrite: false
   });
   andromedaGalaxy = new THREE.Mesh(andromedaGeo, andromedaMaterial);
-  andromedaGalaxy.position.set(250, 50, -380); // Pushed further back for depth
-  andromedaGalaxy.rotation.set(Math.PI / 5, -Math.PI / 5.5, Math.PI / 7);
-  scene.add(andromedaGalaxy);
+  andromedaProceduralGroup.add(andromedaGalaxy);
+
+  setupPlanetModelLoader('andromeda', 'andromeda', andromedaGroup, andromedaProceduralGroup, andromedaModelGroup, 55.0, 110.0, 0x9955ff, 500);
+
+  // ── Kozmos Skybox Setup ──
+  const skyboxGeo = new THREE.SphereGeometry(1800, 32, 32);
+  const skyboxMat = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    side: THREE.BackSide,
+    transparent: true,
+    opacity: 0
+  });
+  const skybox = new THREE.Mesh(skyboxGeo, skyboxMat);
+  skybox.name = 'kozmosSkybox';
+  scene.add(skybox);
+
+  if (typeof THREE.GLTFLoader !== 'undefined') {
+    const gltfLoader = new THREE.GLTFLoader();
+    const getModelUrl = (path) => {
+      if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
+        const base = window.BACKEND_URL.replace(/\/$/, '');
+        const cleanPath = path.startsWith('/') ? path : '/' + path;
+        return base + cleanPath;
+      }
+      return path;
+    };
+    const skyboxPaths = [
+      getModelUrl('/models/kozmos_skybox.glb'),
+      getModelUrl('/models/87c699f6c80447bba6ccf061ba750432.glb'),
+      getModelUrl('/models/skybox.glb')
+    ];
+    let skyboxAttempt = 0;
+    
+    function loadSkybox(path) {
+      console.log(`[GLTFLoader] Skybox: Attempting to load Kozmos Skybox from: ${path}`);
+      gltfLoader.load(
+        path,
+        (gltf) => {
+          console.log(`[GLTFLoader] Skybox: Successfully loaded Kozmos Skybox from: ${path}`);
+          const modelScene = gltf.scene;
+          
+          const box = new THREE.Box3().setFromObject(modelScene);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const targetDim = 3200.0;
+          const scale = maxDim > 0 ? targetDim / maxDim : 1.0;
+          modelScene.scale.set(scale, scale, scale);
+          
+          modelScene.traverse(node => {
+            if (node.isMesh) {
+              node.castShadow = false;
+              node.receiveShadow = false;
+              if (node.material) {
+                node.material.side = THREE.DoubleSide;
+                node.material.depthWrite = false;
+                node.material.fog = false;
+              }
+            }
+          });
+          
+          skybox.add(modelScene);
+          skybox.material.opacity = 1.0;
+          
+          if (nebula) nebula.visible = false;
+          if (coreNebula) coreNebula.visible = false;
+        },
+        undefined,
+        (err) => {
+          console.warn(`[GLTFLoader] Skybox: Failed to load from ${path}:`, err);
+          skyboxAttempt++;
+          if (skyboxAttempt < skyboxPaths.length) {
+            loadSkybox(skyboxPaths[skyboxAttempt]);
+          }
+        }
+      );
+    }
+    
+    loadSkybox(skyboxPaths[0]);
+  }
 
   // ── Sagittarius A* Black Hole — Clean Interstellar-style design with 3D model loader fallback ──
   // We use blackHoleGroup at (-190, 38, -290) as parent.
@@ -2484,6 +2603,7 @@
       return path;
     };
     const modelPaths = [
+      getModelUrl('/models/blackhole_new.glb'),
       getModelUrl('/models/black_hole.glb'),
       getModelUrl('/models/blackhole.glb'),
       getModelUrl('/models/blackhole/scene.gltf')
@@ -2904,7 +3024,24 @@
       const sinAngle = Math.sin(p.angle);
       p.mesh.position.x = cx + cosAngle * p.radius;
       p.mesh.position.z = cz + sinAngle * p.radius;
-      p.mesh.rotation.y += p.rotationSpeed * scale;
+      
+      if (p.mesh.isMesh) {
+        // Ceres & Eris rotate directly as meshes
+        p.mesh.rotation.y += p.rotationSpeed * scale;
+      } else {
+        // Major planets: rotate procedural body mesh & model group, keeping parent group unrotated (for moons)
+        const proceduralGroup = p.mesh.children[0];
+        if (proceduralGroup) {
+          const planetMesh = proceduralGroup.children[0];
+          if (planetMesh && planetMesh.isMesh) {
+            planetMesh.rotation.y += p.rotationSpeed * scale;
+          }
+        }
+        const modelGroup = p.mesh.children[1];
+        if (modelGroup && modelGroup.visible) {
+          modelGroup.rotation.y += p.rotationSpeed * scale;
+        }
+      }
 
       // Animate planet loader ring if present in the group
       if (p.mesh && typeof p.mesh.getObjectByName === 'function') {
@@ -3103,7 +3240,13 @@
       window.spaceRaycaster.setFromCamera(mouse, camera);
       
       const targets = [];
-      if (andromedaGalaxy) targets.push(andromedaGalaxy);
+      if (andromedaGroup) {
+        if (andromedaModelGroup && andromedaModelGroup.visible) {
+          andromedaModelGroup.traverse((node) => { if (node.isMesh) targets.push(node); });
+        } else if (andromedaGalaxy) {
+          targets.push(andromedaGalaxy);
+        }
+      }
       
       // Black hole targets (detect procedural or loaded model)
       if (proceduralGroup && proceduralGroup.visible && eventHorizon) {
@@ -3172,7 +3315,19 @@
           }
         }
         
-        if (obj === andromedaGalaxy) {
+        let isAndromeda = (obj === andromedaGalaxy);
+        if (!isAndromeda && andromedaModelGroup && andromedaModelGroup.visible) {
+          let parent = obj.parent;
+          while (parent) {
+            if (parent === andromedaModelGroup) {
+              isAndromeda = true;
+              break;
+            }
+            parent = parent.parent;
+          }
+        }
+        
+        if (isAndromeda) {
           nameText = "ANDROMEDA GALAXY";
         } else if (isBlackHole) {
           nameText = "SAGITTARIUS A* BLACK HOLE";
@@ -3226,7 +3381,6 @@
       if (!window.Space3D.lookTarget) {
         window.Space3D.lookTarget = new THREE.Vector3(0, 10, -150);
       }
-      window.Space3D.lookTarget.lerp(targetPos, 0.08 * scale);
 
       if (window.Space3D && window.Space3D.povTarget && window.Space3D.povTarget !== 'system') {
         // Orbit Camera mode: revolve around focused planet's center POV
@@ -3237,11 +3391,30 @@
         const desiredY = targetPos.y + window.Space3D.zoomDistance * Math.cos(phi);
         const desiredZ = targetPos.z + window.Space3D.zoomDistance * Math.sin(phi) * Math.cos(theta);
 
-        camera.position.x += (desiredX - camera.position.x) * 0.08 * scale;
-        camera.position.y += (desiredY - camera.position.y) * 0.08 * scale;
-        camera.position.z += (desiredZ - camera.position.z) * 0.08 * scale;
+        const desiredPos = new THREE.Vector3(desiredX, desiredY, desiredZ);
+
+        if (window.Space3D.isGliding) {
+          if (typeof window.Space3D.glideTime === 'number') {
+            window.Space3D.glideTime -= dt;
+          }
+          // Glide transition: smoothly interpolate lookTarget and camera position
+          window.Space3D.lookTarget.lerp(targetPos, 0.08 * scale);
+          camera.position.lerp(desiredPos, 0.08 * scale);
+          
+          const reachedTarget = (camera.position.distanceTo(desiredPos) < 1.0 && window.Space3D.lookTarget.distanceTo(targetPos) < 0.2);
+          const timeOut = (typeof window.Space3D.glideTime === 'number' && window.Space3D.glideTime <= 0);
+          
+          if (reachedTarget || timeOut) {
+            window.Space3D.isGliding = false; // Glide complete, hard lock to target
+          }
+        } else {
+          // Hard lock state: copy exact coordinates directly to prevent lagging behind moving planets
+          window.Space3D.lookTarget.copy(targetPos);
+          camera.position.copy(desiredPos);
+        }
       } else {
         // Free Pan mode: pan camera based on cursor tracking
+        window.Space3D.lookTarget.lerp(targetPos, 0.08 * scale);
         const targetX = mouseInfluence.x * 160;
         const targetY = 25 + mouseInfluence.y * 100;
         camera.position.x += (targetX - camera.position.x) * 0.08 * scale;

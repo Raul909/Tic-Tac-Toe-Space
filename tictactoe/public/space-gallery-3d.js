@@ -1730,6 +1730,7 @@
               return path;
             };
             const earthMoonPaths = [
+              getModelUrl('/models/earth.glb'),
               getModelUrl('/models/earth_moon.glb'),
               getModelUrl('/models/earthmoon.glb'),
               getModelUrl('/models/earth_moon/scene.gltf')
@@ -2063,6 +2064,9 @@
         }
         if (modelName === 'the_moon_sharp') {
           rawPaths.push(getModelUrl('/models/the_moon_sharp.glb'));
+        }
+        if (modelName === 'earth_moon') {
+          rawPaths.push(getModelUrl('/models/earth.glb'));
         }
         
         rawPaths.push(getModelUrl(`/models/${modelName}.glb`));

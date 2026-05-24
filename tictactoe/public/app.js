@@ -335,13 +335,50 @@ function app() {
           ship.x = Math.min(canvas.width - ship.w, ship.x + ship.speed);
         }
         
+        // Retrieve volume data from AnalyserNode
+        let volumePulse = 0;
+        let freqData = null;
+        if (window.SoundManager && window.SoundManager.analyser && window.SoundManager.bgPlaying) {
+          const bufferLength = window.SoundManager.analyser.frequencyBinCount;
+          freqData = new Uint8Array(bufferLength);
+          window.SoundManager.analyser.getByteFrequencyData(freqData);
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            sum += freqData[i];
+          }
+          volumePulse = sum / bufferLength / 255; // 0.0 to 1.0
+        }
+
+        // Draw background grid that pulses to the music volume
         ctx.fillStyle = '#050510';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.save();
+        ctx.strokeStyle = `rgba(0, 212, 255, ${0.03 + volumePulse * 0.12})`;
+        ctx.lineWidth = 1;
+        const gridSize = 32;
+        const gridOffset = (Date.now() * 0.05) % gridSize;
+        // Horizontal lines
+        for (let y = gridOffset; y < canvas.height; y += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        }
+        // Vertical lines with 3D perspective warp
+        for (let x = 0; x <= canvas.width; x += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, canvas.height);
+          ctx.lineTo(canvas.width / 2 + (x - canvas.width / 2) * 0.6, 0);
+          ctx.stroke();
+        }
+        ctx.restore();
         
         // Stars
         ctx.fillStyle = '#ffffff';
         this.retroGame.stars.forEach(star => {
-          star.y += star.speed;
+          const speedMultiplier = 1.0 + volumePulse * 3.0;
+          star.y += star.speed * speedMultiplier;
           if (star.y > canvas.height) {
             star.y = 0;
             star.x = Math.random() * canvas.width;
@@ -349,20 +386,25 @@ function app() {
           ctx.fillRect(star.x, star.y, star.size, star.size);
         });
         
-        // Engine fire
-        const flameHeight = 8 + Math.random() * 8;
+        // Engine fire (pulses with music beat)
+        const flameHeight = (8 + Math.random() * 8) * (1.0 + volumePulse * 1.5);
         ctx.fillStyle = '#ff5500';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ff3300';
         ctx.beginPath();
         ctx.moveTo(ship.x + ship.w / 2 - 4, ship.y + ship.h);
         ctx.lineTo(ship.x + ship.w / 2 + 4, ship.y + ship.h);
         ctx.lineTo(ship.x + ship.w / 2, ship.y + ship.h + flameHeight);
         ctx.closePath();
         ctx.fill();
+        ctx.shadowBlur = 0;
         
-        // Spaceship (neon blue rocket)
+        // Spaceship (neon blue rocket with glow)
         ctx.fillStyle = '#00d4ff';
         ctx.strokeStyle = '#00ffff';
         ctx.lineWidth = 2;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00ffff';
         ctx.beginPath();
         ctx.moveTo(ship.x + ship.w / 2, ship.y);
         ctx.lineTo(ship.x, ship.y + ship.h);
@@ -371,10 +413,13 @@ function app() {
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
+        ctx.shadowBlur = 0;
         
-        // Lasers
+        // Lasers (neon magenta with glow)
         ctx.strokeStyle = '#ff00ff';
         ctx.lineWidth = 3;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = '#ff00ff';
         for (let l = this.retroGame.lasers.length - 1; l >= 0; l--) {
           const laser = this.retroGame.lasers[l];
           laser.y += laser.vy;
@@ -387,6 +432,7 @@ function app() {
             this.retroGame.lasers.splice(l, 1);
           }
         }
+        ctx.shadowBlur = 0;
         
         // Auto-shoot
         const now = Date.now();
@@ -423,6 +469,8 @@ function app() {
           alien.y += alien.speed;
           
           ctx.fillStyle = alien.color;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = alien.color;
           
           if (alien.type === 0) {
             ctx.beginPath();
@@ -436,6 +484,7 @@ function app() {
             ctx.fillRect(alien.x, alien.y, 2, 6);
             ctx.fillRect(alien.x + alien.w - 2, alien.y, 2, 6);
           }
+          ctx.shadowBlur = 0;
           
           // Collision spaceship
           if (alien.x < ship.x + ship.w &&
@@ -520,6 +569,32 @@ function app() {
           if (part.alpha <= 0) {
             this.retroGame.particles.splice(p, 1);
           }
+        }
+        
+        // Draw real-time glowing stereo bar visualizer
+        if (freqData) {
+          ctx.save();
+          ctx.globalAlpha = 0.35;
+          const barCount = 16;
+          const barWidth = canvas.width / barCount;
+          ctx.shadowBlur = 8;
+          
+          for (let i = 0; i < barCount; i++) {
+            const fIdx = Math.floor((i / barCount) * (freqData.length / 2));
+            const val = freqData[fIdx];
+            const percent = val / 255;
+            const height = percent * 75; // up to 75px tall
+            
+            const x = i * barWidth;
+            const y = canvas.height - height;
+            
+            const hue = 180 + (i / barCount) * 120; // cyan to magenta
+            ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.65)`;
+            ctx.shadowColor = `hsla(${hue}, 100%, 50%, 0.8)`;
+            
+            ctx.fillRect(x + 2, y, barWidth - 4, height);
+          }
+          ctx.restore();
         }
         
         this.retroGame.animationFrameId = requestAnimationFrame(updateAndDraw);
@@ -2488,22 +2563,33 @@ function app() {
     
     loadSpaceTab(tab) {
       if (this.spaceTab === tab && window.SpaceGallery3D && window.SpaceGallery3D.scene) return;
-      this.spaceTabLoading = true;
-      this.spaceTab = tab;
       
-      // Defer loading slightly to let the loading transition screen render and animate smoothly first
-      setTimeout(() => {
-        if (window.SpaceGallery3D) {
-          if (!window.SpaceGallery3D.scene) {
-            window.SpaceGallery3D.init();
+      const isFirstLoad = !window.SpaceGallery3D || !window.SpaceGallery3D.scene;
+      
+      if (isFirstLoad) {
+        this.spaceTabLoading = true;
+        this.spaceTab = tab;
+        
+        // Defer loading slightly to let the loading transition screen render and animate smoothly first
+        setTimeout(() => {
+          if (window.SpaceGallery3D) {
+            if (!window.SpaceGallery3D.scene) {
+              window.SpaceGallery3D.init();
+            }
+            window.SpaceGallery3D.loadTab(tab);
           }
+          // Small delay before fading out to hide initial 3D frame block
+          setTimeout(() => {
+            this.spaceTabLoading = false;
+          }, 150);
+        }, 250);
+      } else {
+        // Fast transition
+        this.spaceTab = tab;
+        if (window.SpaceGallery3D) {
           window.SpaceGallery3D.loadTab(tab);
         }
-        // Small delay before fading out to hide initial 3D frame block
-        setTimeout(() => {
-          this.spaceTabLoading = false;
-        }, 150);
-      }, 250);
+      }
     },
     
      resetSpaceView() {
