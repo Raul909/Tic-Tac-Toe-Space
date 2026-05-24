@@ -711,8 +711,15 @@
   // Orbital zoom mapping for free flight space observation
   window.addEventListener('wheel', (e) => {
     if (window.appInstance && window.appInstance.spaceExplorerFreeFlight) {
-      camera.position.z += e.deltaY * 0.25;
-      camera.position.z = Math.max(50, Math.min(450, camera.position.z));
+      if (window.Space3D && window.Space3D.povTarget && window.Space3D.povTarget !== 'system') {
+        window.Space3D.zoomDistance += e.deltaY * 0.15;
+        const minDst = window.Space3D.focusedRadius * 1.8;
+        const maxDst = window.Space3D.focusedRadius * 15.0;
+        window.Space3D.zoomDistance = Math.max(minDst, Math.min(maxDst, window.Space3D.zoomDistance));
+      } else {
+        camera.position.z += e.deltaY * 0.25;
+        camera.position.z = Math.max(50, Math.min(450, camera.position.z));
+      }
     }
   });
   
@@ -1327,6 +1334,84 @@
     return texture;
   }
 
+  // Moon Configurations for backdrop
+  const moonConfigs = [
+    { name: 'Phobos', parent: 'Mars', radius: 0.2, distance: 4.5, orbit: 1.0, color: 0x8b8589 },
+    { name: 'Deimos', parent: 'Mars', radius: 0.15, distance: 6.0, orbit: 0.5, color: 0xa9a5a6 },
+    { name: 'Io', parent: 'Jupiter', radius: 0.55, distance: 13.0, orbit: 1.8, color: 0xe5e059 },
+    { name: 'Europa', parent: 'Jupiter', radius: 0.5, distance: 16.0, orbit: 1.4, color: 0x9fbcd1 },
+    { name: 'Ganymede', parent: 'Jupiter', radius: 0.7, distance: 19.5, orbit: 1.0, color: 0x8a7f72 },
+    { name: 'Callisto', parent: 'Jupiter', radius: 0.65, distance: 23.0, orbit: 0.7, color: 0x5a554a },
+    { name: 'Titan', parent: 'Saturn', radius: 0.7, distance: 22.0, orbit: 1.0, color: 0xdfa34b },
+    { name: 'Rhea', parent: 'Saturn', radius: 0.45, distance: 15.0, orbit: 1.5, color: 0xc0c0c0 },
+    { name: 'Dione', parent: 'Saturn', radius: 0.4, distance: 17.5, orbit: 1.2, color: 0xa0a0a0 },
+    { name: 'Tethys', parent: 'Saturn', radius: 0.38, distance: 13.0, orbit: 1.8, color: 0xb0b0b0 },
+    { name: 'Mimas', parent: 'Saturn', radius: 0.25, distance: 10.0, orbit: 2.2, color: 0x8b8b8b },
+    { name: 'Enceladus', parent: 'Saturn', radius: 0.3, distance: 11.5, orbit: 1.9, color: 0xd0d8e0 },
+    { name: 'Iapetus', parent: 'Saturn', radius: 0.38, distance: 25.0, orbit: 0.4, color: 0x504538 },
+    { name: 'Titania', parent: 'Uranus', radius: 0.5, distance: 9.0, orbit: 1.0, color: 0xabc2d6 },
+    { name: 'Oberon', parent: 'Uranus', radius: 0.45, distance: 11.0, orbit: 0.8, color: 0x9ab2c6 },
+    { name: 'Ariel', parent: 'Uranus', radius: 0.4, distance: 6.5, orbit: 1.5, color: 0xbcd2e6 },
+    { name: 'Umbriel', parent: 'Uranus', radius: 0.4, distance: 7.8, orbit: 1.2, color: 0x7a8c9e },
+    { name: 'Triton', parent: 'Neptune', radius: 0.6, distance: 8.5, orbit: -1.2, color: 0xc5dcc5 },
+    { name: 'Charon', parent: 'Pluto', radius: 0.45, distance: 3.5, orbit: 1.0, color: 0x9fa4a6 }
+  ];
+
+  const spaceMoons = [];
+
+  function createMoonsForPlanet3D(planetName, planetGroup, planetIndex) {
+    const moonsForPlanet = moonConfigs.filter(m => m.parent === planetName);
+    moonsForPlanet.forEach(moon => {
+      const moonGroup = new THREE.Group();
+      moonGroup.name = moon.name + 'Group';
+      planetGroup.add(moonGroup);
+
+      const moonProceduralGroup = new THREE.Group();
+      moonProceduralGroup.name = moon.name + 'ProceduralGroup';
+      moonGroup.add(moonProceduralGroup);
+
+      const moonModelGroup = new THREE.Group();
+      moonModelGroup.name = moon.name + 'ModelGroup';
+      moonModelGroup.visible = false;
+      moonGroup.add(moonModelGroup);
+
+      const moonGeo = new THREE.SphereGeometry(moon.radius, 16, 16);
+      const moonMat = new THREE.MeshStandardMaterial({
+        color: moon.color,
+        roughness: 0.9
+      });
+      const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+      moonMesh.name = moon.name + 'Mesh';
+      moonProceduralGroup.add(moonMesh);
+
+      const moonAngle = Math.random() * Math.PI * 2;
+      moonGroup.position.x = Math.cos(moonAngle) * moon.distance;
+      moonGroup.position.z = Math.sin(moonAngle) * moon.distance;
+
+      moonGroup.userData = {
+        isMoon: true,
+        name: moon.name,
+        angle: moonAngle,
+        distance: moon.distance,
+        speed: moon.orbit * 0.015
+      };
+
+      spaceMoons.push(moonGroup);
+
+      const moonLower = moon.name.toLowerCase();
+      if (moonLower === 'europa' || moonLower === 'ganymede' || moonLower === 'callisto' || moonLower === 'titan' || moonLower === 'mimas' || moonLower === 'enceladus' || moonLower === 'iapetus') {
+        let modelName = moonLower === 'europa' ? 'europa' : 
+                        moonLower === 'ganymede' ? 'ganymede_moon' : 
+                        moonLower === 'callisto' ? 'callisto_moon' : 
+                        moonLower === 'titan' ? 'titan' : 
+                        moonLower === 'mimas' ? 'a_3d_model_of_mimas_a_moon_of_saturn' : 
+                        moonLower === 'enceladus' ? 'enceladus' : 
+                        'iapetus';
+        setupPlanetModelLoader(modelName, moon.name, moonGroup, moonProceduralGroup, moonModelGroup, moon.radius, moon.radius * 2.0, moon.color, 4500 + planetIndex * 200);
+      }
+    });
+  }
+
   // Planets - Optimized geometry
   const planets = [];
   function createPlanet(name, radius, color, pos, hasRings = false, hasAtmos = false, atmosColor = null) {
@@ -1694,14 +1779,33 @@
         return path;
       };
 
-      const rawPaths = [
-        getModelUrl(`/models/${modelName}.glb`),
-        getModelUrl(`/models/${modelName.replace('_', '')}.glb`),
-        getModelUrl(`/models/${modelName}/scene.gltf`)
-      ];
+      const rawPaths = [];
       if (modelName === 'saturn') {
-        rawPaths.unshift(getModelUrl('/models/c40e9e63bff644d1a466650d31bd1a8c.glb'));
+        rawPaths.push(getModelUrl('/models/c40e9e63bff644d1a466650d31bd1a8c.glb'));
       }
+      if (modelName === 'mercury') {
+        rawPaths.push(getModelUrl('/models/mercury_with_global_digital_elevation_map.glb'));
+      }
+      if (modelName === 'titan') {
+        rawPaths.push(getModelUrl('/models/titan.glb'));
+        rawPaths.push(getModelUrl('/models/titan_moon_3d_model.glb'));
+      }
+      if (modelName === 'mimas') {
+        rawPaths.push(getModelUrl('/models/a_3d_model_of_mimas_a_moon_of_saturn.glb'));
+      }
+      if (modelName === 'enceladus') {
+        rawPaths.push(getModelUrl('/models/enceladus.glb'));
+      }
+      if (modelName === 'iapetus') {
+        rawPaths.push(getModelUrl('/models/iapetus.glb'));
+      }
+      if (modelName === 'the_moon_sharp') {
+        rawPaths.push(getModelUrl('/models/the_moon_sharp.glb'));
+      }
+      
+      rawPaths.push(getModelUrl(`/models/${modelName}.glb`));
+      rawPaths.push(getModelUrl(`/models/${modelName.replace('_', '')}.glb`));
+      rawPaths.push(getModelUrl(`/models/${modelName}/scene.gltf`));
       const paths = Array.from(new Set(rawPaths));
       let attempt = 0;
 
@@ -1850,10 +1954,32 @@
   const earth = createPlanet('earth', 4.5, 0x2E5F8C, {x:0, y:0, z:0}, false, true, 0x4A90E2);
   earthProceduralGroup.add(earth);
   
-  const moon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), new THREE.MeshStandardMaterial({ color: 0xCCCCCC }));
-  moon.castShadow = true; 
-  earth.add(moon); 
-  moon.position.set(8, 0, 0);
+  const earthMoonGroup = new THREE.Group();
+  earthMoonGroup.name = 'EarthMoonGroup';
+  earthMoonGroup.position.set(8, 0, 0);
+  earthMoonGroup.userData = {
+    isMoon: true,
+    name: 'Moon',
+    angle: 0,
+    distance: 8.0,
+    speed: 0.03
+  };
+  earthProceduralGroup.add(earthMoonGroup);
+
+  const earthMoonProceduralGroup = new THREE.Group();
+  earthMoonProceduralGroup.name = 'MoonProceduralGroup';
+  earthMoonGroup.add(earthMoonProceduralGroup);
+
+  const earthMoonModelGroup = new THREE.Group();
+  earthMoonModelGroup.name = 'MoonModelGroup';
+  earthMoonModelGroup.visible = false;
+  earthMoonGroup.add(earthMoonModelGroup);
+
+  const moonMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), new THREE.MeshStandardMaterial({ color: 0xCCCCCC }));
+  moonMesh.castShadow = true;
+  earthMoonProceduralGroup.add(moonMesh);
+
+  setupPlanetModelLoader('the_moon_sharp', 'Moon', earthMoonGroup, earthMoonProceduralGroup, earthMoonModelGroup, 1.2, 2.4, 0xCCCCCC, 4000);
 
   planets.push({ mesh: earthGroup, speed: 0.0008, radius: 50, angle: 0, rotationSpeed: 0.01 });
   setupPlanetModelLoader('earth_moon', 'earth', earthGroup, earthProceduralGroup, earthModelGroup, 4.5, 16.0, 0x2E5F8C, 0);
@@ -1979,6 +2105,176 @@
   // Dwarf Planet Eris
   const eris = createPlanet('eris', 1.6, 0xD3C2B0, {x:160, y:25, z:-170});
   planets.push({ mesh: eris, speed: 0.00002, radius: 160, angle: Math.PI * 1.3, rotationSpeed: 0.007 });
+
+  // Attach Moons for Background major planets
+  createMoonsForPlanet3D('Mars', marsGroup, 4);
+  createMoonsForPlanet3D('Jupiter', jupiterGroup, 5);
+  createMoonsForPlanet3D('Saturn', saturnGroup, 6);
+  createMoonsForPlanet3D('Uranus', uranusGroup, 7);
+  createMoonsForPlanet3D('Neptune', neptuneGroup, 8);
+  createMoonsForPlanet3D('Pluto', plutoGroup, 9);
+
+  // Focus Lock POV Camera Configs
+  const targetRadii = {
+    'system': 150,
+    'sun': 15,
+    'mercury': 2.5,
+    'venus': 3.8,
+    'earth': 4.5,
+    'mars': 3.2,
+    'ceres': 1.2,
+    'jupiter': 8.5,
+    'saturn': 15.0,
+    'uranus': 10.0,
+    'neptune': 5.2,
+    'pluto': 1.8,
+    'eris': 1.6,
+    'proxima centauri': 3.5,
+    'alpha centauri a': 5.2,
+    'sagittarius a*': 12.0,
+    'andromeda': 60.0
+  };
+
+  const targetObjects = {
+    'sun': sunGroup,
+    'mercury': mercuryGroup,
+    'venus': venusGroup,
+    'earth': earthGroup,
+    'mars': marsGroup,
+    'ceres': ceres,
+    'jupiter': jupiterGroup,
+    'saturn': saturnGroup,
+    'uranus': uranusGroup,
+    'neptune': neptuneGroup,
+    'pluto': plutoGroup,
+    'eris': eris,
+    'proxima centauri': proximaCentauri,
+    'alpha centauri a': alphaCentauriA,
+    'sagittarius a*': blackHoleGroup,
+    'andromeda': andromedaGalaxy
+  };
+
+  window.Space3D = {
+    povTarget: 'system',
+    focusedRadius: 150,
+    zoomDistance: 250,
+    lookTarget: new THREE.Vector3(0, 10, -150),
+    getTargetObject: function(name) {
+      return targetObjects[name.toLowerCase()] || null;
+    },
+    setPOVTarget: function(name) {
+      const nameLower = name.toLowerCase();
+      window.Space3D.povTarget = nameLower;
+      const radius = targetRadii[nameLower] || 5;
+      window.Space3D.focusedRadius = radius;
+      
+      if (nameLower === 'system') {
+        window.Space3D.zoomDistance = 250;
+      } else {
+        window.Space3D.zoomDistance = radius * 3.5;
+      }
+      
+      const select = document.getElementById('cosmos-pov-select');
+      if (select) {
+        select.value = nameLower;
+      }
+      console.log(`[Space3D] POV Focus target set to: ${nameLower}`);
+    }
+  };
+
+  // Click-to-focus raycasting
+  document.addEventListener('click', (e) => {
+    if (!window.appInstance || !window.appInstance.spaceExplorerFreeFlight) return;
+    
+    // Ignore click if clicking on the HUD overlay elements (pointer-events-auto buttons/dropdowns)
+    const overlay = document.querySelector('[x-show="spaceExplorerFreeFlight"]');
+    if (overlay && overlay.contains(e.target)) return;
+
+    // Convert mouse to normalized device coordinates
+    const rect = renderer.domElement.getBoundingClientRect();
+    const clickMouse = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(clickMouse, camera);
+
+    // Build list of targets
+    const targets = [];
+    if (andromedaGalaxy) targets.push(andromedaGalaxy);
+    if (proceduralGroup && proceduralGroup.visible && eventHorizon) {
+      targets.push(eventHorizon);
+    } else if (modelGroup && modelGroup.visible) {
+      modelGroup.traverse((node) => { if (node.isMesh) targets.push(node); });
+    }
+    if (typeof sunProceduralGroup !== 'undefined' && sunProceduralGroup && sunProceduralGroup.visible && typeof sunCore !== 'undefined' && sunCore) {
+      targets.push(sunCore);
+    } else if (typeof sunModelGroup !== 'undefined' && sunModelGroup && sunModelGroup.visible) {
+      sunModelGroup.traverse((node) => { if (node.isMesh) targets.push(node); });
+    }
+    planets.forEach(p => {
+      if (p.mesh) {
+        p.mesh.traverse(node => {
+          if (node.isMesh && node.name !== 'saturnRings' && !node.name.includes('Loader') && !node.name.includes('planetLoader')) {
+            targets.push(node);
+          }
+        });
+      }
+    });
+    if (proximaCentauri) targets.push(proximaCentauri);
+    if (alphaCentauriA) {
+      targets.push(alphaCentauriA);
+      targets.push(alphaCentauriB);
+    }
+
+    const intersects = raycaster.intersectObjects(targets);
+    if (intersects.length > 0) {
+      const obj = intersects[0].object;
+      
+      let isBlackHole = (obj === eventHorizon);
+      if (!isBlackHole && modelGroup && modelGroup.visible) {
+        let parent = obj.parent;
+        while (parent) {
+          if (parent === modelGroup) { isBlackHole = true; break; }
+          parent = parent.parent;
+        }
+      }
+
+      let isSun = (typeof sunCore !== 'undefined' && obj === sunCore);
+      if (!isSun && typeof sunModelGroup !== 'undefined' && sunModelGroup && sunModelGroup.visible) {
+        let parent = obj.parent;
+        while (parent) {
+          if (parent === sunModelGroup) { isSun = true; break; }
+          parent = parent.parent;
+        }
+      }
+
+      if (obj === andromedaGalaxy) {
+        window.Space3D.setPOVTarget('andromeda');
+      } else if (isBlackHole) {
+        window.Space3D.setPOVTarget('sagittarius a*');
+      } else if (isSun) {
+        window.Space3D.setPOVTarget('sun');
+      } else {
+        let currentObj = obj;
+        let foundName = null;
+        while (currentObj) {
+          if (currentObj.userData && currentObj.userData.name) {
+            foundName = currentObj.userData.name.toLowerCase();
+            break;
+          }
+          currentObj = currentObj.parent;
+        }
+        if (foundName) {
+          window.Space3D.setPOVTarget(foundName);
+        }
+      }
+    } else {
+      // Clicked on empty space: reset to free pan
+      window.Space3D.setPOVTarget('system');
+    }
+  });
 
   // ── Closest Star Systems — Photorealistic WebGL Stellar Shaders ──
   // Proxima Centauri — M-type red dwarf: deep crimson core, scarlet mid, warm orange edge
@@ -2659,13 +2955,43 @@
       andromedaGalaxy.rotation.z += 0.00012 * scale;
     }
     
-    if (moon) {
-      moon.rotation.y += 0.02 * scale;
-      if (!moon.orbAng) moon.orbAng = 0;
-      moon.orbAng += 0.03 * scale;
-      const moonCos = Math.cos(moon.orbAng) * 8;
-      const moonSin = Math.sin(moon.orbAng) * 8;
-      moon.position.set(moonCos, 0, moonSin);
+    // Animate Earth's Moon Group if active
+    const pEarthMoon = earthGroup ? earthGroup.getObjectByName('EarthMoonGroup') : null;
+    if (pEarthMoon && pEarthMoon.userData && pEarthMoon.userData.isMoon) {
+      pEarthMoon.userData.angle += pEarthMoon.userData.speed * scale;
+      pEarthMoon.position.x = Math.cos(pEarthMoon.userData.angle) * pEarthMoon.userData.distance;
+      pEarthMoon.position.z = Math.sin(pEarthMoon.userData.angle) * pEarthMoon.userData.distance;
+      pEarthMoon.rotation.y += 0.02 * scale;
+
+      const moonModel = pEarthMoon.getObjectByName('MoonModelGroup');
+      if (moonModel && moonModel.visible) {
+        moonModel.rotation.y += 0.003 * scale;
+      }
+
+      const moonLoader = pEarthMoon.getObjectByName('planetLoader');
+      if (moonLoader && moonLoader.visible) {
+        moonLoader.rotation.z += 0.04 * scale;
+      }
+    }
+    
+    // Animate all other background moons
+    if (typeof spaceMoons !== 'undefined' && spaceMoons) {
+      spaceMoons.forEach(m => {
+        m.userData.angle += m.userData.speed * scale;
+        m.position.x = Math.cos(m.userData.angle) * m.userData.distance;
+        m.position.z = Math.sin(m.userData.angle) * m.userData.distance;
+        m.rotation.y += 0.01 * scale;
+
+        const moonModel = m.getObjectByName(m.userData.name + 'ModelGroup');
+        if (moonModel && moonModel.visible) {
+          moonModel.rotation.y += 0.003 * scale;
+        }
+
+        const moonLoader = m.getObjectByName('planetLoader');
+        if (moonLoader && moonLoader.visible) {
+          moonLoader.rotation.z += 0.04 * scale;
+        }
+      });
     }
     
     // Asteroids — InstancedMesh: update matrices in batch (1 draw call)
@@ -2886,12 +3212,43 @@
     const shake = cinematic.warpFactor * (Math.random() - 0.5) * 0.5;
     
     if (window.appInstance && window.appInstance.spaceExplorerFreeFlight) {
-      // Extended free-flight pan boundaries based on cursor tracking
-      const targetX = mouseInfluence.x * 160;
-      const targetY = 25 + mouseInfluence.y * 100;
-      camera.position.x += (targetX - camera.position.x) * 0.08 * scale;
-      camera.position.y += (targetY - camera.position.y) * 0.08 * scale;
-      camera.lookAt(0, 10, -150);
+      // Resolve target world coordinates
+      let targetPos = new THREE.Vector3(0, 10, -150); // system default look target
+      
+      if (window.Space3D && window.Space3D.povTarget && window.Space3D.povTarget !== 'system') {
+        const activeObj = window.Space3D.getTargetObject(window.Space3D.povTarget);
+        if (activeObj) {
+          activeObj.getWorldPosition(targetPos);
+        }
+      }
+
+      // Smoothly glide the lookTarget point
+      if (!window.Space3D.lookTarget) {
+        window.Space3D.lookTarget = new THREE.Vector3(0, 10, -150);
+      }
+      window.Space3D.lookTarget.lerp(targetPos, 0.08 * scale);
+
+      if (window.Space3D && window.Space3D.povTarget && window.Space3D.povTarget !== 'system') {
+        // Orbit Camera mode: revolve around focused planet's center POV
+        const theta = mouseInfluence.x * Math.PI;
+        const phi = mouseInfluence.y * (Math.PI / 3.5) + Math.PI / 2.5; // Avoid vertical flip
+
+        const desiredX = targetPos.x + window.Space3D.zoomDistance * Math.sin(phi) * Math.sin(theta);
+        const desiredY = targetPos.y + window.Space3D.zoomDistance * Math.cos(phi);
+        const desiredZ = targetPos.z + window.Space3D.zoomDistance * Math.sin(phi) * Math.cos(theta);
+
+        camera.position.x += (desiredX - camera.position.x) * 0.08 * scale;
+        camera.position.y += (desiredY - camera.position.y) * 0.08 * scale;
+        camera.position.z += (desiredZ - camera.position.z) * 0.08 * scale;
+      } else {
+        // Free Pan mode: pan camera based on cursor tracking
+        const targetX = mouseInfluence.x * 160;
+        const targetY = 25 + mouseInfluence.y * 100;
+        camera.position.x += (targetX - camera.position.x) * 0.08 * scale;
+        camera.position.y += (targetY - camera.position.y) * 0.08 * scale;
+      }
+      
+      camera.lookAt(window.Space3D.lookTarget);
     } else {
       // Default gameplay coordinates
       camera.position.x = driftX + mouseInfluence.x * 10 + shake;

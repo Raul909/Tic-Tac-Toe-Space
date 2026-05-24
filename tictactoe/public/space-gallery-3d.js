@@ -843,6 +843,9 @@
     { name: 'Rhea', parent: 'Saturn', radius: 1.1, distance: 28, orbit: 1.5, color: 0xc0c0c0 },
     { name: 'Dione', parent: 'Saturn', radius: 1.0, distance: 32, orbit: 1.2, color: 0xa0a0a0 },
     { name: 'Tethys', parent: 'Saturn', radius: 0.9, distance: 24, orbit: 1.8, color: 0xb0b0b0 },
+    { name: 'Mimas', parent: 'Saturn', radius: 0.6, distance: 20, orbit: 2.2, color: 0x9a9a9a },
+    { name: 'Enceladus', parent: 'Saturn', radius: 0.8, distance: 24, orbit: 1.8, color: 0xffffff },
+    { name: 'Iapetus', parent: 'Saturn', radius: 1.2, distance: 48, orbit: 0.5, color: 0xd4c2b0 },
     { name: 'Titania', parent: 'Uranus', radius: 1.2, distance: 18, orbit: 1.0, color: 0xabc2d6 },
     { name: 'Oberon', parent: 'Uranus', radius: 1.1, distance: 22, orbit: 0.8, color: 0x9ab2c6 },
     { name: 'Ariel', parent: 'Uranus', radius: 1.0, distance: 13, orbit: 1.5, color: 0xbcd2e6 },
@@ -1663,23 +1666,38 @@
           proceduralGroup.add(clouds);
           planetMesh.userData = { clouds }; // sync rotation
           
-          // Procedural Moon
-          const moonGeo = new THREE.SphereGeometry(1.5, 32, 32);
-          const moonMat = new THREE.MeshStandardMaterial({
-            map: TextureGenerator.generate('Moon', 'albedo'),
-            roughness: 0.9
-          });
-          const moonMesh = new THREE.Mesh(moonGeo, moonMat);
-          moonMesh.name = 'Moon';
-          moonMesh.position.set(13.0, 0, 0);
-          moonMesh.userData = {
+          // Moon Group setup
+          const moonGroup = new THREE.Group();
+          moonGroup.name = 'Moon';
+          moonGroup.position.set(13.0, 0, 0);
+          moonGroup.userData = {
             isMoon: true,
             name: 'Moon',
             angle: 0,
             distance: 13.0,
             speed: 0.015
           };
-          proceduralGroup.add(moonMesh);
+          proceduralGroup.add(moonGroup);
+
+          const moonProceduralGroup = new THREE.Group();
+          moonProceduralGroup.name = 'MoonProceduralGroup';
+          moonGroup.add(moonProceduralGroup);
+
+          const moonModelGroup = new THREE.Group();
+          moonModelGroup.name = 'MoonModelGroup';
+          moonModelGroup.visible = false;
+          moonGroup.add(moonModelGroup);
+
+          const moonGeo = new THREE.SphereGeometry(1.5, 32, 32);
+          const moonMat = new THREE.MeshStandardMaterial({
+            map: TextureGenerator.generate('Moon', 'albedo'),
+            roughness: 0.9
+          });
+          const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+          moonMesh.name = 'MoonMesh';
+          moonProceduralGroup.add(moonMesh);
+
+          this.setupPlanetModelLoader('the_moon_sharp', 'Moon', moonGroup, moonProceduralGroup, moonModelGroup, 1.5, 3.0, 0xCCCCCC, 4000);
 
           // Initial positions
           const angle = Math.random() * Math.PI * 2;
@@ -1922,8 +1940,14 @@
             };
 
             const moonLower = moon.name.toLowerCase();
-            if (moonLower === 'europa' || moonLower === 'ganymede' || moonLower === 'callisto' || moonLower === 'titan') {
-              let modelName = moonLower === 'europa' ? 'europa' : moonLower === 'ganymede' ? 'ganymede_moon' : moonLower === 'callisto' ? 'callisto_moon' : 'titan_moon_3d_model';
+            if (moonLower === 'europa' || moonLower === 'ganymede' || moonLower === 'callisto' || moonLower === 'titan' || moonLower === 'mimas' || moonLower === 'enceladus' || moonLower === 'iapetus') {
+              let modelName = moonLower === 'europa' ? 'europa' : 
+                              moonLower === 'ganymede' ? 'ganymede_moon' : 
+                              moonLower === 'callisto' ? 'callisto_moon' : 
+                              moonLower === 'titan' ? 'titan' : 
+                              moonLower === 'mimas' ? 'a_3d_model_of_mimas_a_moon_of_saturn' : 
+                              moonLower === 'enceladus' ? 'enceladus' : 
+                              'iapetus';
               this.setupPlanetModelLoader(modelName, moon.name, moonGroup, moonProceduralGroup, moonModelGroup, moon.radius, moon.radius * 2.0, moon.color, 4500 + i * 200);
             }
           });
@@ -2017,14 +2041,33 @@
           return path;
         };
 
-        const rawPaths = [
-          getModelUrl(`/models/${modelName}.glb`),
-          getModelUrl(`/models/${modelName.replace('_', '')}.glb`),
-          getModelUrl(`/models/${modelName}/scene.gltf`)
-        ];
+        const rawPaths = [];
         if (modelName === 'saturn') {
-          rawPaths.unshift(getModelUrl('/models/c40e9e63bff644d1a466650d31bd1a8c.glb'));
+          rawPaths.push(getModelUrl('/models/c40e9e63bff644d1a466650d31bd1a8c.glb'));
         }
+        if (modelName === 'mercury') {
+          rawPaths.push(getModelUrl('/models/mercury_with_global_digital_elevation_map.glb'));
+        }
+        if (modelName === 'titan') {
+          rawPaths.push(getModelUrl('/models/titan.glb'));
+          rawPaths.push(getModelUrl('/models/titan_moon_3d_model.glb'));
+        }
+        if (modelName === 'mimas') {
+          rawPaths.push(getModelUrl('/models/a_3d_model_of_mimas_a_moon_of_saturn.glb'));
+        }
+        if (modelName === 'enceladus') {
+          rawPaths.push(getModelUrl('/models/enceladus.glb'));
+        }
+        if (modelName === 'iapetus') {
+          rawPaths.push(getModelUrl('/models/iapetus.glb'));
+        }
+        if (modelName === 'the_moon_sharp') {
+          rawPaths.push(getModelUrl('/models/the_moon_sharp.glb'));
+        }
+        
+        rawPaths.push(getModelUrl(`/models/${modelName}.glb`));
+        rawPaths.push(getModelUrl(`/models/${modelName.replace('_', '')}.glb`));
+        rawPaths.push(getModelUrl(`/models/${modelName}/scene.gltf`));
         const paths = Array.from(new Set(rawPaths));
         let attempt = 0;
 
@@ -2979,6 +3022,16 @@
             pMoon.position.x = Math.cos(pMoon.userData.angle) * pMoon.userData.distance;
             pMoon.position.z = Math.sin(pMoon.userData.angle) * pMoon.userData.distance;
             pMoon.rotation.y += 0.01;
+
+            const moonModel = pMoon.getObjectByName('MoonModelGroup');
+            if (moonModel && moonModel.visible) {
+              moonModel.rotation.y += 0.003;
+            }
+
+            const moonLoader = pMoon.getObjectByName('planetLoader');
+            if (moonLoader && moonLoader.visible) {
+              moonLoader.rotation.z += 0.04;
+            }
           }
           // Animate Earth loader ring
           const earthLoader = obj.getObjectByName('earthLoader');

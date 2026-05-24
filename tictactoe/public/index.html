@@ -166,7 +166,34 @@
       🛸 [DEEP-SPACE OBSERVATION NODE ACTIVE]<br>
       Move cursor to rotate camera • Scroll mouse wheel to adjust orbit zoom
     </div>
-    <button @click="spaceExplorerFreeFlight = false" 
+
+    <!-- Retro Focus Target POV select dropdown -->
+    <div class="flex items-center gap-2 bg-black/60 border border-nasa/40 px-4 py-2 rounded-lg font-mono text-xs text-nasa shadow-[0_0_10px_rgba(0,212,255,0.15)]" style="backdrop-filter: blur(10px);">
+      <span>🔭 Focus Target:</span>
+      <select id="cosmos-pov-select" 
+              onchange="if (window.Space3D) window.Space3D.setPOVTarget(this.value)"
+              class="bg-black border border-nasa/30 text-nasa font-mono text-xs rounded px-2 py-1 outline-none focus:border-nasa cursor-pointer transition-all duration-200 hover:border-nasa/60">
+        <option value="system">System (Free Pan)</option>
+        <option value="sun">The Sun</option>
+        <option value="mercury">Mercury</option>
+        <option value="venus">Venus</option>
+        <option value="earth">Earth</option>
+        <option value="mars">Mars</option>
+        <option value="ceres">Ceres</option>
+        <option value="jupiter">Jupiter</option>
+        <option value="saturn">Saturn</option>
+        <option value="uranus">Uranus</option>
+        <option value="neptune">Neptune</option>
+        <option value="pluto">Pluto</option>
+        <option value="eris">Eris</option>
+        <option value="proxima centauri">Proxima Centauri</option>
+        <option value="alpha centauri a">Alpha Centauri A</option>
+        <option value="sagittarius a*">Sagittarius A* (Black Hole)</option>
+        <option value="andromeda">Andromeda Galaxy</option>
+      </select>
+    </div>
+
+    <button @click="spaceExplorerFreeFlight = false; if (window.Space3D) window.Space3D.setPOVTarget('system')" 
             class="btn-hud py-2.5 px-6 font-bold rounded-lg text-xs bg-red-950/30 border border-red-500/50 hover:bg-red-900/50 hover:border-red-400 text-red-300 transition tracking-widest font-retro">
       🛰️ EXIT ORBITAL OBSERVATION
     </button>
