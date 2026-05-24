@@ -1141,6 +1141,52 @@
             g = Math.floor(60 + val * 50);
             b = Math.floor(160 + val * 60);
             break;
+          case 'pluto': {
+            // Pluto: Icy brownish-tan with heart-shaped nitrogen ice (Tombaugh Regio)
+            const pVal = fbm3D(px * 8.0, py * 8.0, pz * 8.0, 3);
+            const heartRegion = Math.exp(-((lon - 3.5) * (lon - 3.5) + lat * lat) * 1.5);
+            if (heartRegion > 0.3) {
+              // Bright nitrogen ice heart
+              r = Math.floor(220 + pVal * 30);
+              g = Math.floor(210 + pVal * 25);
+              b = Math.floor(195 + pVal * 20);
+            } else {
+              r = Math.floor(160 + pVal * 40);
+              g = Math.floor(130 + pVal * 35);
+              b = Math.floor(100 + pVal * 30);
+            }
+            break;
+          }
+          case 'eris': {
+            // Eris: Highly reflective icy dwarf planet — bright white-grey with subtle methane frost
+            const eVal = fbm3D(px * 10.0, py * 10.0, pz * 10.0, 3);
+            const frost = fbm3D(px * 20.0, py * 20.0, pz * 20.0, 2) * 0.15;
+            r = Math.floor(200 + eVal * 45 + frost * 10);
+            g = Math.floor(195 + eVal * 40 + frost * 15);
+            b = Math.floor(210 + eVal * 35 + frost * 10);
+            // Slight reddish tholins in some regions
+            if (eVal < 0.35) {
+              r = Math.floor(180 + eVal * 50);
+              g = Math.floor(165 + eVal * 40);
+              b = Math.floor(155 + eVal * 35);
+            }
+            break;
+          }
+          case 'ceres': {
+            // Ceres: Dark rocky surface with bright salt deposits (Occator crater)
+            const cVal = fbm3D(px * 12.0, py * 12.0, pz * 12.0, 3);
+            r = Math.floor(85 + cVal * 50);
+            g = Math.floor(80 + cVal * 45);
+            b = Math.floor(75 + cVal * 40);
+            // Bright spots (sodium carbonate deposits)
+            const spot1 = Math.exp(-((lon - 4.2) * (lon - 4.2) + (lat - 0.3) * (lat - 0.3)) * 8.0);
+            if (spot1 > 0.15) {
+              r = Math.min(255, r + Math.floor(spot1 * 170));
+              g = Math.min(255, g + Math.floor(spot1 * 175));
+              b = Math.min(255, b + Math.floor(spot1 * 180));
+            }
+            break;
+          }
           default:
             r = g = b = Math.floor(val * 255);
         }
@@ -1853,12 +1899,13 @@
               window.spaceMixers.push(mixer);
             }
 
+            // Check if the loaded model already has ring-like geometry for Saturn
+            let modelHasRings = false;
             modelScene.traverse((node) => {
               if (node.isMesh) {
                 node.castShadow = false;
                 node.receiveShadow = false;
                 if (node.material) {
-                  // Do not override material side (keep natural geometry face orientation)
                   if (node.material.transparent) {
                     node.material.depthWrite = false;
                   }
@@ -1867,11 +1914,51 @@
                     node.material.map.anisotropy = maxAnisotropy;
                   }
                 }
+                // Detect if this mesh is a ring (flat, wide geometry)
+                if (node.geometry) {
+                  const nodeBox = new THREE.Box3().setFromObject(node);
+                  const nodeSize = nodeBox.getSize(new THREE.Vector3());
+                  const flatness = Math.min(nodeSize.x, nodeSize.y, nodeSize.z) / Math.max(nodeSize.x, nodeSize.y, nodeSize.z);
+                  if (flatness < 0.1 && Math.max(nodeSize.x, nodeSize.z) > targetRadius * 1.5 * scale) {
+                    modelHasRings = true;
+                  }
+                }
               }
             });
 
             modelGroup.add(modelScene);
             modelGroup.visible = true;
+
+            // For Saturn: if the loaded GLB model doesn't include rings,
+            // create high-quality procedural rings and add them to the modelGroup
+            if (modelName === 'saturn' && !modelHasRings) {
+              console.log('[Saturn] GLB model loaded without rings — adding procedural rings');
+              const ringGeometry = new THREE.RingGeometry(targetRadius * 1.4, targetRadius * 2.3, 128);
+              const posAttr = ringGeometry.attributes.position;
+              const uvAttr = ringGeometry.attributes.uv;
+              const innerR = targetRadius * 1.4;
+              const outerR = targetRadius * 2.3;
+              for (let j = 0; j < posAttr.count; j++) {
+                const rx = posAttr.getX(j);
+                const ry = posAttr.getY(j);
+                const rDist = Math.sqrt(rx*rx + ry*ry);
+                const u = (rDist - innerR) / (outerR - innerR);
+                uvAttr.setXY(j, u, 0.5);
+              }
+              uvAttr.needsUpdate = true;
+              const ringMaterial = new THREE.MeshStandardMaterial({
+                map: generateRingTexture(),
+                transparent: true,
+                opacity: 0.85,
+                side: THREE.DoubleSide
+              });
+              const saturnRingMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+              saturnRingMesh.name = 'saturnRings';
+              saturnRingMesh.rotation.x = Math.PI / 2.2;
+              saturnRingMesh.castShadow = true;
+              saturnRingMesh.receiveShadow = true;
+              modelGroup.add(saturnRingMesh);
+            }
 
             // Hide procedural layers and loader
             proceduralGroup.visible = false;
@@ -2632,6 +2719,15 @@
           modelScene.scale.set(scale, scale, scale);
           modelScene.position.sub(center.multiplyScalar(scale));
 
+          // Set up AnimationMixer if the black hole model has built-in animations
+          if (gltf.animations && gltf.animations.length > 0) {
+            const mixer = new THREE.AnimationMixer(modelScene);
+            const action = mixer.clipAction(gltf.animations[0]);
+            action.play();
+            if (!window.spaceMixers) window.spaceMixers = [];
+            window.spaceMixers.push(mixer);
+          }
+
           modelScene.traverse((node) => {
             if (node.isMesh) {
               node.castShadow = false;
@@ -2640,6 +2736,20 @@
                 node.material.side = THREE.DoubleSide;
                 if (node.material.transparent) {
                   node.material.depthWrite = false;
+                }
+                // Preserve emissive properties from the GLB model
+                // Boost emissive intensity if the model has emissive maps/colors
+                if (node.material.emissive && node.material.emissiveMap) {
+                  node.material.emissiveIntensity = Math.max(node.material.emissiveIntensity || 1.0, 1.0);
+                }
+                // Ensure textures render at maximum quality
+                if (node.material.map) {
+                  const maxAniso = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
+                  node.material.map.anisotropy = maxAniso;
+                }
+                if (node.material.emissiveMap) {
+                  const maxAniso = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
+                  node.material.emissiveMap.anisotropy = maxAniso;
                 }
               }
             }
