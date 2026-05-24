@@ -14,7 +14,7 @@
   });
   
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap at 1.5 — saves ~44% GPU fill on Retina
   renderer.shadowMap.enabled = false; // Disable shadows for performance
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -342,18 +342,18 @@
   }
   
   const starLayers = [
-    createStarLayer(25000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), true),
-    createStarLayer(8000, 1.6, 3000, () => new THREE.Color(0xffffff), true),
-    createStarLayer(30000, 0.6, 4500, () => new THREE.Color(0x445566), true),
-    createStarLayer(4000, 2.4, 2500, () => {
+    createStarLayer(16000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), true),
+    createStarLayer(6000,  1.6, 3000, () => new THREE.Color(0xffffff), true),
+    createStarLayer(20000, 0.6, 4500, () => new THREE.Color(0x445566), true),
+    createStarLayer(3000,  2.4, 2500, () => {
       const r = Math.random();
       if (r < 0.25) return new THREE.Color(0xff9977); // Orange/Red giants
       if (r < 0.50) return new THREE.Color(0x88ddff); // Blue supergiants
       if (r < 0.75) return new THREE.Color(0xffe484); // Yellow dwarfs
       return new THREE.Color(0xffb7ff); // Purple stars
     }, true),
-    // 5th Ultra-Dense Deep-Space Star Layer for massive background realism
-    createStarLayer(35000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), true)
+    // 5th Deep-Space star layer
+    createStarLayer(22000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), true)
   ];
   const stars = starLayers[0]; // Reference for weather presets
   
@@ -863,7 +863,7 @@
         float fbm(vec2 p) {
           float v = 0.0;
           float a = 0.5;
-          for (int i = 0; i < 6; i++) {
+          for (int i = 0; i < 4; i++) { // 4 octaves — visually identical, ~33% faster
             v += a * noise(p);
             p *= 2.1;
             a *= 0.48;
@@ -976,18 +976,28 @@
   const fillL = new THREE.DirectionalLight(0x4A90E2, 0.6); fillL.position.set(-80, 40, 60); scene.add(fillL);
   const rimL = new THREE.DirectionalLight(0x8A2BE2, 0.8); rimL.position.set(60, -30, -80); scene.add(rimL);
   
-  // Asteroids
+  // Asteroids — InstancedMesh: 150 meshes → 1 draw call
+  const AST_COUNT = 150;
   const asteroids = [];
   const astGeo = new THREE.DodecahedronGeometry(0.5, 0);
   const astMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9, flatShading: true });
-  for (let i = 0; i < 150; i++) {
-    const ast = new THREE.Mesh(astGeo, astMat);
+  const astInstanced = new THREE.InstancedMesh(astGeo, astMat, AST_COUNT);
+  astInstanced.castShadow = false; // shadows off for performance
+  scene.add(astInstanced);
+  const _astMatrix = new THREE.Matrix4();
+  const _astScale  = new THREE.Vector3();
+  const _astQuat   = new THREE.Quaternion();
+  const _astPos    = new THREE.Vector3();
+  for (let i = 0; i < AST_COUNT; i++) {
     const angle = Math.random() * Math.PI * 2, dist = 105 + Math.random() * 30;
-    ast.position.set(Math.cos(angle)*dist, (Math.random()-0.5)*15, Math.sin(angle)*dist);
-    ast.scale.setScalar(0.3 + Math.random()*0.8);
-    ast.castShadow = true; scene.add(ast);
-    asteroids.push({ mesh: ast, rot: (Math.random()-0.5)*0.02, orb: 0.0001+Math.random()*0.0002, angle: angle, dist: dist });
+    const sc = 0.3 + Math.random() * 0.8;
+    asteroids.push({ rot: (Math.random()-0.5)*0.02, orb: 0.0001+Math.random()*0.0002, angle, dist, rotX: 0, rotY: 0, sc });
+    _astScale.setScalar(sc);
+    _astPos.set(Math.cos(angle)*dist, (Math.random()-0.5)*15, Math.sin(angle)*dist);
+    _astMatrix.compose(_astPos, _astQuat, _astScale);
+    astInstanced.setMatrixAt(i, _astMatrix);
   }
+  astInstanced.instanceMatrix.needsUpdate = true;
 
   // ─── Shooting Stars ─────────────────────────────────────────────────────────
   // Rare, solitary cinematic meteors with smooth 28-point gradient trails.
@@ -1096,54 +1106,70 @@
   let _ssElapsed = 0;
   let _ssDelay   = 5 + Math.random() * 8; // first one appears within 5–13 s
 
-  // Animation Loop - Optimized for 60fps
+  // ── Performance: pause when tab is hidden ───────────────────────────────────
+  let _tabVisible = true;
+  document.addEventListener('visibilitychange', () => { _tabVisible = !document.hidden; });
+
+  // ── Adaptive throttle: drop to 30fps if sustained FPS < 35 ─────────────────
+  let _fpsFrames = 0, _fpsTime = 0, _currentFps = 60, _skipFrame = false;
+
+  // Animation Loop - Optimised for 60fps
   const _v1 = new THREE.Vector3();
   const _v2 = new THREE.Vector3();
+  const _astEuler  = new THREE.Euler();
+  const _astQuatTmp = new THREE.Quaternion();
   let lastTime = 0;
   let frameCount = 0;
   let lastFpsUpdate = 0;
   
   function animate(currentTime) {
     requestAnimationFrame(animate);
-    const dt = Math.min((currentTime - lastTime) / 1000, 0.033); // Cap at 30fps minimum
+
+    // Pause render when tab is hidden — zero GPU cost
+    if (!_tabVisible) return;
+
+    const dt = Math.min((currentTime - lastTime) / 1000, 0.05);
     lastTime = currentTime;
     const scale = dt * 60;
-    
-    // FPS monitoring (optional, remove in production)
-    frameCount++;
-    if (currentTime - lastFpsUpdate > 1000) {
-      // console.log('FPS:', frameCount);
-      frameCount = 0;
-      lastFpsUpdate = currentTime;
+
+    // Adaptive FPS throttle: if sustained < 35fps, skip every other frame
+    _fpsFrames++;
+    _fpsTime += dt;
+    if (_fpsTime >= 1.0) {
+      _currentFps = _fpsFrames / _fpsTime;
+      _fpsFrames = 0;
+      _fpsTime   = 0;
     }
+    _skipFrame = !_skipFrame;
+    if (_currentFps < 35 && _skipFrame) return; // render at ~30fps under load
     
     // Warp
     cinematic.warpFactor += (cinematic.targetWarp - cinematic.warpFactor) * dt * 2;
     const warpSpeed = 1 + cinematic.warpFactor * 50;
     
-    // Stars - Optimized rotation and twinkling
+    // Stars — rotation every frame; twinkling only every 3rd frame (invisible difference)
     const baseRotation = 0.000012 * scale * warpSpeed;
+    const doTwinkle = (frameCount % 3 === 0);
+    frameCount++;
     starLayers.forEach((stars, i) => {
       stars.rotation.y += baseRotation * (i + 1);
-      
-      // Dynamic star twinkling: vary material opacity on a smooth sine wave
-      if (i === 1) {
-        // Bright stars twinkle rapidly
-        stars.material.opacity = 0.5 + Math.sin(currentTime * 0.0028) * 0.22;
-      } else if (i === 3) {
-        // Giant/colored stars twinkle slowly
-        stars.material.opacity = 0.6 + Math.cos(currentTime * 0.0013 + 1.5) * 0.25;
-      } else if (i === 4) {
-        // Background tiny stars twinkle very rapidly and subtly
-        stars.material.opacity = 0.35 + Math.sin(currentTime * 0.0045 + 3.0) * 0.18;
+
+      if (doTwinkle) {
+        if (i === 1) {
+          stars.material.opacity = 0.5 + Math.sin(currentTime * 0.0028) * 0.22;
+        } else if (i === 3) {
+          stars.material.opacity = 0.6 + Math.cos(currentTime * 0.0013 + 1.5) * 0.25;
+        } else if (i === 4) {
+          stars.material.opacity = 0.35 + Math.sin(currentTime * 0.0045 + 3.0) * 0.18;
+        }
       }
-      
+
       if (cinematic.warpFactor > 0.01) {
-         const warpScale = 1 + cinematic.warpFactor * 20;
-         stars.scale.z = warpScale;
-         stars.rotation.z += 0.001 * scale;
+        const warpScale = 1 + cinematic.warpFactor * 20;
+        stars.scale.z = warpScale;
+        stars.rotation.z += 0.001 * scale;
       } else if (stars.scale.z !== 1) {
-         stars.scale.z += (1 - stars.scale.z) * dt * 2;
+        stars.scale.z += (1 - stars.scale.z) * dt * 2;
       }
     });
     
@@ -1186,17 +1212,20 @@
       moon.position.set(moonCos, 0, moonSin);
     }
     
-    // Asteroids - Optimized
-    asteroids.forEach(a => {
+    // Asteroids — InstancedMesh: update matrices in batch (1 draw call)
+    for (let i = 0; i < asteroids.length; i++) {
+      const a = asteroids[i];
       a.angle += a.orb * scale;
-      const aCos = Math.cos(a.angle) * a.dist;
-      const aSin = Math.sin(a.angle) * a.dist;
-      a.mesh.position.x = cx + aCos;
-      a.mesh.position.z = cz + aSin;
-      const rotDelta = a.rot * scale;
-      a.mesh.rotation.x += rotDelta;
-      a.mesh.rotation.y += rotDelta;
-    });
+      a.rotX  += a.rot * scale;
+      a.rotY  += a.rot * scale;
+      _astPos.set(cx + Math.cos(a.angle) * a.dist, _astPos.y || 0, cz + Math.sin(a.angle) * a.dist);
+      _astEuler.set(a.rotX, a.rotY, 0);
+      _astQuatTmp.setFromEuler(_astEuler);
+      _astScale.setScalar(a.sc);
+      _astMatrix.compose(_astPos, _astQuatTmp, _astScale);
+      astInstanced.setMatrixAt(i, _astMatrix);
+    }
+    astInstanced.instanceMatrix.needsUpdate = true;
     
     // ─── Shooting Stars Update ────────────────────────────────────────────────
     _ssElapsed += dt;
@@ -1227,17 +1256,20 @@
       // Advance head along direction
       _v1.copy(s.start).addScaledVector(s.direction, s.t * s.travel);
 
-      // Push new head into ring buffer, drop oldest tail point
-      s.trail.unshift(_v1.clone());
-      if (s.trail.length > SS_TRAIL) s.trail.pop();
+      // O(1) ring-buffer: overwrite oldest slot, advance head index
+      if (!s.trailHead) s.trailHead = 0;
+      s.trail[s.trailHead] = _v1.clone();
+      s.trailHead = (s.trailHead + 1) % SS_TRAIL;
 
-      // Write positions + vertex colors (quadratic falloff head → tail)
+      // Write positions + vertex colors using ring-buffer order (head → tail)
       const pos = s.mesh.geometry.attributes.position;
       const col = s.mesh.geometry.attributes.color;
+      const head = s.trailHead || 0;
       for (let p = 0; p < SS_TRAIL; p++) {
-        const pt = s.trail[p];
+        // Read from ring buffer newest-first: head-1, head-2, ...
+        const idx = (head - 1 - p + SS_TRAIL) % SS_TRAIL;
+        const pt  = s.trail[idx];
         pos.setXYZ(p, pt.x, pt.y, pt.z);
-        // p=0 is head (bright tint), p=SS_TRAIL-1 is tail (black)
         const falloff = Math.pow(1 - p / (SS_TRAIL - 1), 2.4);
         col.setXYZ(p,
           s.tint.r * falloff * brightness,
