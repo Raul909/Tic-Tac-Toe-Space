@@ -42,26 +42,47 @@
   renderer.shadowMap.enabled = false; // Disable shadows for performance
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.3;
+  renderer.toneMappingExposure = 0.95; // Slightly below 1 — keeps space jet-black, stars pop
   renderer.outputEncoding = THREE.sRGBEncoding;
   camera.position.set(0, 25, 90);
   
-  // Create circular texture for round stars (sharp core with tight edge)
+  // Sharp telescope-PSF star point texture — bright pinpoint core, tiny airy disk, instant fall-off
+  // This mimics how a real telescope images a star: near-delta-function core, faint diffraction halo
   function createCircleTexture() {
+    const S = 64;
     const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
+    canvas.width = S;
+    canvas.height = S;
     const ctx = canvas.getContext('2d');
-    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    gradient.addColorStop(0, 'rgba(255,255,255,1)');
-    gradient.addColorStop(0.75, 'rgba(255,255,255,1)'); // Pinpoint bright core
-    gradient.addColorStop(0.9, 'rgba(255,255,255,0.7)'); // Fast fall-off
-    gradient.addColorStop(1, 'rgba(255,255,255,0)'); // Anti-aliased boundary
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 32, 32);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    return texture;
+    const cx = S / 2;
+
+    // 1. Tiny diffuse halo (very faint, wide)
+    const halo = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
+    halo.addColorStop(0,    'rgba(255,255,255,0.30)');
+    halo.addColorStop(0.12, 'rgba(255,255,255,0.12)');
+    halo.addColorStop(0.30, 'rgba(200,220,255,0.04)');
+    halo.addColorStop(0.60, 'rgba(150,200,255,0.01)');
+    halo.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(0, 0, S, S);
+
+    // 2. Sharp bright Airy disc core (radius = 4px out of 32)
+    const core = ctx.createRadialGradient(cx, cx, 0, cx, cx, S * 0.07);
+    core.addColorStop(0,   'rgba(255,255,255,1.0)');
+    core.addColorStop(0.5, 'rgba(255,255,255,0.95)');
+    core.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.fillStyle = core;
+    ctx.fillRect(0, 0, S, S);
+
+    // 3. Subtle 4-point diffraction spike (makes bright stars look like telescope images)
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, S); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, cx); ctx.lineTo(S, cx); ctx.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
   }
 
   // Soft Gaussian glow — ultra-smooth fall-off for accretion gas particles
@@ -1607,25 +1628,37 @@
   andromedaGalaxy.rotation.set(Math.PI / 4.5, -Math.PI / 5, Math.PI / 7);
   scene.add(andromedaGalaxy);
 
-  // ── Andromeda Orbiting Stars & Dust Clouds (HD mode only) ──
+  // ── Andromeda Orbiting Nebula Haze (HD mode only) ──
+  // Realistic DSO-style: large overlapping soft cloud puffs, not hard dots
+  // Each puff is a 128x128 multi-layer nebula sprite — together they form a telescopic dust lane haze
   const androDustGeo = new THREE.BufferGeometry();
   const androDustPositions = [];
   const androDustColors = [];
   androDustData = [];
   
-  for (let i = 0; i < androDustCount; i++) {
-    const r = 12 + Math.random() * 30;
+  const ANDRO_HAZE_COUNT = 480; // More particles needed at large size for good coverage
+  for (let i = 0; i < ANDRO_HAZE_COUNT; i++) {
+    // Distribute in elliptical disk matching the galaxy plane (thin disk, wide radius)
+    const r = 8 + Math.random() * 36;
     const angle = Math.random() * Math.PI * 2;
-    const speed = 0.003 + (1 / r) * 0.08;
+    const ySpread = (Math.random() - 0.5) * 3.5; // Very thin disk — galaxy is edge-on-ish
     
-    androDustPositions.push(Math.cos(angle) * r, 0, Math.sin(angle) * r);
-    androDustData.push({ r, angle, speed });
+    androDustPositions.push(Math.cos(angle) * r, ySpread, Math.sin(angle) * r);
+    androDustData.push({ r, angle, speed: 0.001 + (1 / r) * 0.04 });
     
     const c = new THREE.Color();
-    if (r < 18) {
-      c.setHSL(0.08 + Math.random() * 0.05, 0.8, 0.45 + Math.random() * 0.15); // gold core
+    if (r < 14) {
+      // Core: warm aging stars, yellow-orange galactic bulge
+      c.setHSL(0.08 + Math.random() * 0.06, 0.75, 0.35 + Math.random() * 0.12);
+    } else if (r < 24) {
+      // Mid arms: mix of warm and blue star-forming regions
+      const armRand = Math.random();
+      if (armRand < 0.4) c.setHSL(0.57 + Math.random() * 0.08, 0.85, 0.30 + Math.random() * 0.15); // blue HII
+      else if (armRand < 0.7) c.setHSL(0.08 + Math.random() * 0.05, 0.70, 0.28 + Math.random() * 0.10); // gold
+      else c.setHSL(0.0, 0.0, 0.18 + Math.random() * 0.08); // dark dust lane
     } else {
-      c.setHSL(0.55 + Math.random() * 0.06, 0.8, 0.5 + Math.random() * 0.2); // blue arms
+      // Outer halo: cool blue-white faint halo stars, very dim
+      c.setHSL(0.60 + Math.random() * 0.06, 0.60, 0.18 + Math.random() * 0.10);
     }
     androDustColors.push(c.r, c.g, c.b);
   }
@@ -1634,13 +1667,14 @@
   androDustGeo.setAttribute('color', new THREE.Float32BufferAttribute(androDustColors, 3));
   
   const androDustMat = new THREE.PointsMaterial({
-    size: 2.2,
+    size: 14,               // Large overlapping cloud puffs — neighbouring puffs merge into haze
     vertexColors: true,
     transparent: true,
-    opacity: 0.75,
+    opacity: 0.055,         // Very low opacity per puff — 480 puffs accumulate into thick cloud
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    map: createCircleTexture()
+    map: createNebulaTexture(),   // Volumetric cloud puff — looks like HST dust lane
+    sizeAttenuation: true
   });
   
   andromedaDust = new THREE.Points(androDustGeo, androDustMat);
@@ -1704,26 +1738,33 @@
   lensedAccretionDisk.visible = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
   eventHorizon.add(lensedAccretionDisk);
 
-  // ── Volumetric Accretion Gas Particles (HD mode only) ──
-  // Now uses soft Gaussian glow texture — overlapping discs blend into misty cloud
+  // ── Volumetric Accretion Gas Cloud (HD mode only) ──
+  // Realistic: overlapping large soft puffs accumulate into a coherent misty plasma cloud
+  // like a real astrophotograph of gas accreting around a singularity
   const sgrPartGeo = new THREE.BufferGeometry();
   const sgrPartPositions = [];
   const sgrPartColors = [];
   sgrPartData = [];
   
   for (let i = 0; i < sgrPartCount; i++) {
-    const r = 8.5 + Math.random() * 16;
+    const r = 8.0 + Math.random() * 17;
     const angle = Math.random() * Math.PI * 2;
-    const speed = 0.015 + (1 / r) * 0.45;
-    const yOffset = (Math.random() - 0.5) * 1.5;
+    const speed = 0.012 + (1 / r) * 0.40;
+    const yOffset = (Math.random() - 0.5) * 2.0; // Thin disk
     
     sgrPartPositions.push(Math.cos(angle) * r, yOffset, Math.sin(angle) * r);
     sgrPartData.push({ r, angle, speed, y: yOffset });
     
-    // Doppler-biased color: approaching side (angle near PI) hotter/whiter
-    const approachBias = (Math.cos(angle) < 0) ? 0.5 + Math.random() * 0.4 : 0.2 + Math.random() * 0.2;
+    // Doppler-biased colors: approaching side is hot white-gold, receding is dim deep red
+    const approaching = Math.cos(angle) < 0;
     const c = new THREE.Color();
-    c.setHSL(0.04 + Math.random() * 0.06, 0.95, approachBias);
+    if (approaching) {
+      // Approaching: ultra-hot white-gold to bright orange
+      c.setHSL(0.06 + Math.random() * 0.05, 0.95, 0.55 + Math.random() * 0.35);
+    } else {
+      // Receding: dim deep red to dark orange
+      c.setHSL(0.02 + Math.random() * 0.03, 0.90, 0.18 + Math.random() * 0.15);
+    }
     sgrPartColors.push(c.r, c.g, c.b);
   }
   
@@ -1731,13 +1772,14 @@
   sgrPartGeo.setAttribute('color', new THREE.Float32BufferAttribute(sgrPartColors, 3));
   
   const sgrPartMat = new THREE.PointsMaterial({
-    size: 3.0,
+    size: 8.0,              // Large overlapping cloud puffs — merge into coherent plasma cloud
     vertexColors: true,
     transparent: true,
-    opacity: 0.72,
+    opacity: 0.40,          // Low per-puff opacity; 400 puffs layer into a thick volumetric cloud
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    map: createSoftGlowTexture()  // Gaussian soft glow → misty volumetric haze
+    map: createNebulaTexture(),   // Soft multi-layer puff texture — not a hard dot
+    sizeAttenuation: true
   });
   
   sgrParticles = new THREE.Points(sgrPartGeo, sgrPartMat);
@@ -2022,7 +2064,7 @@
     }
     if (andromedaDust && (localStorage.getItem('graphicsMode') || 'HD') === 'HD') {
       const posAttr = andromedaDust.geometry.attributes.position;
-      for (let i = 0; i < androDustCount; i++) {
+      for (let i = 0; i < androDustData.length; i++) {
         const d = androDustData[i];
         if (d) {
           d.angle += d.speed * scale;
