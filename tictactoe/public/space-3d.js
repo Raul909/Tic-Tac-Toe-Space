@@ -2702,7 +2702,7 @@
   bhLoader.name = 'bhLoader';
   blackHoleGroup.add(bhLoader);
 
-  if (false && typeof THREE.GLTFLoader !== 'undefined') {
+  if (typeof THREE.GLTFLoader !== 'undefined') {
     const gltfLoader = new THREE.GLTFLoader();
     const getModelUrl = (path) => {
       if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
@@ -2761,21 +2761,34 @@
               node.receiveShadow = false;
               if (node.material) {
                 node.material.side = THREE.DoubleSide;
-                if (node.material.transparent) {
+                
+                // If the mesh is part of the accretion disk/plane (has textures),
+                // we set Additive Blending and disable depthWrite to make the solid black areas transparent.
+                if (node.material.map || node.material.emissiveMap) {
+                  node.material.transparent = true;
                   node.material.depthWrite = false;
+                  node.material.blending = THREE.AdditiveBlending;
+                  
+                  // Boost emissive intensity for premium glow
+                  if (node.material.emissive) {
+                    node.material.emissiveIntensity = Math.max(node.material.emissiveIntensity || 1.0, 2.0);
+                  }
+                } else {
+                  // For solid parts like the event horizon black sphere, keep it opaque
+                  const name = (node.name || '').toLowerCase();
+                  if (name.includes('horizon') || name.includes('singularity') || name.includes('sphere')) {
+                    if (node.material.color) node.material.color.setHex(0x000000);
+                    node.material.roughness = 1.0;
+                    node.material.metalness = 0.0;
+                  }
                 }
-                // Preserve emissive properties from the GLB model
-                // Boost emissive intensity if the model has emissive maps/colors
-                if (node.material.emissive && node.material.emissiveMap) {
-                  node.material.emissiveIntensity = Math.max(node.material.emissiveIntensity || 1.0, 1.0);
-                }
+
                 // Ensure textures render at maximum quality
+                const maxAniso = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
                 if (node.material.map) {
-                  const maxAniso = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
                   node.material.map.anisotropy = maxAniso;
                 }
                 if (node.material.emissiveMap) {
-                  const maxAniso = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
                   node.material.emissiveMap.anisotropy = maxAniso;
                 }
               }
