@@ -793,6 +793,15 @@
     }
   };
 
+  function isWebGLAvailable() {
+    try {
+      const canvas = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+    } catch (e) {
+      return false;
+    }
+  }
+
   window.SpaceGallery3D = {
     scene: null,
     camera: null,
@@ -806,6 +815,7 @@
     cameraTargetPos: new THREE.Vector3(0, 100, 300),
     controlsTargetPos: new THREE.Vector3(0, 0, 0),
     isGliding: false,
+    fallbackMode: false,
     
     solarSystem: [
       { name: 'Sun', type: 'Star', radius: 20, distance: 0, color: 0xFDB813, temp: '5778K', mass: '1.989×10³⁰ kg' },
@@ -853,6 +863,25 @@
       if (!container) return;
       this.container = container; // cache to avoid DOM lookup in animate()
       
+      if (!isWebGLAvailable()) {
+        console.warn("WebGL not supported for Space Gallery. Running in fallback 2D mode.");
+        this.fallbackMode = true;
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.style.background = 'radial-gradient(circle at center, #000820 0%, #000208 100%)';
+        container.innerHTML = `
+          <div class="text-center p-6 border border-nasa/20 rounded-lg glass max-w-sm font-mono text-nasa select-none" style="backdrop-filter: blur(12px);">
+            <div class="text-4xl mb-4 text-mars animate-pulse">🛸</div>
+            <div class="text-xs uppercase tracking-wider mb-2 font-bold font-retro text-red-400">TELEMETRY FAILURE</div>
+            <div class="text-[10px] opacity-75 leading-relaxed">
+              WebGL 3D rendering context is not supported or is disabled on your mobile device. Falling back to core 2D telemetry systems.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
       // Scene
       this.scene = new THREE.Scene();
       this.scene.fog = new THREE.FogExp2(0x000208, 0.0003);
@@ -2202,6 +2231,7 @@
     },
     
     animate() {
+      if (this.fallbackMode) return;
       requestAnimationFrame(this._animateBound || (this._animateBound = () => this.animate()));
 
       // Pause when tab is hidden — zero GPU cost

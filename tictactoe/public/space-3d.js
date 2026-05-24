@@ -1,5 +1,29 @@
 // Three.js 3D Space Background with Cinematic Lighting and Warp Effects
 (function() {
+  function isWebGLAvailable() {
+    try {
+      const canvas = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+    } catch (e) {
+      return false;
+    }
+  }
+
+  if (!isWebGLAvailable()) {
+    console.warn("WebGL not supported on this device. Falling back to high-fidelity CSS background.");
+    const canvas = document.getElementById('three-canvas');
+    if (canvas) canvas.style.display = 'none';
+    window.CinematicSpace = {
+      paused: false,
+      baseSpeed: 1,
+      cameraDrift: { x: 0, y: 0, z: 0 },
+      triggerWarp: () => {},
+      applyWeatherPreset: () => {},
+      renderFrame: () => {}
+    };
+    return;
+  }
+
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x000208, 0.0003);
   

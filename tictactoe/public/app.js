@@ -620,6 +620,7 @@ function app() {
     },
 
     initP2PConnection() {
+      this.iceCandidatesQueue = [];
       const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
       this.peerConnection = new RTCPeerConnection(configuration);
       
@@ -665,11 +666,144 @@ function app() {
       }
     },
 
+    bindDataChannelEvents() {
+      if (!this.dataChannel) return;
+      
+      this.dataChannel.onopen = () => {
+        console.log("Data channel opened");
+        this.mode = 'p2p';
+        this.p2pConnectionStatus = 'connected';
+        
+        if (this.p2pRole === 'host') {
+          this.clearWinningCells();
+          this.stopBlitzTimer();
+          this.gameOver = false;
+          
+          const size = this.boardSize * this.boardSize;
+          this.board = Array(size).fill(null);
+          this.currentTurn = 'X';
+          this.gameActive = true;
+          this.gameStartTime = Date.now();
+          this.scores = { X: 0, O: 0, D: 0 };
+          
+          this.dataChannel.send(JSON.stringify({
+            type: 'game:start',
+            boardSize: this.boardSize,
+            gameMode: this.gameMode
+          }));
+          
+          this.setScreen('game');
+          this.updateGameStatus();
+          
+          if (window.SoundManager) window.SoundManager.play('start');
+        }
+      };
+      
+      this.dataChannel.onclose = () => {
+        console.log("Data channel closed");
+        this.leaveGame();
+        this.lobbyError = 'P2P partner disconnected.';
+        setTimeout(() => this.lobbyError = '', 3000);
+      };
+      
+      this.dataChannel.onerror = (err) => {
+        console.error("Data channel error:", err);
+        this.leaveGame();
+        this.lobbyError = 'P2P Connection error.';
+        setTimeout(() => this.lobbyError = '', 3000);
+      };
+      
+      this.dataChannel.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("P2P Msg Recv:", data);
+          
+          if (data.type === 'game:start') {
+            this.clearWinningCells();
+            this.stopBlitzTimer();
+            this.gameOver = false;
+            
+            this.boardSize = data.boardSize || 3;
+            this.gameMode = data.gameMode || 'classic';
+            this.mode = 'p2p';
+            this.p2pConnectionStatus = 'connected';
+            
+            const size = this.boardSize * this.boardSize;
+            this.board = Array(size).fill(null);
+            this.currentTurn = 'X';
+            this.gameActive = true;
+            this.gameStartTime = Date.now();
+            this.scores = { X: 0, O: 0, D: 0 };
+            
+            this.setScreen('game');
+            this.updateGameStatus();
+            
+            if (window.SoundManager) window.SoundManager.play('start');
+          } else if (data.type === 'game:move') {
+            const index = data.index;
+            const opponentSymbol = this.mySymbol === 'X' ? 'O' : 'X';
+            
+            this.board[index] = opponentSymbol;
+            
+            if (window.SoundManager) window.SoundManager.play('click');
+            
+            const winLine = this.checkWin(opponentSymbol);
+            if (winLine) {
+              this.scores[opponentSymbol]++;
+              this.animateWinningLine(winLine);
+              setTimeout(() => this.showGameOver(opponentSymbol, false), 500);
+              return;
+            }
+            if (this.board.every(c => c)) {
+              this.scores.D++;
+              this.showGameOver(null, true);
+              return;
+            }
+            this.currentTurn = this.mySymbol;
+            this.updateGameStatus();
+          } else if (data.type === 'game:rematch-request') {
+            this.rematchRequested = true;
+            this.rematchFrom = 'Opponent';
+          } else if (data.type === 'game:rematch-accept') {
+            if (this.p2pRole === 'host') {
+              this.clearWinningCells();
+              this.stopBlitzTimer();
+              this.gameOver = false;
+              
+              const size = this.boardSize * this.boardSize;
+              this.board = Array(size).fill(null);
+              this.currentTurn = 'X';
+              this.gameActive = true;
+              this.gameStartTime = Date.now();
+              
+              this.dataChannel.send(JSON.stringify({
+                type: 'game:start',
+                boardSize: this.boardSize,
+                gameMode: this.gameMode
+              }));
+              
+              this.updateGameStatus();
+              if (window.SoundManager) window.SoundManager.play('start');
+            }
+          }
+        } catch (e) {
+          console.error("Failed to parse data channel message:", e);
+        }
+      };
+    },
+
     handleP2PSignal(signal) {
       if (!this.peerConnection) return;
       if (signal.sdp) {
         this.peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp))
           .then(() => {
+            if (this.iceCandidatesQueue) {
+              while (this.iceCandidatesQueue.length > 0) {
+                const cand = this.iceCandidatesQueue.shift();
+                this.peerConnection.addIceCandidate(new RTCIceCandidate(cand))
+                  .catch(err => console.error("Failed to add P2P ICE candidate:", err));
+              }
+            }
             if (this.p2pRole === 'joiner') {
               return this.peerConnection.createAnswer()
                 .then(answer => this.peerConnection.setLocalDescription(answer))
@@ -685,8 +819,13 @@ function app() {
           })
           .catch(err => console.error("Failed to handle P2P SDP signal:", err));
       } else if (signal.candidate) {
-        this.peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate))
-          .catch(err => console.error("Failed to add P2P ICE candidate:", err));
+        if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type) {
+          this.peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate))
+            .catch(err => console.error("Failed to add P2P ICE candidate:", err));
+        } else {
+          if (!this.iceCandidatesQueue) this.iceCandidatesQueue = [];
+          this.iceCandidatesQueue.push(signal.candidate);
+        }
       }
     },
 
@@ -841,6 +980,19 @@ function app() {
       }
     },
 
+    toggleFullscreen() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    },
+
     init() {
       window.appInstance = this;
 
@@ -923,8 +1075,15 @@ function app() {
     },
 
     initGyroscope() {
-      if (window.DeviceOrientationEvent) {
-        window.addEventListener('deviceorientation', (event) => {
+      if (!window.DeviceOrientationEvent) return;
+
+      let hasInitialized = false;
+
+      const setupListeners = () => {
+        if (hasInitialized) return;
+        hasInitialized = true;
+
+        const handleOrientation = (event) => {
           if (this.screen !== 'game' || !this.view3D) return;
           
           let beta = event.beta;
@@ -932,12 +1091,29 @@ function app() {
           
           if (beta === null || gamma === null) return;
           
+          // Account for screen orientation if possible
+          let x = gamma;
+          let y = beta;
+          const orientation = window.orientation || (window.screen && window.screen.orientation && window.screen.orientation.angle) || 0;
+          if (orientation === 90) {
+            let tmp = x;
+            x = -y;
+            y = tmp;
+          } else if (orientation === -90) {
+            let tmp = x;
+            x = y;
+            y = -tmp;
+          } else if (orientation === 180) {
+            x = -x;
+            y = -y;
+          }
+          
           // Clamp and offset values to comfortable portrait holding angles
           // Phone tilted forward/backward (pitch, beta) - target holds around 60 deg
-          const pitchDiff = beta - 60;
+          const pitchDiff = y - 60;
           
           // Map to maximum 25 deg tilt limits
-          const tiltX = Math.max(-25, Math.min(25, gamma * 0.8));
+          const tiltX = Math.max(-25, Math.min(25, x * 0.8));
           const tiltY = Math.max(-25, Math.min(25, -pitchDiff * 0.8));
           
           const boardEl = document.getElementById('game-board');
@@ -945,7 +1121,33 @@ function app() {
             boardEl.style.setProperty('--tilt-x', `${tiltX.toFixed(1)}deg`);
             boardEl.style.setProperty('--tilt-y', `${tiltY.toFixed(1)}deg`);
           }
-        });
+        };
+
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      };
+
+      // iOS 13+ requires requestPermission
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        const triggerPermission = () => {
+          DeviceOrientationEvent.requestPermission()
+            .then(permissionState => {
+              if (permissionState === 'granted') {
+                setupListeners();
+              }
+            })
+            .catch(err => {
+              console.error('DeviceOrientation permission request failed:', err);
+            });
+        };
+        document.addEventListener('click', triggerPermission, { once: true });
+        document.addEventListener('touchstart', triggerPermission, { once: true });
+      } else {
+        // Android and older iOS: setup directly, but also on click/touch
+        // to handle modern Chrome gesture lockouts.
+        setupListeners();
+        document.addEventListener('click', setupListeners, { once: true });
+        document.addEventListener('touchstart', setupListeners, { once: true });
       }
     },
 
@@ -2118,13 +2320,47 @@ function app() {
         
         this.updateGameStatus();
       } else if (this.mode === 'p2p') {
-        if (this.dataChannel && this.dataChannel.readyState === 'open') {
-          this.dataChannel.send(JSON.stringify({
-            type: 'game:rematch-request'
-          }));
+        if (this.rematchRequested) {
+          this.rematchRequested = false;
+          this.rematchFrom = '';
+          if (this.p2pRole === 'host') {
+            this.clearWinningCells();
+            this.stopBlitzTimer();
+            this.gameOver = false;
+            
+            const size = this.boardSize * this.boardSize;
+            this.board = Array(size).fill(null);
+            this.currentTurn = 'X';
+            this.gameActive = true;
+            this.gameStartTime = Date.now();
+            
+            if (this.dataChannel && this.dataChannel.readyState === 'open') {
+              this.dataChannel.send(JSON.stringify({
+                type: 'game:start',
+                boardSize: this.boardSize,
+                gameMode: this.gameMode
+              }));
+            }
+            this.updateGameStatus();
+            if (window.SoundManager) window.SoundManager.play('start');
+          } else {
+            if (this.dataChannel && this.dataChannel.readyState === 'open') {
+              this.dataChannel.send(JSON.stringify({
+                type: 'game:rematch-accept'
+              }));
+            }
+            this.lobbyError = 'Rematch accepted! Waiting for host...';
+            setTimeout(() => this.lobbyError = '', 3000);
+          }
+        } else {
+          if (this.dataChannel && this.dataChannel.readyState === 'open') {
+            this.dataChannel.send(JSON.stringify({
+              type: 'game:rematch-request'
+            }));
+          }
+          this.lobbyError = 'Rematch request sent to opponent...';
+          setTimeout(() => this.lobbyError = '', 3000);
         }
-        this.lobbyError = 'Rematch request sent to opponent...';
-        setTimeout(() => this.lobbyError = '', 3000);
       } else {
         this.socket.emit('game:rematch', { code: this.roomCode });
       }
