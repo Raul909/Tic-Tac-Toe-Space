@@ -424,7 +424,7 @@
     return texture;
   }
 
-  // Hyper-detailed Spiral Galaxy generator for Andromeda (starburst hubs & dust lanes)
+  // Hyper-detailed Spiral Galaxy generator for Andromeda (cinematic Hubble/JWST-quality)
   function createAndromedaTexture() {
     const size = 1024;
     const canvas = document.createElement('canvas');
@@ -436,83 +436,168 @@
     
     ctx.clearRect(0, 0, size, size);
     
-    // 1. Galactic bulge core glow (yellow-white aging stars cluster)
-    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.22);
-    coreGrad.addColorStop(0, 'rgba(255, 255, 245, 1.0)');
-    coreGrad.addColorStop(0.15, 'rgba(255, 235, 180, 0.95)');
-    coreGrad.addColorStop(0.40, 'rgba(255, 175, 80, 0.65)');
-    coreGrad.addColorStop(0.70, 'rgba(240, 110, 40, 0.25)');
-    coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = coreGrad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, size * 0.22, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // 2. High-density star forming spiral arms (cyan giants & pink starbursts)
+    // Helper to draw a soft puff
+    const drawSoftPuff = (x, y, radius, colorString) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      g.addColorStop(0, colorString);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
+    // 1. Faint outer halo (dark matter envelope — very subtle)
+    drawSoftPuff(cx, cy, size * 0.48, 'rgba(30, 20, 50, 0.08)');
+    drawSoftPuff(cx, cy, size * 0.42, 'rgba(50, 35, 70, 0.12)');
+
+    // 2. Core bulge — warm aging star population (golden/amber, NOT bright white)
+    drawSoftPuff(cx, cy, size * 0.22, 'rgba(255, 210, 130, 0.35)');
+    drawSoftPuff(cx, cy, size * 0.14, 'rgba(255, 230, 170, 0.55)');
+    drawSoftPuff(cx, cy, size * 0.08, 'rgba(255, 240, 200, 0.75)');
+    drawSoftPuff(cx, cy, size * 0.03, 'rgba(255, 250, 235, 0.95)');
+
     const numArms = 2;
     const maxR = size * 0.46;
-    
+    const armWinding = Math.PI * 4.2; // Tighter spiral winding
+
+    // 3. Diffuse gaseous arms (faint underlying glow — much subtler than before)
     for (let arm = 0; arm < numArms; arm++) {
       const armOffset = (arm * Math.PI * 2) / numArms;
-      for (let i = 0; i < 1500; i++) {
-        const percent = i / 1500;
+      for (let i = 0; i < 500; i++) {
+        const percent = i / 500;
         const r = percent * maxR;
-        const theta = percent * Math.PI * 4.2 + armOffset;
+        const theta = percent * armWinding + armOffset;
         
-        const spread = (percent * 42) + 2.0;
-        const dx = (Math.random() - 0.5) * spread;
-        const dy = (Math.random() - 0.5) * spread;
+        const spread = percent * 50 + 8;
+        const x = cx + Math.cos(theta) * r + (Math.random() - 0.5) * spread;
+        const y = cy + Math.sin(theta) * r + (Math.random() - 0.5) * spread;
         
-        const x = cx + Math.cos(theta) * r + dx;
-        const y = cy + Math.sin(theta) * r + dy;
+        // Soft gaseous glow — low opacity for realism
+        const alpha = 0.04 * (1.0 - percent * 0.8);
+        const col = Math.random() < 0.4 
+          ? `rgba(70, 140, 220, ${alpha})` // Subtle blue gas
+          : Math.random() < 0.6
+          ? `rgba(200, 100, 160, ${alpha * 0.5})` // Faint H-II pink
+          : `rgba(255, 220, 160, ${alpha * 0.6})`; // Warm stellar gas
         
-        let color;
-        const starSize = Math.random() * 2.5 + 0.5;
+        drawSoftPuff(x, y, percent * 35 + 12, col);
+      }
+    }
+
+    // 4. Sub-arms / spurs (secondary fainter spiral features)
+    for (let arm = 0; arm < numArms; arm++) {
+      const armOffset = (arm * Math.PI * 2) / numArms + Math.PI * 0.35;
+      for (let i = 0; i < 200; i++) {
+        const percent = 0.15 + (i / 200) * 0.7;
+        const r = percent * maxR * 0.85;
+        const theta = percent * armWinding * 0.9 + armOffset;
         
-        if (percent < 0.15) {
-          color = `rgba(255, 210, 150, ${0.35 * (1 - percent)})`;
-        } else if (percent < 0.65) {
-          const rand = Math.random();
-          if (rand > 0.6) {
-            color = `rgba(0, 220, 255, ${0.55 * (1 - percent)})`;
-          } else if (rand > 0.35) {
-            color = `rgba(255, 110, 210, ${0.45 * (1 - percent)})`;
-          } else {
-            color = `rgba(255, 255, 255, ${0.60 * (1 - percent)})`;
-          }
+        const spread = percent * 35 + 5;
+        const x = cx + Math.cos(theta) * r + (Math.random() - 0.5) * spread;
+        const y = cy + Math.sin(theta) * r + (Math.random() - 0.5) * spread;
+        
+        const alpha = 0.025 * (1.0 - percent);
+        drawSoftPuff(x, y, percent * 25 + 8, `rgba(180, 160, 220, ${alpha})`);
+      }
+    }
+
+    // 5. Dense individual stars along spiral arms (crisp, tiny, color-varied)
+    for (let arm = 0; arm < numArms; arm++) {
+      const armOffset = (arm * Math.PI * 2) / numArms;
+      for (let i = 0; i < 5000; i++) {
+        const percent = i / 5000;
+        const r = percent * maxR;
+        const theta = percent * armWinding + armOffset;
+        
+        // Tighter clustering along arm spine, dispersing outward
+        const spread = (percent * 28) + 2.0;
+        const x = cx + Math.cos(theta) * r + (Math.random() - 0.5) * spread;
+        const y = cy + Math.sin(theta) * r + (Math.random() - 0.5) * spread;
+        
+        const starSize = Math.random() * 1.2 + 0.2;
+        const opacity = (0.3 + Math.random() * 0.7) * (1.0 - percent * 0.85);
+        
+        let colorString;
+        const rand = Math.random();
+        if (rand > 0.88) {
+          colorString = `rgba(170, 200, 255, ${opacity})`; // Blue-white OB stars
+        } else if (rand > 0.75) {
+          colorString = `rgba(255, 230, 200, ${opacity})`; // Yellow-white F/G stars
+        } else if (rand > 0.55) {
+          colorString = `rgba(255, 200, 150, ${opacity * 0.9})`; // Orange K stars
         } else {
-          color = `rgba(80, 150, 255, ${0.70 * (1 - percent)})`;
+          colorString = `rgba(255, 255, 250, ${opacity})`; // Pure white main sequence
         }
         
-        ctx.fillStyle = color;
+        ctx.fillStyle = colorString;
         ctx.beginPath();
         ctx.arc(x, y, starSize, 0, Math.PI * 2);
         ctx.fill();
         
-        if (Math.random() > 0.97) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * (1 - percent)})`;
-          ctx.beginPath();
-          ctx.arc(x, y, 0.85, 0, Math.PI * 2);
-          ctx.fill();
+        // Rare bright star halos (only for the brightest OB stars)
+        if (rand > 0.97 && percent < 0.6) {
+          drawSoftPuff(x, y, starSize * 4.0, `rgba(200, 220, 255, ${opacity * 0.25})`);
         }
       }
     }
-    
-    // 3. Dense obscuring gas lanes / dark dust bands
+
+    // 6. Inter-arm field stars (scattered randomly to fill the disk)
+    for (let i = 0; i < 1500; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = Math.random() * maxR * 0.9;
+      const x = cx + Math.cos(angle) * r;
+      const y = cy + Math.sin(angle) * r;
+      
+      const distFromCenter = r / maxR;
+      const starSize = Math.random() * 0.8 + 0.15;
+      const opacity = (0.15 + Math.random() * 0.3) * (1.0 - distFromCenter * 0.7);
+      
+      ctx.fillStyle = `rgba(255, 240, 220, ${opacity})`;
+      ctx.beginPath();
+      ctx.arc(x, y, starSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 7. Dark dust lanes — absorption bands that cross spiral arms (Hubble signature)
     for (let arm = 0; arm < numArms; arm++) {
-      const armOffset = (arm * Math.PI * 2) / numArms + 0.22;
-      for (let i = 100; i < 900; i += 3) {
-        const percent = i / 1000;
-        const r = percent * maxR;
-        const theta = percent * Math.PI * 4.2 + armOffset;
-        const spread = percent * 18 + 2;
+      const armOffset = (arm * Math.PI * 2) / numArms + 0.18;
+      for (let i = 0; i < 1200; i++) {
+        const percent = i / 1200;
+        const r = percent * maxR * 0.95;
+        const theta = percent * armWinding + armOffset;
+        
+        const spread = percent * 18 + 3;
         const x = cx + Math.cos(theta) * r + (Math.random() - 0.5) * spread;
         const y = cy + Math.sin(theta) * r + (Math.random() - 0.5) * spread;
         
-        ctx.fillStyle = `rgba(20, 6, 2, ${0.28 * (1 - percent)})`;
+        const dustRadius = Math.random() * 6 + 2.5;
+        const alpha = 0.12 * (1.0 - percent * 0.85) * (0.3 + Math.random() * 0.7);
+        
+        // Dark absorption using compositing
+        const g = ctx.createRadialGradient(x, y, 0, x, y, dustRadius);
+        g.addColorStop(0, `rgba(8, 2, 0, ${alpha})`);
+        g.addColorStop(0.6, `rgba(12, 4, 2, ${alpha * 0.5})`);
+        g.addColorStop(1, 'rgba(8, 2, 0, 0)');
+        ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.arc(x, y, Math.random() * 8 + 3.0, 0, Math.PI * 2);
+        ctx.arc(x, y, dustRadius, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+
+    // 8. Star-forming H-II region knots along arms (tiny pink/magenta bright spots)
+    for (let arm = 0; arm < numArms; arm++) {
+      const armOffset = (arm * Math.PI * 2) / numArms;
+      for (let i = 0; i < 40; i++) {
+        const percent = 0.2 + Math.random() * 0.6;
+        const r = percent * maxR;
+        const theta = percent * armWinding + armOffset + (Math.random() - 0.5) * 0.3;
+        
+        const x = cx + Math.cos(theta) * r + (Math.random() - 0.5) * 12;
+        const y = cy + Math.sin(theta) * r + (Math.random() - 0.5) * 12;
+        
+        drawSoftPuff(x, y, 3 + Math.random() * 5, `rgba(255, 120, 180, ${0.08 + Math.random() * 0.08})`);
       }
     }
     
@@ -1815,18 +1900,18 @@
 
   // ── Andromeda Galaxy Mesh Setup ──
   const andromedaTexture = createAndromedaTexture();
-  const andromedaGeo = new THREE.PlaneGeometry(90, 90);
+  const andromedaGeo = new THREE.PlaneGeometry(110, 110);
   const andromedaMaterial = new THREE.MeshBasicMaterial({
     map: andromedaTexture,
     transparent: true,
     blending: THREE.AdditiveBlending,
-    opacity: 0.88,
+    opacity: 0.72,
     side: THREE.DoubleSide,
     depthWrite: false
   });
   andromedaGalaxy = new THREE.Mesh(andromedaGeo, andromedaMaterial);
-  andromedaGalaxy.position.set(230, 45, -340); // Distant background balance
-  andromedaGalaxy.rotation.set(Math.PI / 4.5, -Math.PI / 5, Math.PI / 7);
+  andromedaGalaxy.position.set(250, 50, -380); // Pushed further back for depth
+  andromedaGalaxy.rotation.set(Math.PI / 5, -Math.PI / 5.5, Math.PI / 7);
   scene.add(andromedaGalaxy);
 
   // ── Sagittarius A* Black Hole — Clean Interstellar-style design with 3D model loader fallback ──

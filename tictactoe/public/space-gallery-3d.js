@@ -833,23 +833,23 @@
   }
 
   const moonConfigs = [
-    { name: 'Phobos', parent: 'Mars', radius: 0.5, distance: 6, orbit: 1.0, color: 0x8b8589 },
-    { name: 'Deimos', parent: 'Mars', radius: 0.3, distance: 9, orbit: 0.5, color: 0xa9a5a6 },
-    { name: 'Io', parent: 'Jupiter', radius: 1.0, distance: 26, orbit: 1.8, color: 0xe5e059 },
-    { name: 'Europa', parent: 'Jupiter', radius: 0.9, distance: 31, orbit: 1.4, color: 0x9fbcd1 },
-    { name: 'Ganymede', parent: 'Jupiter', radius: 1.3, distance: 37, orbit: 1.0, color: 0x8a7f72 },
-    { name: 'Callisto', parent: 'Jupiter', radius: 1.2, distance: 44, orbit: 0.7, color: 0x5a554a },
-    { name: 'Titan', parent: 'Saturn', radius: 1.4, distance: 42, orbit: 1.0, color: 0xdfa34b },
-    { name: 'Rhea', parent: 'Saturn', radius: 0.8, distance: 28, orbit: 1.5, color: 0xc0c0c0 },
-    { name: 'Dione', parent: 'Saturn', radius: 0.7, distance: 32, orbit: 1.2, color: 0xa0a0a0 },
-    { name: 'Tethys', parent: 'Saturn', radius: 0.6, distance: 24, orbit: 1.8, color: 0xb0b0b0 },
-    { name: 'Titania', parent: 'Uranus', radius: 0.9, distance: 18, orbit: 1.0, color: 0xabc2d6 },
-    { name: 'Oberon', parent: 'Uranus', radius: 0.8, distance: 22, orbit: 0.8, color: 0x9ab2c6 },
-    { name: 'Ariel', parent: 'Uranus', radius: 0.7, distance: 13, orbit: 1.5, color: 0xbcd2e6 },
-    { name: 'Umbriel', parent: 'Uranus', radius: 0.7, distance: 15, orbit: 1.2, color: 0x7a8c9e },
-    { name: 'Triton', parent: 'Neptune', radius: 1.0, distance: 16, orbit: -1.2, color: 0xc5dcc5 },
-    { name: 'Charon', parent: 'Pluto', radius: 0.7, distance: 4.5, orbit: 1.0, color: 0x9fa4a6 },
-    { name: 'Dysnomia', parent: 'Eris', radius: 0.4, distance: 4.0, orbit: 1.0, color: 0x8a8a8a }
+    { name: 'Phobos', parent: 'Mars', radius: 0.7, distance: 7, orbit: 1.0, color: 0x8b8589 },
+    { name: 'Deimos', parent: 'Mars', radius: 0.5, distance: 10, orbit: 0.5, color: 0xa9a5a6 },
+    { name: 'Io', parent: 'Jupiter', radius: 1.4, distance: 26, orbit: 1.8, color: 0xe5e059 },
+    { name: 'Europa', parent: 'Jupiter', radius: 1.2, distance: 31, orbit: 1.4, color: 0x9fbcd1 },
+    { name: 'Ganymede', parent: 'Jupiter', radius: 1.7, distance: 37, orbit: 1.0, color: 0x8a7f72 },
+    { name: 'Callisto', parent: 'Jupiter', radius: 1.6, distance: 44, orbit: 0.7, color: 0x5a554a },
+    { name: 'Titan', parent: 'Saturn', radius: 1.8, distance: 42, orbit: 1.0, color: 0xdfa34b },
+    { name: 'Rhea', parent: 'Saturn', radius: 1.1, distance: 28, orbit: 1.5, color: 0xc0c0c0 },
+    { name: 'Dione', parent: 'Saturn', radius: 1.0, distance: 32, orbit: 1.2, color: 0xa0a0a0 },
+    { name: 'Tethys', parent: 'Saturn', radius: 0.9, distance: 24, orbit: 1.8, color: 0xb0b0b0 },
+    { name: 'Titania', parent: 'Uranus', radius: 1.2, distance: 18, orbit: 1.0, color: 0xabc2d6 },
+    { name: 'Oberon', parent: 'Uranus', radius: 1.1, distance: 22, orbit: 0.8, color: 0x9ab2c6 },
+    { name: 'Ariel', parent: 'Uranus', radius: 1.0, distance: 13, orbit: 1.5, color: 0xbcd2e6 },
+    { name: 'Umbriel', parent: 'Uranus', radius: 1.0, distance: 15, orbit: 1.2, color: 0x7a8c9e },
+    { name: 'Triton', parent: 'Neptune', radius: 1.4, distance: 16, orbit: -1.2, color: 0xc5dcc5 },
+    { name: 'Charon', parent: 'Pluto', radius: 1.0, distance: 5.0, orbit: 1.0, color: 0x9fa4a6 },
+    { name: 'Dysnomia', parent: 'Eris', radius: 0.7, distance: 4.5, orbit: 1.0, color: 0x8a8a8a }
   ];
 
   window.SpaceGallery3D = {
@@ -987,6 +987,19 @@
       this.renderer.domElement.addEventListener('click', (e) => this.onClick(e));
       this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
       window.addEventListener('resize', () => this.onResize());
+      
+      // Abort camera glide on manual user interaction (drag/scroll/pinch)
+      // This allows the POV lock to keep tracking the planet's reference frame
+      // while letting the user freely zoom and rotate around the locked target.
+      this.controls.addEventListener('start', () => {
+        if (this.isGliding) this.isGliding = false;
+      });
+      this.renderer.domElement.addEventListener('pointerdown', () => {
+        if (this.isGliding) this.isGliding = false;
+      });
+      this.renderer.domElement.addEventListener('wheel', () => {
+        if (this.isGliding) this.isGliding = false;
+      }, { passive: true });
       
       // Load initial tab
       this.loadTab('solar');
@@ -1902,16 +1915,16 @@
       });
 
       // ── Create Asteroid Belt Particle System ──
-      const asteroidCount = 300;
+      const asteroidCount = 4000;
       const asteroidGeo = new THREE.BufferGeometry();
       const asteroidPositions = [];
       const asteroidData = [];
       
       for (let i = 0; i < asteroidCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const r = 245 + Math.random() * 35; // Positioned beautifully between Mars (235) and Jupiter (340)
+        const r = 245 + Math.random() * 55; // Wider belt between Mars (235) and Jupiter (340)
         const yOffset = (Math.random() - 0.5) * 8;
-        const speed = 0.0008 + Math.random() * 0.0006;
+        const speed = 0.0004 + Math.random() * 0.0006;
         
         asteroidPositions.push(Math.cos(angle) * r, yOffset, Math.sin(angle) * r);
         asteroidData.push({ r, angle, speed, y: yOffset });
@@ -1920,7 +1933,7 @@
       asteroidGeo.setAttribute('position', new THREE.Float32BufferAttribute(asteroidPositions, 3));
       
       const asteroidMat = new THREE.PointsMaterial({
-        size: 2.2,
+        size: 1.6,
         color: 0x8D847B,
         transparent: true,
         opacity: 0.65,
@@ -2903,7 +2916,7 @@
       // Orbit asteroid belt particles dynamically inside space gallery
       if (this.asteroidBeltMesh && this.currentTab === 'solar') {
         const posAttr = this.asteroidBeltMesh.geometry.attributes.position;
-        for (let i = 0; i < 300; i++) {
+        for (let i = 0; i < this.asteroidBeltData.length; i++) {
           const ast = this.asteroidBeltData[i];
           ast.angle += ast.speed;
           posAttr.setX(i, Math.cos(ast.angle) * ast.r);
