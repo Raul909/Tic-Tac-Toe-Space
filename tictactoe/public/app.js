@@ -160,6 +160,28 @@ function app() {
     // Custom Background Music State
     customMusicPlaying: false,
     customMusicName: '',
+    musicLoading: false,
+    showRetroGame: false,
+    musicAnalysisStatus: '',
+    retroGameScore: 0,
+    retroGameHighScore: 0,
+    retroGameLives: 3,
+    retroGameStatus: 'playing',
+    retroGame: null,
+    
+    // P2P Multiplayer State
+    p2pMethod: 'wifi', 
+    p2pRole: '', 
+    p2pTargetId: '',
+    p2pNearbyList: [],
+    p2pInviteFrom: null,
+    p2pManualOfferText: '',
+    p2pManualAnswerText: '',
+    p2pManualCopiedOffer: false,
+    p2pManualCopiedAnswer: false,
+    p2pConnectionStatus: 'idle',
+    peerConnection: null,
+    dataChannel: null,
     
     // Space Explorer Tab loading transition state
     spaceTabLoading: false,
@@ -195,6 +217,578 @@ function app() {
       }
     },
     
+    startRetroGame() {
+      this.retroGameScore = 0;
+      this.retroGameLives = 3;
+      this.retroGameStatus = 'playing';
+      this.retroGameHighScore = parseInt(localStorage.getItem('retroHighScore') || '0', 10);
+      
+      const canvas = document.getElementById('retro-game-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      canvas.width = 400;
+      canvas.height = 300;
+      
+      this.retroGame = {
+        running: true,
+        spaceship: { x: 188, y: 250, w: 24, h: 24, speed: 6 },
+        lasers: [],
+        aliens: [],
+        particles: [],
+        stars: [],
+        keys: {},
+        lastSpawn: 0,
+        lastShoot: 0,
+        animationFrameId: null
+      };
+      
+      // Generate stars
+      for (let i = 0; i < 30; i++) {
+        this.retroGame.stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 2,
+          speed: Math.random() * 2 + 1
+        });
+      }
+      
+      // Controls helper
+      const handleKeyDown = (e) => {
+        if (!this.retroGame) return;
+        if (['ArrowLeft', 'ArrowRight', 'a', 'd', 'A', 'D'].includes(e.key)) {
+          this.retroGame.keys[e.key] = true;
+        }
+      };
+      const handleKeyUp = (e) => {
+        if (!this.retroGame) return;
+        if (['ArrowLeft', 'ArrowRight', 'a', 'd', 'A', 'D'].includes(e.key)) {
+          this.retroGame.keys[e.key] = false;
+        }
+      };
+      
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+      
+      this.retroGame._handleKeyDown = handleKeyDown;
+      this.retroGame._handleKeyUp = handleKeyUp;
+      
+      // Mouse tracking
+      const handleMouseMove = (e) => {
+        if (!this.retroGame) return;
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const scaleX = canvas.width / rect.width;
+        this.retroGame.spaceship.x = Math.max(0, Math.min(canvas.width - this.retroGame.spaceship.w, mouseX * scaleX - this.retroGame.spaceship.w / 2));
+      };
+      canvas.addEventListener('mousemove', handleMouseMove);
+      this.retroGame._handleMouseMove = handleMouseMove;
+
+      // Touch tracking (mobile/tablet drag)
+      const handleTouchMove = (e) => {
+        if (!this.retroGame || e.touches.length === 0) return;
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touchX = e.touches[0].clientX - rect.left;
+        const scaleX = canvas.width / rect.width;
+        this.retroGame.spaceship.x = Math.max(0, Math.min(canvas.width - this.retroGame.spaceship.w, touchX * scaleX - this.retroGame.spaceship.w / 2));
+      };
+      canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+      this.retroGame._handleTouchMove = handleTouchMove;
+      
+      // Click on canvas to restart if game over
+      const handleCanvasClick = () => {
+        if (this.retroGameStatus === 'gameover') {
+          this.startRetroGame();
+        }
+      };
+      canvas.addEventListener('click', handleCanvasClick);
+      this.retroGame._handleCanvasClick = handleCanvasClick;
+
+      // Explosion creator
+      const createExplosion = (x, y, color) => {
+        for (let i = 0; i < 8; i++) {
+          this.retroGame.particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            size: Math.random() * 3 + 1,
+            color: color,
+            alpha: 1.0
+          });
+        }
+      };
+      
+      // Game loop
+      const updateAndDraw = () => {
+        if (!this.retroGame || !this.retroGame.running) return;
+        
+        const ship = this.retroGame.spaceship;
+        const keys = this.retroGame.keys;
+        
+        if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+          ship.x = Math.max(0, ship.x - ship.speed);
+        }
+        if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+          ship.x = Math.min(canvas.width - ship.w, ship.x + ship.speed);
+        }
+        
+        ctx.fillStyle = '#050510';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Stars
+        ctx.fillStyle = '#ffffff';
+        this.retroGame.stars.forEach(star => {
+          star.y += star.speed;
+          if (star.y > canvas.height) {
+            star.y = 0;
+            star.x = Math.random() * canvas.width;
+          }
+          ctx.fillRect(star.x, star.y, star.size, star.size);
+        });
+        
+        // Engine fire
+        const flameHeight = 8 + Math.random() * 8;
+        ctx.fillStyle = '#ff5500';
+        ctx.beginPath();
+        ctx.moveTo(ship.x + ship.w / 2 - 4, ship.y + ship.h);
+        ctx.lineTo(ship.x + ship.w / 2 + 4, ship.y + ship.h);
+        ctx.lineTo(ship.x + ship.w / 2, ship.y + ship.h + flameHeight);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Spaceship (neon blue rocket)
+        ctx.fillStyle = '#00d4ff';
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(ship.x + ship.w / 2, ship.y);
+        ctx.lineTo(ship.x, ship.y + ship.h);
+        ctx.lineTo(ship.x + ship.w / 2, ship.y + ship.h - 4);
+        ctx.lineTo(ship.x + ship.w, ship.y + ship.h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // Lasers
+        ctx.strokeStyle = '#ff00ff';
+        ctx.lineWidth = 3;
+        for (let l = this.retroGame.lasers.length - 1; l >= 0; l--) {
+          const laser = this.retroGame.lasers[l];
+          laser.y += laser.vy;
+          ctx.beginPath();
+          ctx.moveTo(laser.x, laser.y);
+          ctx.lineTo(laser.x, laser.y - 8);
+          ctx.stroke();
+          
+          if (laser.y < 0) {
+            this.retroGame.lasers.splice(l, 1);
+          }
+        }
+        
+        // Auto-shoot
+        const now = Date.now();
+        if (now - this.retroGame.lastShoot > 220) {
+          this.retroGame.lasers.push({
+            x: ship.x + ship.w / 2,
+            y: ship.y,
+            vy: -7
+          });
+          this.retroGame.lastShoot = now;
+          if (window.SoundManager) {
+            window.SoundManager.playTone(1200, 'sine', 0.05, 0, 0.02);
+          }
+        }
+        
+        // Spawn aliens
+        if (now - this.retroGame.lastSpawn > 1000) {
+          const size = 20;
+          this.retroGame.aliens.push({
+            x: Math.random() * (canvas.width - size),
+            y: -size,
+            w: size,
+            h: size,
+            speed: Math.random() * 1.5 + 1.2,
+            color: ['#39ff14', '#ff007f', '#ffff00'][Math.floor(Math.random() * 3)],
+            type: Math.floor(Math.random() * 2)
+          });
+          this.retroGame.lastSpawn = now;
+        }
+        
+        // Aliens
+        for (let a = this.retroGame.aliens.length - 1; a >= 0; a--) {
+          const alien = this.retroGame.aliens[a];
+          alien.y += alien.speed;
+          
+          ctx.fillStyle = alien.color;
+          
+          if (alien.type === 0) {
+            ctx.beginPath();
+            ctx.ellipse(alien.x + alien.w / 2, alien.y + alien.h / 2, alien.w / 2, alien.h / 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(alien.x + alien.w / 2, alien.y + alien.h / 2 - 2, alien.w / 4, Math.PI, 0);
+            ctx.fill();
+          } else {
+            ctx.fillRect(alien.x + 4, alien.y, alien.w - 8, alien.h - 4);
+            ctx.fillRect(alien.x, alien.y, 2, 6);
+            ctx.fillRect(alien.x + alien.w - 2, alien.y, 2, 6);
+          }
+          
+          // Collision spaceship
+          if (alien.x < ship.x + ship.w &&
+              alien.x + alien.w > ship.x &&
+              alien.y < ship.y + ship.h &&
+              alien.y + alien.h > ship.y) {
+            
+            this.retroGame.aliens.splice(a, 1);
+            this.retroGameLives--;
+            createExplosion(alien.x + alien.w / 2, alien.y + alien.h / 2, '#ff5500');
+            
+            if (window.SoundManager) {
+              window.SoundManager.playTone(180, 'sawtooth', 0.25, 0, 0.12);
+            }
+            
+            if (this.retroGameLives <= 0) {
+              this.retroGame.running = false;
+              this.retroGameStatus = 'gameover';
+              
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              
+              ctx.fillStyle = '#ff007f';
+              ctx.font = '18px Courier, monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 10);
+              
+              ctx.fillStyle = '#ffffff';
+              ctx.font = '10px Courier, monospace';
+              ctx.fillText(`Score: ${this.retroGameScore}`, canvas.width / 2, canvas.height / 2 + 20);
+              ctx.fillText('Click Game Area to Restart', canvas.width / 2, canvas.height / 2 + 40);
+              break;
+            }
+            continue;
+          }
+          
+          // Collision lasers
+          let hit = false;
+          for (let l = this.retroGame.lasers.length - 1; l >= 0; l--) {
+            const laser = this.retroGame.lasers[l];
+            if (laser.x > alien.x && laser.x < alien.x + alien.w &&
+                laser.y < alien.y + alien.h && laser.y > alien.y) {
+              
+              this.retroGame.aliens.splice(a, 1);
+              this.retroGame.lasers.splice(l, 1);
+              hit = true;
+              
+              this.retroGameScore += 10;
+              if (this.retroGameScore > this.retroGameHighScore) {
+                this.retroGameHighScore = this.retroGameScore;
+                localStorage.setItem('retroHighScore', this.retroGameHighScore);
+              }
+              
+              createExplosion(alien.x + alien.w / 2, alien.y + alien.h / 2, alien.color);
+              
+              if (window.SoundManager) {
+                window.SoundManager.playTone(350, 'square', 0.08, 0, 0.04);
+              }
+              break;
+            }
+          }
+          
+          if (hit) continue;
+          
+          if (alien.y > canvas.height) {
+            this.retroGame.aliens.splice(a, 1);
+          }
+        }
+        
+        // Particles
+        for (let p = this.retroGame.particles.length - 1; p >= 0; p--) {
+          const part = this.retroGame.particles[p];
+          part.x += part.vx;
+          part.y += part.vy;
+          part.alpha -= 0.03;
+          
+          ctx.fillStyle = part.color;
+          ctx.globalAlpha = Math.max(0, part.alpha);
+          ctx.fillRect(part.x, part.y, part.size, part.size);
+          ctx.globalAlpha = 1.0;
+          
+          if (part.alpha <= 0) {
+            this.retroGame.particles.splice(p, 1);
+          }
+        }
+        
+        this.retroGame.animationFrameId = requestAnimationFrame(updateAndDraw);
+      };
+      
+      this.retroGame.animationFrameId = requestAnimationFrame(updateAndDraw);
+    },
+    
+    stopRetroGame() {
+      if (this.retroGame) {
+        this.retroGame.running = false;
+        if (this.retroGame.animationFrameId) {
+          cancelAnimationFrame(this.retroGame.animationFrameId);
+        }
+        window.removeEventListener('keydown', this.retroGame._handleKeyDown);
+        window.removeEventListener('keyup', this.retroGame._handleKeyUp);
+        
+        const canvas = document.getElementById('retro-game-canvas');
+        if (canvas) {
+          canvas.removeEventListener('mousemove', this.retroGame._handleMouseMove);
+          canvas.removeEventListener('touchmove', this.retroGame._handleTouchMove);
+          canvas.removeEventListener('click', this.retroGame._handleCanvasClick);
+        }
+        this.retroGame = null;
+      }
+    },
+    
+    openP2PLobby() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      this.p2pMethod = 'wifi';
+      this.p2pRole = '';
+      this.p2pNearbyList = [];
+      this.p2pInviteFrom = null;
+      this.p2pManualOfferText = '';
+      this.p2pManualAnswerText = '';
+      this.p2pManualCopiedOffer = false;
+      this.p2pManualCopiedAnswer = false;
+      this.p2pConnectionStatus = 'idle';
+      this.setScreen('p2p');
+      
+      const token = localStorage.getItem('token');
+      if (token && !this.socket) {
+        this.connectSocket(token);
+      }
+    },
+    
+    closeP2PLobby() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      this.stopP2PDiscovery();
+      this.leaveGame();
+      this.setScreen('lobby');
+    },
+
+    startP2PDiscovery() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      if (!this.socket || !this.socket.connected) {
+        this.lobbyError = 'Cannot scan. Offline from server connection.';
+        setTimeout(() => this.lobbyError = '', 3000);
+        return;
+      }
+      this.p2pConnectionStatus = 'discovering';
+      this.socket.emit('p2p:discover', { username: this.user.username || 'Anonymous Astronaut' });
+    },
+
+    stopP2PDiscovery() {
+      if (this.socket && this.p2pConnectionStatus === 'discovering') {
+        this.socket.emit('p2p:cancel');
+      }
+      this.p2pConnectionStatus = 'idle';
+      this.p2pNearbyList = [];
+    },
+
+    inviteP2PPeer(socketId) {
+      if (window.SoundManager) window.SoundManager.play('click');
+      if (this.socket) {
+        this.p2pTargetId = socketId;
+        this.p2pConnectionStatus = 'host-waiting';
+        this.socket.emit('p2p:invite', { targetSocketId: socketId });
+      }
+    },
+
+    acceptP2PInvite() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      if (this.socket && this.p2pInviteFrom) {
+        const hostId = this.p2pInviteFrom.socketId;
+        this.p2pTargetId = hostId;
+        this.p2pRole = 'joiner';
+        this.mySymbol = 'O';
+        this.p2pConnectionStatus = 'join-waiting';
+        this.socket.emit('p2p:accept', { targetSocketId: hostId });
+        
+        this.p2pInviteFrom = null;
+        this.initP2PConnection();
+      }
+    },
+
+    rejectP2PInvite() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      this.p2pInviteFrom = null;
+    },
+
+    initP2PConnection() {
+      const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+      this.peerConnection = new RTCPeerConnection(configuration);
+      
+      this.peerConnection.onicecandidate = (event) => {
+        if (event.candidate && this.p2pMethod === 'wifi' && this.socket) {
+          this.socket.emit('p2p:signal', {
+            targetSocketId: this.p2pTargetId,
+            signal: { candidate: event.candidate }
+          });
+        }
+      };
+
+      this.peerConnection.onconnectionstatechange = () => {
+        if (this.peerConnection) {
+          console.log("P2P State Change:", this.peerConnection.connectionState);
+          if (this.peerConnection.connectionState === 'failed' || this.peerConnection.connectionState === 'closed') {
+            this.leaveGame();
+            this.lobbyError = 'P2P Link disconnected.';
+            setTimeout(() => this.lobbyError = '', 3000);
+          }
+        }
+      };
+
+      if (this.p2pRole === 'host') {
+        this.dataChannel = this.peerConnection.createDataChannel('tictactoe-p2p', { ordered: true });
+        this.bindDataChannelEvents();
+        
+        this.peerConnection.createOffer()
+          .then(offer => this.peerConnection.setLocalDescription(offer))
+          .then(() => {
+            if (this.p2pMethod === 'wifi' && this.socket) {
+              this.socket.emit('p2p:signal', {
+                targetSocketId: this.p2pTargetId,
+                signal: { sdp: this.peerConnection.localDescription }
+              });
+            }
+          });
+      } else {
+        this.peerConnection.ondatachannel = (event) => {
+          this.dataChannel = event.channel;
+          this.bindDataChannelEvents();
+        };
+      }
+    },
+
+    handleP2PSignal(signal) {
+      if (!this.peerConnection) return;
+      if (signal.sdp) {
+        this.peerConnection.setRemoteDescription(new RTCSessionDescription(signal.sdp))
+          .then(() => {
+            if (this.p2pRole === 'joiner') {
+              return this.peerConnection.createAnswer()
+                .then(answer => this.peerConnection.setLocalDescription(answer))
+                .then(() => {
+                  if (this.socket) {
+                    this.socket.emit('p2p:signal', {
+                      targetSocketId: this.p2pTargetId,
+                      signal: { sdp: this.peerConnection.localDescription }
+                    });
+                  }
+                });
+            }
+          })
+          .catch(err => console.error("Failed to handle P2P SDP signal:", err));
+      } else if (signal.candidate) {
+        this.peerConnection.addIceCandidate(new RTCIceCandidate(signal.candidate))
+          .catch(err => console.error("Failed to add P2P ICE candidate:", err));
+      }
+    },
+
+    startManualP2P(isHost) {
+      if (window.SoundManager) window.SoundManager.play('click');
+      this.stopP2PDiscovery();
+      
+      if (this.peerConnection) this.peerConnection.close();
+      
+      this.p2pRole = isHost ? 'host' : 'joiner';
+      this.p2pMethod = 'manual';
+      this.p2pManualOfferText = '';
+      this.p2pManualAnswerText = '';
+      this.p2pManualCopiedOffer = false;
+      this.p2pManualCopiedAnswer = false;
+      
+      const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+      this.peerConnection = new RTCPeerConnection(configuration);
+      
+      this.peerConnection.onicecandidate = (event) => {
+        if (!event.candidate) {
+          const code = btoa(JSON.stringify({ sdp: this.peerConnection.localDescription }));
+          if (this.p2pRole === 'host') {
+            this.p2pManualOfferText = code;
+            this.p2pConnectionStatus = 'ready: copy code';
+          } else {
+            this.p2pManualAnswerText = code;
+            this.p2pConnectionStatus = 'ready: copy response';
+          }
+        }
+      };
+
+      this.peerConnection.onconnectionstatechange = () => {
+        if (this.peerConnection) {
+          if (this.peerConnection.connectionState === 'failed' || this.peerConnection.connectionState === 'closed') {
+            this.leaveGame();
+          }
+        }
+      };
+
+      if (isHost) {
+        this.p2pConnectionStatus = 'gathering ice...';
+        this.dataChannel = this.peerConnection.createDataChannel('tictactoe-p2p', { ordered: true });
+        this.bindDataChannelEvents();
+        
+        this.peerConnection.createOffer()
+          .then(offer => this.peerConnection.setLocalDescription(offer));
+      } else {
+        this.p2pConnectionStatus = 'waiting for host code...';
+        this.peerConnection.ondatachannel = (event) => {
+          this.dataChannel = event.channel;
+          this.bindDataChannelEvents();
+        };
+      }
+    },
+
+    generateManualAnswer() {
+      if (!this.p2pManualOfferText) return;
+      try {
+        const data = JSON.parse(atob(this.p2pManualOfferText.trim()));
+        if (data.sdp) {
+          this.p2pConnectionStatus = 'setting host sdp...';
+          this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp))
+            .then(() => this.peerConnection.createAnswer())
+            .then(answer => this.peerConnection.setLocalDescription(answer))
+            .then(() => {
+              this.p2pConnectionStatus = 'generating response...';
+            });
+        }
+      } catch (e) {
+        this.p2pConnectionStatus = 'invalid connection code';
+      }
+    },
+
+    connectManualP2P() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      if (!this.p2pManualAnswerText) return;
+      try {
+        const data = JSON.parse(atob(this.p2pManualAnswerText.trim()));
+        if (data.sdp) {
+          this.p2pConnectionStatus = 'setting joiner sdp...';
+          this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        }
+      } catch (e) {
+        this.p2pConnectionStatus = 'invalid response code';
+      }
+    },
+
+    copyOfferCode() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      navigator.clipboard.writeText(this.p2pManualOfferText);
+      this.p2pManualCopiedOffer = true;
+      setTimeout(() => this.p2pManualCopiedOffer = false, 2000);
+    },
+
+    copyAnswerCode() {
+      if (window.SoundManager) window.SoundManager.play('click');
+      navigator.clipboard.writeText(this.p2pManualAnswerText);
+      this.p2pManualCopiedAnswer = true;
+      setTimeout(() => this.p2pManualCopiedAnswer = false, 2000);
+    },
+    
     // Space Gallery
     spaceTab: 'solar',
     spaceZoom: 1,
@@ -218,6 +812,11 @@ function app() {
         }
       }
       
+      // Muffle background audio (cinematic blur effect) when on space gallery screen
+      if (window.SoundManager) {
+        window.SoundManager.setFilterActive(screenName === 'space');
+      }
+
       // Toggle space-3d rendering and apply cinematic blur & drift transition on pause
       if (window.CinematicSpace) {
         const shouldPause = (screenName === 'space');
@@ -243,27 +842,23 @@ function app() {
     },
 
     init() {
-      // Keyboard shortcuts: F for custom music upload/toggle, Shift+F for fullscreen
+      window.appInstance = this;
+
+      // Keyboard shortcuts: F key toggles fullscreen only
       document.addEventListener('keydown', (e) => {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
           return;
         }
         if (e.key.toLowerCase() === 'f') {
           e.preventDefault();
-          if (e.shiftKey) {
-            // Fullscreen toggle on Shift+F
-            if (!document.fullscreenElement) {
-              document.documentElement.requestFullscreen().catch(err => {
-                console.error(`Error attempting to enable fullscreen: ${err.message}`);
-              });
-            } else {
-              if (document.exitFullscreen) {
-                document.exitFullscreen();
-              }
-            }
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+              console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
           } else {
-            // Trigger custom music upload or play/pause toggle
-            this.toggleCustomMusic();
+            if (document.exitFullscreen) {
+              document.exitFullscreen();
+            }
           }
         }
       });
@@ -289,6 +884,15 @@ function app() {
       });
       this.$watch('spaceSpeed', value => {
         if (window.SpaceGallery) window.SpaceGallery.speed = parseFloat(value);
+      });
+      
+      // Watch for retro game visibility to start/stop
+      this.$watch('showRetroGame', value => {
+        if (value) {
+          setTimeout(() => this.startRetroGame(), 80);
+        } else {
+          this.stopRetroGame();
+        }
       });
       
       // Watch for accessibility changes
@@ -513,6 +1117,28 @@ function app() {
           }
           this.lobbyError = '';
         }, 2000);
+      });
+
+      // P2P WiFi Discovery & Signaling Listeners
+      this.socket.on('p2p:nearby', (nearby) => {
+        this.p2pNearbyList = nearby;
+      });
+
+      this.socket.on('p2p:invite-received', ({ fromSocketId, fromUsername }) => {
+        this.p2pInviteFrom = { socketId: fromSocketId, username: fromUsername };
+      });
+
+      this.socket.on('p2p:accepted', ({ targetSocketId }) => {
+        this.p2pTargetId = targetSocketId;
+        this.p2pRole = 'host';
+        this.mySymbol = 'X';
+        this.p2pConnectionStatus = 'connecting';
+        this.initP2PConnection();
+      });
+
+      this.socket.on('p2p:signal', ({ fromSocketId, signal }) => {
+        this.p2pTargetId = fromSocketId;
+        this.handleP2PSignal(signal);
       });
 
       this.socket.on('tournament:created', ({ code }) => {
@@ -852,6 +1478,31 @@ function app() {
         }
         this.currentTurn = 'O';
         setTimeout(() => this.aiMove(), 500);
+      } else if (this.mode === 'p2p') {
+        const symbol = this.mySymbol;
+        this.board[index] = symbol;
+        
+        if (this.dataChannel && this.dataChannel.readyState === 'open') {
+          this.dataChannel.send(JSON.stringify({
+            type: 'game:move',
+            index: index
+          }));
+        }
+        
+        const winLine = this.checkWin(symbol);
+        if (winLine) {
+          this.scores[symbol]++;
+          this.animateWinningLine(winLine);
+          setTimeout(() => this.showGameOver(symbol, false), 500);
+          return;
+        }
+        if (this.board.every(c => c)) {
+          this.scores.D++;
+          this.showGameOver(null, true);
+          return;
+        }
+        this.currentTurn = symbol === 'X' ? 'O' : 'X';
+        this.updateGameStatus();
       } else {
         this.socket.emit('game:move', { code: this.roomCode, index });
       }
@@ -1431,6 +2082,11 @@ function app() {
     },
     
     getSoundPackDescription(pack) {
+      if (pack === 'custom') {
+        const name = window.SoundManager ? window.SoundManager.customMusicName : '';
+        const vibe = window.customMusicVibe ? ` [${window.customMusicVibe}]` : '';
+        return `Beat-sliced: ${name || 'Uploaded Track'}${vibe}`;
+      }
       const descriptions = {
         scifi: 'Futuristic electronic sounds',
         retro: 'Classic 8-bit chiptune',
@@ -1461,6 +2117,14 @@ function app() {
         }
         
         this.updateGameStatus();
+      } else if (this.mode === 'p2p') {
+        if (this.dataChannel && this.dataChannel.readyState === 'open') {
+          this.dataChannel.send(JSON.stringify({
+            type: 'game:rematch-request'
+          }));
+        }
+        this.lobbyError = 'Rematch request sent to opponent...';
+        setTimeout(() => this.lobbyError = '', 3000);
       } else {
         this.socket.emit('game:rematch', { code: this.roomCode });
       }
@@ -1470,6 +2134,16 @@ function app() {
       this.clearWinningCells();
       this.stopBlitzTimer();
       this.gameOver = false;
+      
+      if (this.peerConnection) {
+        try { this.peerConnection.close(); } catch(e){}
+        this.peerConnection = null;
+      }
+      if (this.dataChannel) {
+        try { this.dataChannel.close(); } catch(e){}
+        this.dataChannel = null;
+      }
+      
       if (this.mode === 'online' && this.roomCode) {
         this.socket.emit('room:leave', { code: this.roomCode });
       }
@@ -1478,7 +2152,7 @@ function app() {
       } else {
         this.setScreen('lobby');
       }
-      this.board = Array(9).fill(null);
+      this.board = Array(this.boardSize * this.boardSize).fill(null);
       this.gameActive = false;
     },
     

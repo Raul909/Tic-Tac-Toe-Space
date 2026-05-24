@@ -22,9 +22,11 @@ If you find this premium space-combat experience interesting, please **Star** an
 ## 🚀 Core Systems & Features
 
 *   **🌐 Real-Time Warp Link**: Join/create multiplayer sectors instantly via unique, ephemeral 4-character encryption keys (room codes).
+*   **🔗 Local P2P Multiplayer (WebRTC)**: Play with another player on the same WiFi or via a close connection directly in the browser, peer-to-peer, with no server dependency!
 *   **🤖 Operator Training AI**: Test grid formations against a Minimax AI agent with Alpha-Beta pruning, operating across three tactical difficulties (`easy`, `normal`, `hard`).
 *   **🌌 3D Celestial Cartography**: Explore a fully interactive 3D WebGL solar system, procedurally textured nearby stars with twinkling coronas, shimmering constellation links, and GPU-drifting volumetric gas nebulae powered by custom shaders.
-*   **🎵 Custom Acoustic Deck**: Upload your own orbital soundtrack to play in the background while commanding the grid. Audio tracks loop continuously and sync with the master audio mute controls.
+*   **🎵 Custom Acoustic Deck & AI Song Analyzer**: Upload your own orbital soundtrack! An algorithm judges and slices the audio to extract dynamic Sound Effects (SFX) and background loops to play while you command the grid.
+*   **👾 Retro Space Shooter Mini-Game**: Enjoy a fully-playable, canvas-based retro space shooter mini-game that runs while your custom audio buffers are processing.
 *   **⚡ Quantum Reconnection**: A 30-second handshake grace period prevents match termination during solar flares (network drops).
 *   **🏆 Combat Badge Ledger**: 8 unlockable achievements with persistent local telemetry tracking.
 *   **📱 Tactical Mobile HUD & Eased Transitions**: Eased cross-fade screens and modal transitions. Viewport locking, touch-safe tap targets (minimum 44x44px), and adaptive layouts for pocket and tablet devices with dynamic WebGL aspect ratio correction.

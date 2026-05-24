@@ -3,6 +3,7 @@ const chatHandler = require('./handlers/chat');
 const roomHandler = require('./handlers/room');
 const gameHandler = require('./handlers/game');
 const disconnectHandler = require('./handlers/disconnect');
+const p2pHandler = require('./handlers/p2p');
 const { tournamentHandler, handleTournamentResult } = require('./handlers/tournament');
 const rateLimiter = require('../rateLimiter');
 
@@ -39,6 +40,7 @@ function setupSocket(io, context) {
     roomHandler(socket, fullContext);
     gameHandler(socket, fullContext); // Now has access to handleTournamentResult
     tournamentHandler(socket, fullContext);
+    p2pHandler(socket, fullContext);
     disconnectHandler(socket, fullContext);
   });
 }

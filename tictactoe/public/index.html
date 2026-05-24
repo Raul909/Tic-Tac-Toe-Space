@@ -39,6 +39,10 @@
         that cannot survive a CSS file round-trip reliably in all browsers.
   -->
   <style>
+    @keyframes scan {
+      0% { left: -30%; }
+      100% { left: 100%; }
+    }
     /* ── Winning animations (referenced by Alpine x-bind:class) ─────────── */
     @keyframes winPulse {
       0%, 100% { transform: scale(1);    box-shadow: 0 0  0px rgba(0,212,255,0);   }
@@ -101,7 +105,7 @@
 
     <!-- Custom Music Upload/Control Widget -->
     <div class="glass px-2 sm:px-3 py-1 sm:py-1.5 rounded-full flex items-center gap-1 sm:gap-2 hover:bg-gray-800 transition text-[10px] sm:text-sm select-none" style="backdrop-filter: blur(12px); border: 1px solid rgba(0,212,255,0.25);">
-      <button @click="toggleCustomMusic()" class="text-nasa flex items-center gap-1 sm:gap-1.5 focus:outline-none" :title="customMusicName ? 'Click to Play/Pause. Double-click to change song.' : 'Upload Custom BG Music (Shortcut: F)'" @dblclick="triggerMusicUpload()">
+      <button @click="toggleCustomMusic()" class="text-nasa flex items-center gap-1 sm:gap-1.5 focus:outline-none" :title="customMusicName ? 'Click to Play/Pause. Double-click to change song.' : 'Upload Custom BG Music'" @dblclick="triggerMusicUpload()">
         <!-- SVG spinning vinyl CD disc icon -->
         <svg class="w-4 h-4 sm:w-5 sm:h-5 animate-spin-slow" :class="customMusicPlaying ? '' : 'style-paused'" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z"/>
@@ -470,8 +474,14 @@
           <h3 class="text-nasa text-[10px] tracking-widest mt-6 mb-3 sm:mb-4 font-retro">👥 OFFLINE PASS & PLAY</h3>
           <button @click="startOffline()" 
                   style="--btn-shadow: #007799;"
-                  class="w-full btn-3d bg-nasa text-black font-retro py-3 sm:py-4 rounded tracking-wide text-[11px]">
+                  class="w-full btn-3d bg-nasa text-black font-retro py-3 sm:py-4 rounded tracking-wide text-[11px] mb-3">
             🚀 LOCAL 2-PLAYER MODE
+          </button>
+          
+          <button @click="openP2PLobby()" 
+                  style="--btn-shadow: #660088;"
+                  class="w-full btn-3d bg-[#9b5de5] text-white font-retro py-3 sm:py-4 rounded tracking-wide text-[11px]">
+            🛰️ START LOCAL P2P LINK (WIFI)
           </button>
           
           <button @click="openLeaderboard()" 
@@ -633,6 +643,123 @@
 
       <div class="mt-6 text-center">
         <button @click="closeLeaderboard()" class="bg-gray-800 px-6 py-2 rounded hover:bg-gray-700 transition font-retro text-[10px]">← BACK TO BASE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- P2P Local Discovery Screen -->
+  <div x-show="screen === 'p2p'" 
+       x-transition:enter="transition opacity ease-out duration-350"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition opacity ease-in duration-250 absolute inset-x-0 top-0 w-full min-h-screen z-10"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="content-layer min-h-screen p-3 sm:p-4">
+    <div class="max-w-xl mx-auto">
+      <div class="flex justify-between items-center mb-4 sm:mb-6">
+        <h2 class="text-xs sm:text-sm font-bold font-retro-glow text-nasa">🛰️ LOCAL P2P MULTIPLAYER LINK</h2>
+        <button @click="closeP2PLobby()" class="bg-gray-800 px-4 py-2 rounded hover:bg-gray-700 transition font-retro text-[10px]">← BACK</button>
+      </div>
+
+      <div class="glass nasa-bracket rounded-lg p-5 space-y-6">
+        <p class="text-[10px] text-gray-400 font-mono leading-relaxed text-center">
+          Connect directly browser-to-browser with another player on the same WiFi network or close link. 
+          Zero server lag, direct WebRTC data streaming!
+        </p>
+
+        <div class="flex border-b border-gray-800 pb-2">
+          <button @click="p2pMethod = 'wifi'; p2pRole='';" :class="p2pMethod === 'wifi' ? 'text-nasa border-b-2 border-nasa' : 'text-gray-500'" class="flex-1 py-2 text-center font-retro text-[10px] uppercase">
+            ⚡ Same WiFi Discovery
+          </button>
+          <button @click="p2pMethod = 'manual'; p2pRole='';" :class="p2pMethod === 'manual' ? 'text-nasa border-b-2 border-nasa' : 'text-gray-500'" class="flex-1 py-2 text-center font-retro text-[10px] uppercase">
+            🔗 Offline Code Exchange
+          </button>
+        </div>
+
+        <div x-show="p2pMethod === 'wifi'" class="space-y-4">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] font-mono text-gray-400">STATUS:</span>
+            <span :class="p2pConnectionStatus === 'discovering' ? 'text-nasa animate-pulse' : 'text-gray-500'" class="text-[10px] font-mono font-bold" x-text="p2pConnectionStatus.toUpperCase()"></span>
+          </div>
+
+          <div class="flex gap-2">
+            <button @click="startP2PDiscovery()" :disabled="p2pConnectionStatus === 'discovering'" class="flex-1 btn-hud btn-hud-primary py-2.5 text-[10px] font-retro">
+              🔍 START SCANNING
+            </button>
+            <button @click="stopP2PDiscovery()" :disabled="p2pConnectionStatus !== 'discovering'" class="btn-hud btn-hud-danger py-2.5 px-4 text-[10px] font-retro">
+              STOP
+            </button>
+          </div>
+
+          <div class="border border-gray-800 rounded-lg p-3 bg-black/40">
+            <h4 class="text-[9px] text-nasa tracking-widest font-retro mb-2 flex items-center justify-between">
+              <span>📡 NEARBY STATIONS FOUND</span>
+              <span class="text-xs animate-ping" x-show="p2pConnectionStatus === 'discovering'">●</span>
+            </h4>
+            
+            <div class="space-y-2 max-h-[150px] overflow-y-auto">
+              <template x-for="peer in p2pNearbyList">
+                <div class="flex items-center justify-between bg-gray-900/60 p-2.5 rounded border border-gray-800">
+                  <span class="text-xs font-bold text-white font-mono" x-text="peer.username"></span>
+                  <button @click="inviteP2PPeer(peer.socketId)" class="bg-nasa hover:bg-nasa/80 text-black px-3 py-1 rounded text-[9px] font-retro font-bold">
+                    🚀 INVITE
+                  </button>
+                </div>
+              </template>
+              <div x-show="p2pNearbyList.length === 0" class="text-center py-4 text-[10px] text-gray-600 font-mono">
+                No nearby players found. Make sure both players clicked scan on the same WiFi!
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div x-show="p2pMethod === 'manual'" class="space-y-4">
+          <div class="grid grid-cols-2 gap-2">
+            <button @click="startManualP2P(true)" :class="p2pRole === 'host' ? 'border-nasa bg-nasa/20' : 'border-gray-800'" class="glass border-2 py-3 rounded text-[10px] font-retro text-center">
+              👑 HOST GAME
+            </button>
+            <button @click="startManualP2P(false)" :class="p2pRole === 'joiner' ? 'border-nasa bg-nasa/20' : 'border-gray-800'" class="glass border-2 py-3 rounded text-[10px] font-retro text-center">
+              🛰️ JOIN GAME
+            </button>
+          </div>
+
+          <div x-show="p2pRole === 'host'" class="space-y-3">
+            <div class="space-y-1">
+              <label class="text-[9px] text-gray-400 font-mono block">1. COPY YOUR CONNECTION CODE (Send to Joiner):</label>
+              <div class="flex gap-2">
+                <input type="text" readonly :value="p2pManualOfferText" placeholder="Generating connection code..." class="flex-1 bg-gray-900 border border-gray-800 rounded px-3 py-2 text-xs font-mono truncate text-gray-300">
+                <button @click="copyOfferCode()" class="bg-nasa text-black px-3 py-2 rounded text-[10px] font-retro font-bold" x-text="p2pManualCopiedOffer ? 'COPIED!' : 'COPY'"></button>
+              </div>
+            </div>
+            
+            <div class="space-y-1">
+              <label class="text-[9px] text-gray-400 font-mono block">2. PASTE JOINER'S RESPONSE CODE:</label>
+              <textarea x-model="p2pManualAnswerText" rows="3" placeholder="Paste response here..." class="w-full bg-gray-900 border border-gray-800 rounded p-2 text-xs font-mono text-gray-300 focus:outline-none focus:border-nasa"></textarea>
+            </div>
+
+            <button @click="connectManualP2P()" class="w-full btn-hud btn-hud-primary py-2.5 text-[10px] font-retro">
+              🚀 DIRECT PEER DOCK
+            </button>
+          </div>
+
+          <div x-show="p2pRole === 'joiner'" class="space-y-3">
+            <div class="space-y-1">
+              <label class="text-[9px] text-gray-400 font-mono block">1. PASTE HOST'S CONNECTION CODE:</label>
+              <textarea x-model="p2pManualOfferText" rows="3" placeholder="Paste connection code here..." class="w-full bg-gray-900 border border-gray-800 rounded p-2 text-xs font-mono text-gray-300 focus:outline-none focus:border-nasa" @input="generateManualAnswer()"></textarea>
+            </div>
+            
+            <div class="space-y-1" x-show="p2pManualAnswerText">
+              <label class="text-[9px] text-gray-400 font-mono block">2. COPY RESPONSE CODE (Send to Host):</label>
+              <div class="flex gap-2">
+                <input type="text" readonly :value="p2pManualAnswerText" placeholder="Generating response code..." class="flex-1 bg-gray-900 border border-gray-800 rounded px-3 py-2 text-xs font-mono truncate text-gray-300">
+                <button @click="copyAnswerCode()" class="bg-nasa text-black px-3 py-2 rounded text-[10px] font-retro font-bold" x-text="p2pManualCopiedAnswer ? 'COPIED!' : 'COPY'"></button>
+              </div>
+            </div>
+          </div>
+          
+          <div x-show="p2pConnectionStatus" class="text-center text-xs font-mono text-nasa animate-pulse" x-text="'CONNECTION STATUS: ' + p2pConnectionStatus.toUpperCase()"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1240,6 +1367,91 @@
             <div>Made with ❤️ for space enthusiasts</div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Retro Space Mini-Game Modal (Visible during custom music analysis) -->
+  <div x-show="showRetroGame" 
+       x-transition:enter="transition opacity ease-out duration-350"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition opacity ease-in duration-250"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+    <div x-show="showRetroGame"
+         x-transition:enter="transition ease-out duration-350 delay-75"
+         x-transition:enter-start="opacity-0 scale-90"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="glass nasa-bracket rounded-lg p-5 max-w-md w-full flex flex-col items-center border border-nasa/30">
+         
+         <div class="w-full flex justify-between items-center mb-3">
+           <h2 class="text-xs sm:text-sm font-bold font-retro-glow text-nasa">🛸 SPACE SCANNING SIGNAL</h2>
+           <button @click="showRetroGame = false" class="text-gray-400 hover:text-white text-2xl" :disabled="musicLoading">×</button>
+         </div>
+
+         <!-- Signal status / Vibe display -->
+         <div class="w-full text-center space-y-2 mb-4">
+           <div class="text-[10px] text-gray-400 uppercase tracking-widest font-mono h-4" x-text="musicAnalysisStatus"></div>
+           
+           <!-- Scanning visualizer bar (only visible during loading) -->
+           <div x-show="musicLoading" class="w-full h-1 bg-gray-900 rounded overflow-hidden relative">
+             <div class="h-full bg-nasa absolute left-0 top-0 w-1/3" style="animation: scan 1.5s infinite linear"></div>
+           </div>
+         </div>
+
+         <!-- Retro mini game canvas container -->
+         <div class="relative w-full border-2 border-nasa/40 rounded-lg overflow-hidden bg-black aspect-[4/3] max-w-[400px]">
+           <canvas id="retro-game-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+         </div>
+
+         <!-- On-screen hints and controls -->
+         <div class="mt-3 text-center w-full">
+           <p class="text-[9px] text-gray-400 font-mono">
+             Use <span class="text-nasa font-bold">A/D</span> or <span class="text-nasa font-bold">←/→ Arrow keys</span> to steer. Or <span class="text-nasa font-bold">Touch & Drag</span>!
+           </p>
+           <p class="text-[9px] text-gray-400 font-mono mt-1">
+             Auto-blaster is <span class="text-green-400 font-bold">ONLINE</span>. Blast descending alien ships!
+           </p>
+           <div class="flex justify-between items-center mt-3 text-xs font-mono bg-gray-900/60 p-2 rounded border border-gray-800">
+             <div>Score: <span class="text-nasa font-bold" x-text="retroGameScore">0</span></div>
+             <div>High Score: <span class="text-yellow-400 font-bold" x-text="retroGameHighScore">0</span></div>
+             <div>Shields: <span class="text-red-400 font-bold" x-text="'❤️'.repeat(Math.max(0, retroGameLives))">❤️❤️❤️</span></div>
+           </div>
+         </div>
+
+         <!-- Enter/Back to base button -->
+         <button @click="showRetroGame = false" 
+                 :class="musicLoading ? 'opacity-50 cursor-not-allowed bg-gray-800 text-gray-500' : 'bg-nasa text-black hover:bg-nasa/80'" 
+                 class="w-full py-2.5 mt-4 rounded transition font-retro text-[10px] sm:text-xs tracking-widest font-bold"
+                 :disabled="musicLoading">
+           <span x-show="musicLoading">🛰️ SCANNING SIGNAL...</span>
+           <span x-show="!musicLoading">🚀 ENTER MISSION CONTROL</span>
+         </button>
+    </div>
+  </div>
+
+  <!-- Incoming P2P invite modal -->
+  <div x-show="p2pInviteFrom" 
+       x-transition:enter="transition opacity ease-out duration-350"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition opacity ease-in duration-250"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+    <div class="glass nasa-bracket rounded-lg p-5 max-w-sm w-full text-center border border-nasa/30">
+      <h3 class="text-nasa font-retro text-xs sm:text-sm mb-3">📡 INCOMING ORBITAL INVITE</h3>
+      <p class="text-xs text-gray-300 font-mono mb-4 leading-relaxed">
+        Player <span class="text-nasa font-bold" x-text="p2pInviteFrom ? p2pInviteFrom.username : ''"></span> on your WiFi network wants to establish a direct WebRTC P2P connection.
+      </p>
+      <div class="flex gap-3">
+        <button @click="acceptP2PInvite()" class="flex-1 bg-nasa text-black py-2 rounded text-[10px] font-retro font-bold">ACCEPT LINK</button>
+        <button @click="rejectP2PInvite()" class="flex-1 bg-gray-800 hover:bg-gray-700 py-2 rounded text-[10px] font-retro font-bold text-gray-400">REFUSE</button>
       </div>
     </div>
   </div>
