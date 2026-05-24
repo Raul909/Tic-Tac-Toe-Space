@@ -151,6 +151,7 @@ app.get('/config.js', (req, res) => {
 
 // Serve static assets (CSS, JS, images) — needed by the frontend at load time
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/models', express.static(path.join(__dirname, 'backend-models')));
 
 // ── Frontend redirect ────────────────────────────────────────────────────────
 // The UI lives on Cloudflare Pages. Visiting the Render backend URL directly

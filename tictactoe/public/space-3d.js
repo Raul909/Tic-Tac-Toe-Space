@@ -656,6 +656,9 @@
   let blackHoleGroup = null;
   let proceduralGroup = null;
   let modelGroup = null;
+  let sunGroup = null;
+  let sunProceduralGroup = null;
+  let sunModelGroup = null;
   let proximaCentauri = null;
   let alphaCentauriA = null;
   let alphaCentauriB = null;
@@ -1301,6 +1304,17 @@
   }
   
   // Realistic Sun with high-quality procedural surface
+  sunGroup = new THREE.Group();
+  sunGroup.position.set(-100, 30, -150);
+  scene.add(sunGroup);
+
+  sunProceduralGroup = new THREE.Group();
+  sunGroup.add(sunProceduralGroup);
+
+  sunModelGroup = new THREE.Group();
+  sunModelGroup.visible = false;
+  sunGroup.add(sunModelGroup);
+
   const sunCore = new THREE.Mesh(
     new THREE.SphereGeometry(12, 64, 64),
     new THREE.ShaderMaterial({
@@ -1387,8 +1401,7 @@
       `
     })
   );
-  sunCore.position.set(-100, 30, -150);
-  scene.add(sunCore);
+  sunProceduralGroup.add(sunCore);
 
   // Clean radial corona glow — single additive sprite, no holographic rings
   function generateCoronaTexture() {
@@ -1450,9 +1463,118 @@
   });
   const coronaSprite = new THREE.Sprite(coronaMaterial);
   coronaSprite.scale.set(55, 55, 1);
-  sunCore.add(coronaSprite);
+  coronaSprite.name = 'sunCoronaSprite';
+  sunGroup.add(coronaSprite);
 
-  const sun = sunCore; // Keep reference
+  const sun = sunGroup; // Keep reference
+
+  // ── Asynchronously Load Sketchfab 3D Sun Model ──
+  const sunLoaderGeo = new THREE.TorusGeometry(15.0, 0.35, 8, 32);
+  const sunLoaderMat = new THREE.MeshBasicMaterial({
+    color: 0xffaa00,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const sunLoader = new THREE.Mesh(sunLoaderGeo, sunLoaderMat);
+  sunLoader.name = 'sunLoader';
+  sunGroup.add(sunLoader);
+
+  if (typeof THREE.GLTFLoader !== 'undefined') {
+    const gltfLoader = new THREE.GLTFLoader();
+    const getModelUrl = (path) => {
+      if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
+        const base = window.BACKEND_URL.replace(/\/$/, '');
+        const cleanPath = path.startsWith('/') ? path : '/' + path;
+        return base + cleanPath;
+      }
+      return path;
+    };
+    const sunModelPaths = [
+      getModelUrl('/models/sun_model.glb'),
+      getModelUrl('/models/sun.glb'),
+      getModelUrl('/models/sun/scene.gltf')
+    ];
+    let sunAttemptIndex = 0;
+
+    function loadSunModel(path) {
+      console.log(`[GLTFLoader] Backdrop: Attempting to load 3D Sun model from: ${path}`);
+      gltfLoader.load(
+        path,
+        (gltf) => {
+          console.log(`[GLTFLoader] Backdrop: Successfully loaded Sun model from: ${path}`);
+          
+          while (sunModelGroup.children.length > 0) {
+            sunModelGroup.remove(sunModelGroup.children[0]);
+          }
+
+          const modelScene = gltf.scene;
+
+          // Compute bounding box for auto-scaling and auto-centering
+          const box = new THREE.Box3().setFromObject(modelScene);
+          const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+
+          // Standardize size to fit procedural scale of ~24 units
+          const targetDim = 24.0;
+          const scale = maxDim > 0 ? targetDim / maxDim : 1.0;
+          
+          modelScene.scale.set(scale, scale, scale);
+          modelScene.position.sub(center.multiplyScalar(scale));
+
+          modelScene.traverse((node) => {
+            if (node.isMesh) {
+              node.castShadow = false;
+              node.receiveShadow = false;
+              if (node.material) {
+                node.material.side = THREE.DoubleSide;
+                if (node.material.transparent) {
+                  node.material.depthWrite = false;
+                }
+                if (node.material.map) {
+                  node.material.map.anisotropy = 4;
+                }
+              }
+            }
+          });
+
+          sunModelGroup.add(modelScene);
+          sunModelGroup.visible = true;
+
+          // Hide procedural layers and loader
+          sunProceduralGroup.visible = false;
+          if (sunLoader) {
+            sunLoader.visible = false;
+            sunGroup.remove(sunLoader);
+          }
+        },
+        undefined,
+        (error) => {
+          console.warn(`[GLTFLoader] Backdrop: Failed to load Sun model from ${path}:`, error);
+          sunAttemptIndex++;
+          if (sunAttemptIndex < sunModelPaths.length) {
+            loadSunModel(sunModelPaths[sunAttemptIndex]);
+          } else {
+            console.log('[GLTFLoader] Backdrop: Sun 3D model fallback. Standing by on procedural shader.');
+            if (sunLoader) {
+              sunLoader.visible = false;
+              sunGroup.remove(sunLoader);
+            }
+          }
+        }
+      );
+    }
+    
+    loadSunModel(sunModelPaths[sunAttemptIndex]);
+  } else {
+    console.warn('[GLTFLoader] THREE.GLTFLoader is undefined for Sun. Fallback.');
+    if (sunLoader) {
+      sunLoader.visible = false;
+      sunGroup.remove(sunLoader);
+    }
+  }
   
   const mercury = createPlanet('mercury', 2.5, 0x8C7853, {x:-80, y:5, z:-40});
   planets.push({ mesh: mercury, speed: 0.0015, radius: 30, angle: 0, rotationSpeed: 0.004 });
@@ -1671,9 +1793,33 @@
   eventHorizon.add(lensedAccretionDisk);
 
   // ── Asynchronously Load Sketchfab 3D Model ──
+  const bhLoaderGeo = new THREE.TorusGeometry(12.0, 0.25, 8, 32);
+  const bhLoaderMat = new THREE.MeshBasicMaterial({
+    color: 0x00d4ff,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const bhLoader = new THREE.Mesh(bhLoaderGeo, bhLoaderMat);
+  bhLoader.name = 'bhLoader';
+  blackHoleGroup.add(bhLoader);
+
   if (typeof THREE.GLTFLoader !== 'undefined') {
     const gltfLoader = new THREE.GLTFLoader();
-    const modelPaths = ['/models/blackhole.glb', '/models/blackhole/scene.gltf'];
+    const getModelUrl = (path) => {
+      if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
+        const base = window.BACKEND_URL.replace(/\/$/, '');
+        const cleanPath = path.startsWith('/') ? path : '/' + path;
+        return base + cleanPath;
+      }
+      return path;
+    };
+    const modelPaths = [
+      getModelUrl('/models/black_hole.glb'),
+      getModelUrl('/models/blackhole.glb'),
+      getModelUrl('/models/blackhole/scene.gltf')
+    ];
     let attemptIndex = 0;
 
     function loadModel(path) {
@@ -1720,6 +1866,10 @@
 
           // Hide procedural layers
           proceduralGroup.visible = false;
+          if (bhLoader) {
+            bhLoader.visible = false;
+            blackHoleGroup.remove(bhLoader);
+          }
         },
         undefined,
         (error) => {
@@ -1729,6 +1879,10 @@
             loadModel(modelPaths[attemptIndex]);
           } else {
             console.log('[GLTFLoader] No 3D model files found. Standing by on high-fidelity procedural fallback.');
+            if (bhLoader) {
+              bhLoader.visible = false;
+              blackHoleGroup.remove(bhLoader);
+            }
           }
         }
       );
@@ -1737,6 +1891,10 @@
     loadModel(modelPaths[attemptIndex]);
   } else {
     console.warn('[GLTFLoader] THREE.GLTFLoader is undefined. Standardizing on procedural fallback.');
+    if (bhLoader) {
+      bhLoader.visible = false;
+      blackHoleGroup.remove(bhLoader);
+    }
   }
 
   // ─── Shooting Stars ─────────────────────────────────────────────────────────
@@ -1919,10 +2077,30 @@
     }
     
     // Animate sun shader
-    if (sun.material.uniforms) {
-      sun.material.uniforms.time.value = currentTime * 0.0001;
+    if (typeof sunCore !== 'undefined' && sunCore && sunCore.material && sunCore.material.uniforms) {
+      sunCore.material.uniforms.time.value = currentTime * 0.0001;
     }
-    sun.rotation.y += 0.001 * scale;
+    if (sunGroup) {
+      sunGroup.rotation.y += 0.001 * scale;
+    }
+
+    // Rotate loaded 3D Sun model if active
+    if (sunModelGroup && sunModelGroup.visible) {
+      sunModelGroup.rotation.y += 0.002 * scale;
+      sunModelGroup.traverse((node) => {
+        if (node.isMesh && (node.name.toLowerCase().includes('surface') || node.name.toLowerCase().includes('core') || node.name.toLowerCase().includes('sun'))) {
+          node.rotation.y += 0.004 * scale;
+        }
+      });
+    }
+
+    // Animate Sun 3D loader ring
+    const sunLoader = sunGroup ? sunGroup.getObjectByName('sunLoader') : null;
+    if (sunLoader && sunLoader.visible) {
+      sunLoader.rotation.z += 0.04 * scale;
+      sunLoader.rotation.x = Math.sin(currentTime * 0.003) * 0.2;
+      sunLoader.scale.setScalar(1.0 + Math.sin(currentTime * 0.005) * 0.1);
+    }
     
     // Subtle corona breathing
     if (typeof coronaSprite !== 'undefined' && coronaSprite) {
@@ -2006,6 +2184,14 @@
           node.rotation.z += 0.006 * scale;
         }
       });
+    }
+
+    // Animate Black Hole 3D loader ring
+    const bhLoader = blackHoleGroup ? blackHoleGroup.getObjectByName('bhLoader') : null;
+    if (bhLoader && bhLoader.visible) {
+      bhLoader.rotation.z += 0.04 * scale;
+      bhLoader.rotation.x = Math.sin(currentTime * 0.003) * 0.2;
+      bhLoader.scale.setScalar(1.0 + Math.sin(currentTime * 0.005) * 0.1);
     }
     if (andromedaGalaxy) {
       andromedaGalaxy.rotation.z += 0.00012 * scale;
@@ -2118,7 +2304,16 @@
         });
       }
       
-      if (typeof sun !== 'undefined' && sun) targets.push(sun);
+      // Sun targets (detect procedural or loaded model)
+      if (typeof sunProceduralGroup !== 'undefined' && sunProceduralGroup && sunProceduralGroup.visible && typeof sunCore !== 'undefined' && sunCore) {
+        targets.push(sunCore);
+      } else if (typeof sunModelGroup !== 'undefined' && sunModelGroup && sunModelGroup.visible) {
+        sunModelGroup.traverse((node) => {
+          if (node.isMesh) {
+            targets.push(node);
+          }
+        });
+      }
       
       planets.forEach(p => {
         if (p.mesh) {
@@ -2153,12 +2348,24 @@
             parent = parent.parent;
           }
         }
+
+        let isSun = (typeof sunCore !== 'undefined' && obj === sunCore);
+        if (!isSun && typeof sunModelGroup !== 'undefined' && sunModelGroup && sunModelGroup.visible) {
+          let parent = obj.parent;
+          while (parent) {
+            if (parent === sunModelGroup) {
+              isSun = true;
+              break;
+            }
+            parent = parent.parent;
+          }
+        }
         
         if (obj === andromedaGalaxy) {
           nameText = "ANDROMEDA GALAXY";
         } else if (isBlackHole) {
           nameText = "SAGITTARIUS A* BLACK HOLE";
-        } else if (typeof sun !== 'undefined' && obj === sun) {
+        } else if (isSun) {
           nameText = "THE SUN (STAR)";
         } else if (obj.userData && obj.userData.name) {
           nameText = obj.userData.name.toUpperCase();

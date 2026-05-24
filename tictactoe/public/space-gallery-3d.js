@@ -1246,7 +1246,22 @@
     createSolarSystem() {
       this.solarSystem.forEach((data, i) => {
         if (data.name === 'Sun') {
-          const geometry = new THREE.SphereGeometry(data.radius, 32, 32); // 32 segs — visually identical to 48 at this scale
+          const sunGroup = new THREE.Group();
+          sunGroup.userData = { ...data, id: i };
+          sunGroup.name = 'Sun';
+          this.scene.add(sunGroup);
+          this.objects.push(sunGroup);
+
+          const proceduralGroup = new THREE.Group();
+          proceduralGroup.name = 'sunProceduralGroup';
+          sunGroup.add(proceduralGroup);
+
+          const modelGroup = new THREE.Group();
+          modelGroup.name = 'sunModelGroup';
+          modelGroup.visible = false;
+          sunGroup.add(modelGroup);
+
+          const geometry = new THREE.SphereGeometry(data.radius, 32, 32); // 32 segs
           const material = new THREE.ShaderMaterial({
             uniforms: {
               time: { value: 0 }
@@ -1325,12 +1340,11 @@
               }
             `
           });
-          const sun = new THREE.Mesh(geometry, material);
-          sun.userData = { ...data, id: i };
-          this.scene.add(sun);
-          this.objects.push(sun);
+          const sunCore = new THREE.Mesh(geometry, material);
+          sunCore.name = 'sunProceduralMesh';
+          proceduralGroup.add(sunCore);
           
-          // Concentric corona ray layers for high-end volumetric effect
+          // Concentric corona ray layers
           const glowTexture = TextureGenerator.generate('star-glow', 'albedo');
           const glowMaterial = new THREE.SpriteMaterial({
             map: glowTexture,
@@ -1342,7 +1356,7 @@
           const glow = new THREE.Sprite(glowMaterial);
           glow.scale.set(data.radius * 2.2, data.radius * 2.2, 1);
           glow.name = 'sunCoronaRay';
-          sun.add(glow);
+          sunGroup.add(glow);
 
           const outerGlowMaterial = new THREE.SpriteMaterial({
             map: glowTexture,
@@ -1354,12 +1368,12 @@
           const outerGlow = new THREE.Sprite(outerGlowMaterial);
           outerGlow.scale.set(data.radius * 3.5, data.radius * 3.5, 1);
           outerGlow.name = 'sunOuterCorona';
-          sun.add(outerGlow);
+          sunGroup.add(outerGlow);
 
-          // Procedural 3D solar flare arches (wobbling torus loops around core)
+          // Procedural 3D solar flare arches
           const flareGroup = new THREE.Group();
           flareGroup.name = 'solarFlares';
-          sun.add(flareGroup);
+          proceduralGroup.add(flareGroup);
           
           for (let f = 0; f < 3; f++) {
             const flareGeo = new THREE.TorusGeometry(data.radius * 1.02, 0.65, 8, 24, Math.PI * 0.35);
@@ -1379,6 +1393,110 @@
               rotZ: (Math.random() - 0.5) * 0.015
             };
             flareGroup.add(flare);
+          }
+
+          // ── 3D Torus Loading Animation ──
+          const loaderGeo = new THREE.TorusGeometry(data.radius * 1.1, data.radius * 0.02, 8, 32);
+          const loaderMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa00,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+          });
+          const sunLoader = new THREE.Mesh(loaderGeo, loaderMat);
+          sunLoader.name = 'sunLoader';
+          sunGroup.add(sunLoader);
+
+          // ── Asynchronously Load Sketchfab 3D Model ──
+          if (typeof THREE.GLTFLoader !== 'undefined') {
+            const gltfLoader = new THREE.GLTFLoader();
+            const getModelUrl = (path) => {
+              if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
+                const base = window.BACKEND_URL.replace(/\/$/, '');
+                const cleanPath = path.startsWith('/') ? path : '/' + path;
+                return base + cleanPath;
+              }
+              return path;
+            };
+            const sunPaths = [
+              getModelUrl('/models/sun_model.glb'),
+              getModelUrl('/models/sun.glb'),
+              getModelUrl('/models/sun/scene.gltf')
+            ];
+            let sunAttempt = 0;
+
+            const loadSunGallery = (path) => {
+              console.log(`[GLTFLoader] Space Gallery: Attempting to load 3D Sun model from: ${path}`);
+              gltfLoader.load(
+                path,
+                (gltf) => {
+                  console.log(`[GLTFLoader] Space Gallery: Successfully loaded Sun model from: ${path}`);
+                  while (modelGroup.children.length > 0) {
+                    modelGroup.remove(modelGroup.children[0]);
+                  }
+                  
+                  const modelScene = gltf.scene;
+                  const box = new THREE.Box3().setFromObject(modelScene);
+                  const size = box.getSize(new THREE.Vector3());
+                  const center = box.getCenter(new THREE.Vector3());
+                  const maxDim = Math.max(size.x, size.y, size.z);
+                  
+                  // Scale to fit the sun radius of 48 (diameter 96)
+                  const targetDim = data.radius * 2.0; 
+                  const scale = maxDim > 0 ? targetDim / maxDim : 1.0;
+                  modelScene.scale.set(scale, scale, scale);
+                  modelScene.position.sub(center.multiplyScalar(scale));
+                  
+                  modelScene.traverse((node) => {
+                    if (node.isMesh) {
+                      node.castShadow = false;
+                      node.receiveShadow = false;
+                      if (node.material) {
+                        node.material.side = THREE.DoubleSide;
+                        if (node.material.transparent) {
+                          node.material.depthWrite = false;
+                        }
+                        if (node.material.map) {
+                          node.material.map.anisotropy = 4;
+                        }
+                      }
+                    }
+                  });
+                  
+                  modelGroup.add(modelScene);
+                  modelGroup.visible = true;
+                  proceduralGroup.visible = false;
+                  
+                  if (sunLoader) {
+                    sunLoader.visible = false;
+                    sunGroup.remove(sunLoader);
+                  }
+                },
+                undefined,
+                (error) => {
+                  console.warn(`[GLTFLoader] Space Gallery: Failed to load Sun model from ${path}:`, error);
+                  sunAttempt++;
+                  if (sunAttempt < sunPaths.length) {
+                    loadSunGallery(sunPaths[sunAttempt]);
+                  } else {
+                    console.log('[GLTFLoader] Space Gallery: Sun 3D model fallback. Standing by on procedural shader.');
+                    if (sunLoader) {
+                      sunLoader.visible = false;
+                      sunGroup.remove(sunLoader);
+                    }
+                  }
+                }
+              );
+            };
+
+            loadSunGallery(sunPaths[sunAttempt]);
+          } else {
+            console.warn('[GLTFLoader] THREE.GLTFLoader is undefined in Space Gallery. Fallback.');
+            if (sunLoader) {
+              sunLoader.visible = false;
+              sunGroup.remove(sunLoader);
+            }
           }
         } else {
           const geometry = new THREE.SphereGeometry(data.radius, 32, 32); // 32 segs
@@ -2253,8 +2371,30 @@
         // Animate space explorer Sun's corona organically matching the backdrop
         if (obj.userData.name === 'Sun') {
           const currentTime = performance.now();
-          if (obj.material && obj.material.uniforms && obj.material.uniforms.time) {
-            obj.material.uniforms.time.value = currentTime * 0.0001;
+          
+          // Animate procedural sun shader
+          const proceduralMesh = obj.getObjectByName('sunProceduralMesh');
+          if (proceduralMesh && proceduralMesh.material && proceduralMesh.material.uniforms && proceduralMesh.material.uniforms.time) {
+            proceduralMesh.material.uniforms.time.value = currentTime * 0.0001;
+          }
+
+          // Spin loaded 3D model if active
+          const modelGroup = obj.getObjectByName('sunModelGroup');
+          if (modelGroup && modelGroup.visible) {
+            modelGroup.rotation.y += 0.002;
+            modelGroup.traverse((node) => {
+              if (node.isMesh && (node.name.toLowerCase().includes('surface') || node.name.toLowerCase().includes('core') || node.name.toLowerCase().includes('sun'))) {
+                node.rotation.y += 0.004;
+              }
+            });
+          }
+
+          // Animate Sun 3D loader ring
+          const sunLoader = obj.getObjectByName('sunLoader');
+          if (sunLoader && sunLoader.visible) {
+            sunLoader.rotation.z += 0.04;
+            sunLoader.rotation.x = Math.sin(currentTime * 0.003) * 0.2;
+            sunLoader.scale.setScalar(1.0 + Math.sin(currentTime * 0.005) * 0.1);
           }
           
           const sunCoronaRay = obj.getObjectByName('sunCoronaRay');
