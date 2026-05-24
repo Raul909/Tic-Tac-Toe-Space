@@ -2148,25 +2148,6 @@
     'andromeda': 60.0
   };
 
-  const targetObjects = {
-    'sun': sunGroup,
-    'mercury': mercuryGroup,
-    'venus': venusGroup,
-    'earth': earthGroup,
-    'mars': marsGroup,
-    'ceres': ceres,
-    'jupiter': jupiterGroup,
-    'saturn': saturnGroup,
-    'uranus': uranusGroup,
-    'neptune': neptuneGroup,
-    'pluto': plutoGroup,
-    'eris': eris,
-    'proxima centauri': proximaCentauri,
-    'alpha centauri a': alphaCentauriA,
-    'sagittarius a*': blackHoleGroup,
-    'andromeda': andromedaGroup
-  };
-
   window.Space3D = {
     povTarget: 'system',
     focusedRadius: 150,
@@ -2174,6 +2155,24 @@
     lookTarget: new THREE.Vector3(0, 10, -150),
     isGliding: false,
     getTargetObject: function(name) {
+      const targetObjects = {
+        'sun': sunGroup,
+        'mercury': mercuryGroup,
+        'venus': venusGroup,
+        'earth': earthGroup,
+        'mars': marsGroup,
+        'ceres': ceres,
+        'jupiter': jupiterGroup,
+        'saturn': saturnGroup,
+        'uranus': uranusGroup,
+        'neptune': neptuneGroup,
+        'pluto': plutoGroup,
+        'eris': eris,
+        'proxima centauri': proximaCentauri,
+        'alpha centauri a': alphaCentauriA,
+        'sagittarius a*': blackHoleGroup,
+        'andromeda': andromedaGroup
+      };
       return targetObjects[name.toLowerCase()] || null;
     },
     setPOVTarget: function(name) {
@@ -2712,8 +2711,21 @@
     const line = new THREE.Line(geo, mat);
     line.frustumCulled = false; // always drawn; it lives deep in the background
     scene.add(line);
+    // Add a glowing 3D sphere at the meteor head for a 3D-ish beautiful appearance
+    const headGeo = new THREE.SphereGeometry(0.35, 8, 8);
+    const headMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const headMesh = new THREE.Mesh(headGeo, headMat);
+    scene.add(headMesh);
+
     return {
       mesh:      line,
+      headMesh:  headMesh, // 3D head mesh
       active:    false,
       t:         0,
       speed:     0.18,
@@ -3166,6 +3178,9 @@
         s.active = false;
         s.mesh.material.opacity = 0;
         s.mesh.visible = false;
+        if (s.headMesh) {
+          s.headMesh.visible = false;
+        }
         if (s.model) {
           s.model.visible = false;
         }
@@ -3174,6 +3189,18 @@
 
       // Advance head along direction
       _v1.copy(s.start).addScaledVector(s.direction, s.t * s.travel);
+
+      // Update 3D head mesh position and opacity
+      if (s.headMesh) {
+        s.headMesh.visible = !s.model; // Hide simple 3D head mesh in favor of GLTF model if loaded
+        if (s.headMesh.visible) {
+          s.headMesh.position.copy(_v1);
+          s.headMesh.material.color.copy(s.tint);
+          s.headMesh.material.opacity = brightness * 0.95;
+          const scalePulse = 1.0 + Math.sin(s.t * Math.PI) * 0.4;
+          s.headMesh.scale.setScalar(scalePulse);
+        }
+      }
 
       // Update 3D shooting star model if active
       if (s.model) {
