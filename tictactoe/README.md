@@ -78,6 +78,5 @@ If you find this premium space-combat experience interesting, please **Star** an
     npm test
     ```
 
-*Note: Redis and RabbitMQ are optional for local development. The system automatically falls back to in-process memory lists and in-memory message queues.*
 
 
