@@ -967,6 +967,7 @@
         powerPreference: 'high-performance'
       });
       this.renderer.setSize(container.clientWidth, height);
+      this.renderer.outputEncoding = THREE.sRGBEncoding;
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap at 1.5 — saves ~44% GPU fill on Retina
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 2.2;
@@ -2112,12 +2113,13 @@
                   node.castShadow = false;
                   node.receiveShadow = false;
                   if (node.material) {
-                    node.material.side = THREE.DoubleSide;
+                    // Do not override material side (keep natural geometry face orientation)
                     if (node.material.transparent) {
                       node.material.depthWrite = false;
                     }
                     if (node.material.map) {
-                      node.material.map.anisotropy = 4;
+                      const maxAnisotropy = this.renderer ? this.renderer.capabilities.getMaxAnisotropy() : 4;
+                      node.material.map.anisotropy = maxAnisotropy;
                     }
                   }
                 }
@@ -3055,6 +3057,14 @@
           const modelGroup = obj.getObjectByName(obj.userData.name + 'ModelGroup');
           if (modelGroup && modelGroup.visible) {
             modelGroup.rotation.y += 0.002;
+          }
+          
+          // Animate planet loader spinner if present and visible
+          const loader = obj.getObjectByName('planetLoader');
+          if (loader && loader.visible) {
+            loader.rotation.z += 0.04;
+            loader.rotation.x = Math.sin(currentTime * 0.003) * 0.2;
+            loader.scale.setScalar(1.0 + Math.sin(currentTime * 0.005) * 0.1);
           }
           
           // Orbit and rotate its moons

@@ -1858,12 +1858,13 @@
                 node.castShadow = false;
                 node.receiveShadow = false;
                 if (node.material) {
-                  node.material.side = THREE.DoubleSide;
+                  // Do not override material side (keep natural geometry face orientation)
                   if (node.material.transparent) {
                     node.material.depthWrite = false;
                   }
                   if (node.material.map) {
-                    node.material.map.anisotropy = 4;
+                    const maxAnisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
+                    node.material.map.anisotropy = maxAnisotropy;
                   }
                 }
               }
@@ -2224,10 +2225,8 @@
         targets.push(andromedaGalaxy);
       }
     }
-    if (proceduralGroup && proceduralGroup.visible && eventHorizon) {
-      targets.push(eventHorizon);
-    } else if (modelGroup && modelGroup.visible) {
-      modelGroup.traverse((node) => { if (node.isMesh) targets.push(node); });
+    if (blackHoleGroup) {
+      blackHoleGroup.traverse((node) => { if (node.isMesh) targets.push(node); });
     }
     if (typeof sunProceduralGroup !== 'undefined' && sunProceduralGroup && sunProceduralGroup.visible && typeof sunCore !== 'undefined' && sunCore) {
       targets.push(sunCore);
@@ -2253,13 +2252,11 @@
     if (intersects.length > 0) {
       const obj = intersects[0].object;
       
-      let isBlackHole = (obj === eventHorizon);
-      if (!isBlackHole && modelGroup && modelGroup.visible) {
-        let parent = obj.parent;
-        while (parent) {
-          if (parent === modelGroup) { isBlackHole = true; break; }
-          parent = parent.parent;
-        }
+      let isBlackHole = false;
+      let parent = obj.parent;
+      while (parent) {
+        if (parent === blackHoleGroup) { isBlackHole = true; break; }
+        parent = parent.parent;
       }
 
       let isSun = (typeof sunCore !== 'undefined' && obj === sunCore);
@@ -3249,11 +3246,9 @@
       }
       
       // Black hole targets (detect procedural or loaded model)
-      if (proceduralGroup && proceduralGroup.visible && eventHorizon) {
-        targets.push(eventHorizon);
-      } else if (modelGroup && modelGroup.visible) {
-        modelGroup.traverse((node) => {
-          if (node.isMesh) {
+      if (blackHoleGroup) {
+        blackHoleGroup.traverse((node) => {
+          if (node.isMesh && !node.name.includes('Loader')) {
             targets.push(node);
           }
         });
@@ -3291,16 +3286,14 @@
         const obj = intersects[0].object;
         let nameText = "";
         
-        let isBlackHole = (obj === eventHorizon);
-        if (!isBlackHole && modelGroup && modelGroup.visible) {
-          let parent = obj.parent;
-          while (parent) {
-            if (parent === modelGroup) {
-              isBlackHole = true;
-              break;
-            }
-            parent = parent.parent;
+        let isBlackHole = false;
+        let parent = obj.parent;
+        while (parent) {
+          if (parent === blackHoleGroup) {
+            isBlackHole = true;
+            break;
           }
+          parent = parent.parent;
         }
 
         let isSun = (typeof sunCore !== 'undefined' && obj === sunCore);
