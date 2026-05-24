@@ -1050,6 +1050,15 @@ function app() {
           } else {
             canvas.classList.remove('canvas-cinematic-paused');
           }
+
+          // Apply blur and low-resolution performance mode while actively playing the game
+          if (screenName === 'game') {
+            canvas.classList.add('canvas-game-blur');
+            document.dispatchEvent(new CustomEvent('space-low-perf-mode', { detail: { active: true } }));
+          } else {
+            canvas.classList.remove('canvas-game-blur');
+            document.dispatchEvent(new CustomEvent('space-low-perf-mode', { detail: { active: false } }));
+          }
         }
       }
       

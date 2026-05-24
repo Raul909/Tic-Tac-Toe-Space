@@ -1056,6 +1056,11 @@ input:focus, select:focus, textarea:focus {
   pointer-events: none;
 }
 
+#three-canvas.canvas-game-blur {
+  filter: blur(10px) brightness(0.4) saturate(0.85);
+  pointer-events: none;
+}
+
 @keyframes cinematicDrift {
   0% {
     transform: scale(1.06) translate(0px, 0px) rotate(0deg);

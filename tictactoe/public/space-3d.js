@@ -26,6 +26,17 @@
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x000000, 0.00035);
+
+  // ── Global Three.js Asset Loading & Compilation Sync ──
+  const loadingManager = new THREE.LoadingManager();
+  loadingManager.onLoad = function () {
+    console.log('[LoadingManager] All space scene assets loaded completely.');
+    window.spaceSceneLoaded = true;
+    document.dispatchEvent(new CustomEvent('space-scene-ready'));
+  };
+  loadingManager.onError = function (url) {
+    console.warn('[LoadingManager] Error loading asset: ' + url);
+  };
   
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 4000);
   const renderer = new THREE.WebGLRenderer({ 
@@ -1710,7 +1721,7 @@
   sunGroup.add(sunLoader);
 
   if (typeof THREE.GLTFLoader !== 'undefined') {
-    const gltfLoader = new THREE.GLTFLoader();
+    const gltfLoader = new THREE.GLTFLoader(loadingManager);
     const getModelUrl = (path) => {
       if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
         const base = window.BACKEND_URL.replace(/\/$/, '');
@@ -1819,7 +1830,7 @@
     planetGroup.add(loader);
 
     if (typeof THREE.GLTFLoader !== 'undefined') {
-      const gltfLoader = new THREE.GLTFLoader();
+      const gltfLoader = new THREE.GLTFLoader(loadingManager);
       const getModelUrl = (path) => {
         if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
           const base = window.BACKEND_URL.replace(/\/$/, '');
@@ -2556,7 +2567,7 @@
   scene.add(skybox);
 
   if (typeof THREE.GLTFLoader !== 'undefined') {
-    const gltfLoader = new THREE.GLTFLoader();
+    const gltfLoader = new THREE.GLTFLoader(loadingManager);
     const getModelUrl = (path) => {
       if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
         const base = window.BACKEND_URL.replace(/\/$/, '');
@@ -2628,6 +2639,23 @@
   blackHoleGroup = new THREE.Group();
   blackHoleGroup.position.set(-190, 38, -290);
   scene.add(blackHoleGroup);
+
+  // ── Cinematic Lighting for Sagittarius A* Accretion Glow ──
+  const accretionGlowLight = new THREE.PointLight(0xffaa44, 4.5, 300, 1.5);
+  accretionGlowLight.position.set(0, 0, 0);
+  accretionGlowLight.castShadow = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
+  if (accretionGlowLight.castShadow) {
+    accretionGlowLight.shadow.mapSize.width = 512;
+    accretionGlowLight.shadow.mapSize.height = 512;
+    accretionGlowLight.shadow.camera.near = 10;
+    accretionGlowLight.shadow.camera.far = 400;
+  }
+  blackHoleGroup.add(accretionGlowLight);
+
+  // Secondary Hawking/Cherenkov bluish glow
+  const hawkingRadiationLight = new THREE.PointLight(0x00d4ff, 1.5, 120, 2.0);
+  hawkingRadiationLight.position.set(0, 0, 0);
+  blackHoleGroup.add(hawkingRadiationLight);
 
   proceduralGroup = new THREE.Group();
   blackHoleGroup.add(proceduralGroup);
@@ -2703,7 +2731,7 @@
   blackHoleGroup.add(bhLoader);
 
   if (typeof THREE.GLTFLoader !== 'undefined') {
-    const gltfLoader = new THREE.GLTFLoader();
+    const gltfLoader = new THREE.GLTFLoader(loadingManager);
     const getModelUrl = (path) => {
       if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
         const base = window.BACKEND_URL.replace(/\/$/, '');
@@ -2713,6 +2741,7 @@
       return path;
     };
     const modelPaths = [
+      getModelUrl('/models/blackhole_use_this.glb'),
       getModelUrl('/models/blackhole_new.glb'),
       getModelUrl('/models/black_hole.glb'),
       getModelUrl('/models/blackhole.glb'),
@@ -2891,7 +2920,7 @@
 
   // ── Asynchronously Load 3D Shooting Star Model ──
   if (typeof THREE.GLTFLoader !== 'undefined') {
-    const gltfLoader = new THREE.GLTFLoader();
+    const gltfLoader = new THREE.GLTFLoader(loadingManager);
     const getModelUrl = (path) => {
       if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
         const base = window.BACKEND_URL.replace(/\/$/, '');
@@ -3028,6 +3057,27 @@
   let _tabVisible = true;
   document.addEventListener('visibilitychange', () => { _tabVisible = !document.hidden; });
 
+  // ── Gameplay Performance Optimization Event Listener ──
+  window.spaceLowPerfActive = false;
+  document.addEventListener('space-low-perf-mode', (e) => {
+    if (typeof renderer !== 'undefined' && renderer) {
+      const active = e.detail && e.detail.active;
+      if (active) {
+        // Drop pixel ratio to a lower fraction (e.g. 0.75x) to boost render performance
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0) * 0.75);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        window.spaceLowPerfActive = true;
+        console.log('[space-3d] Active gameplay detected. Switched to performance-optimized low-res and throttled frame loops.');
+      } else {
+        // Restore maximum HD resolution
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        window.spaceLowPerfActive = false;
+        console.log('[space-3d] Gameplay ended. Restored full HD rendering clarity.');
+      }
+    }
+  });
+
   // ── Adaptive throttle: drop to 30fps if sustained FPS < 35 ─────────────────
   let _fpsFrames = 0, _fpsTime = 0, _currentFps = 60, _skipFrame = false;
 
@@ -3045,6 +3095,13 @@
 
     // Pause render when tab is hidden or scene is paused externally — zero GPU cost
     if (!_tabVisible || cinematic.paused) return;
+
+    // If gameplay low-perf is active, drop framerate to 30fps to free resources for smooth UI overlays
+    if (window.spaceLowPerfActive && frameCount % 2 === 0) {
+      frameCount++;
+      lastTime = currentTime;
+      return;
+    }
 
     const dt = Math.min((currentTime - lastTime) / 1000, 0.05);
     lastTime = currentTime;
