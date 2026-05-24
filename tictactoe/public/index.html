@@ -131,11 +131,35 @@
   </div>
   
   <canvas id="three-canvas"></canvas>
+  
+  <!-- Floating Retro Space Explorer HUD (Mouse Hover Anomaly Scanner) -->
+  <div id="space-explorer-hud" class="fixed pointer-events-none z-50 font-mono text-xs select-none opacity-0 transition-opacity duration-200" style="color: #00d4ff; text-shadow: 0 0 8px rgba(0, 212, 255, 0.8), 0 0 15px rgba(0, 212, 255, 0.4); background: rgba(0, 5, 16, 0.85); border: 1px solid rgba(0, 212, 255, 0.4); padding: 4px 8px; border-radius: 4px; backdrop-filter: blur(5px);">
+    [ANOMALY IDENTIFIED: <span id="space-explorer-name"></span>]
+  </div>
+  
+  <!-- Free Flight Space Observation HUD Overlay -->
+  <div x-show="spaceExplorerFreeFlight" 
+       x-transition:enter="transition ease-out duration-350"
+       x-transition:enter-start="opacity-0 translate-y-6"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100 translate-y-0"
+       x-transition:leave-end="opacity-0 translate-y-6"
+       class="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center gap-3 select-none pointer-events-auto">
+    <div class="glass border border-nasa/40 px-6 py-3 rounded-lg text-center font-mono text-[10px] sm:text-xs text-nasa max-w-sm" style="backdrop-filter: blur(10px);">
+      🛸 [DEEP-SPACE OBSERVATION NODE ACTIVE]<br>
+      Move cursor to rotate camera • Scroll mouse wheel to adjust orbit zoom
+    </div>
+    <button @click="spaceExplorerFreeFlight = false" 
+            class="btn-hud py-2.5 px-6 font-bold rounded-lg text-xs bg-red-950/30 border border-red-500/50 hover:bg-red-900/50 hover:border-red-400 text-red-300 transition tracking-widest font-retro">
+      🛰️ EXIT ORBITAL OBSERVATION
+    </button>
+  </div>
+
   <div class="scan-line"></div>
   <canvas id="fw-canvas" style="position:fixed;inset:0;pointer-events:none;z-index:99"></canvas>
   
-  <!-- Home/Landing Screen -->
-  <div x-show="screen === 'home'" 
+  <div x-show="screen === 'home' && !spaceExplorerFreeFlight" 
        x-transition:enter="transition opacity ease-out duration-350"
        x-transition:enter-start="opacity-0"
        x-transition:enter-end="opacity-100"
@@ -193,10 +217,16 @@
           </div>
         </div>
 
-        <button @click="setScreen('auth')" 
-                class="w-full btn-hud btn-hud-primary py-4 px-8 text-xl sm:text-2xl tracking-widest font-bold rounded-lg transform">
-          🚀 LAUNCH MISSION
-        </button>
+        <div class="flex flex-col sm:flex-row gap-4 mt-6">
+          <button @click="setScreen('auth')" 
+                  class="flex-1 btn-hud btn-hud-primary py-4 px-6 text-lg sm:text-xl tracking-widest font-bold rounded-lg transform">
+            🚀 LAUNCH MISSION
+          </button>
+          <button @click="spaceExplorerFreeFlight = true" 
+                  class="flex-1 btn-hud py-4 px-6 text-lg sm:text-xl tracking-widest font-bold rounded-lg transform border-nasa text-nasa shadow-[inset_0_0_15px_rgba(0,212,255,0.15)] bg-nasa/10 hover:bg-nasa/20">
+            🌌 OBSERVE COSMOS
+          </button>
+        </div>
       </div>
 
       <div class="text-gray-500 text-[10px] sm:text-xs tracking-wider space-y-1 px-2">

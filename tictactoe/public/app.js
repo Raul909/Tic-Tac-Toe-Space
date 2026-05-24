@@ -2,6 +2,7 @@
 function app() {
   return {
     screen: 'home',
+    spaceExplorerFreeFlight: false,
     authTab: 'login',
     socket: null,
     view3D: true,

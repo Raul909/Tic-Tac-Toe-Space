@@ -341,6 +341,21 @@
   document.addEventListener('mousemove', (e) => {
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    
+    // Adjust floating retro HUD selector location
+    const hud = document.getElementById('space-explorer-hud');
+    if (hud) {
+      hud.style.left = (e.clientX + 15) + 'px';
+      hud.style.top = (e.clientY + 15) + 'px';
+    }
+  });
+
+  // Orbital zoom mapping for free flight space observation
+  window.addEventListener('wheel', (e) => {
+    if (window.appInstance && window.appInstance.spaceExplorerFreeFlight) {
+      camera.position.z += e.deltaY * 0.25;
+      camera.position.z = Math.max(50, Math.min(450, camera.position.z));
+    }
   });
   
   // Mobile device orientation parallax
@@ -525,9 +540,9 @@
   }
   
   const starLayers = [
-    createStarLayer(25000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), true),
+    createStarLayer(75000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), true),
     createStarLayer(8000,  1.6, 3000, () => new THREE.Color(0xffffff), true),
-    createStarLayer(30000, 0.6, 4500, () => new THREE.Color(0x445566), true),
+    createStarLayer(90000, 0.6, 4500, () => new THREE.Color(0x445566), true),
     createStarLayer(4000,  2.4, 2500, () => {
       const r = Math.random();
       if (r < 0.25) return new THREE.Color(0xff9977); // Orange/Red giants
@@ -536,7 +551,7 @@
       return new THREE.Color(0xffb7ff); // Purple stars
     }, true),
     // 5th Deep-Space star layer
-    createStarLayer(35000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), true)
+    createStarLayer(105000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), true)
   ];
   const stars = starLayers[0]; // Reference for weather presets
   
@@ -1572,6 +1587,40 @@
       bgWeatherParticles.material.userData.shader.uniforms.uTime.value = currentTime * 0.001;
     }
     
+    // ── Interactive Hover HUD Raycaster ──
+    const hud = document.getElementById('space-explorer-hud');
+    const hudName = document.getElementById('space-explorer-name');
+    if (hud && hudName && typeof THREE !== 'undefined' && camera && scene) {
+      if (!window.spaceRaycaster) {
+        window.spaceRaycaster = new THREE.Raycaster();
+      }
+      window.spaceRaycaster.setFromCamera(mouse, camera);
+      
+      const targets = [];
+      if (andromedaGalaxy) targets.push(andromedaGalaxy);
+      if (eventHorizon) targets.push(eventHorizon);
+      
+      const intersects = window.spaceRaycaster.intersectObjects(targets);
+      if (intersects.length > 0) {
+        const obj = intersects[0].object;
+        let nameText = "";
+        if (obj === andromedaGalaxy) {
+          nameText = "ANDROMEDA GALAXY";
+        } else if (obj === eventHorizon) {
+          nameText = "SAGITTARIUS A* BLACK HOLE";
+        }
+        
+        if (nameText) {
+          hudName.textContent = nameText;
+          hud.style.opacity = '1';
+        } else {
+          hud.style.opacity = '0';
+        }
+      } else {
+        hud.style.opacity = '0';
+      }
+    }
+
     // Cinematic Camera Drift - Smooth interpolation
     updateMouseInfluence(dt);
     const time = currentTime * 0.00005;
@@ -1579,9 +1628,22 @@
     const driftY = Math.cos(time * 0.7) * 5 + Math.sin(time * 0.2) * 3;
     const shake = cinematic.warpFactor * (Math.random() - 0.5) * 0.5;
     
-    camera.position.x = driftX + mouseInfluence.x * 10 + shake;
-    camera.position.y = 25 + driftY + mouseInfluence.y * 10 + shake;
-    camera.lookAt(0, 0, -50);
+    if (window.appInstance && window.appInstance.spaceExplorerFreeFlight) {
+      // Extended free-flight pan boundaries based on cursor tracking
+      const targetX = mouseInfluence.x * 160;
+      const targetY = 25 + mouseInfluence.y * 100;
+      camera.position.x += (targetX - camera.position.x) * 0.08 * scale;
+      camera.position.y += (targetY - camera.position.y) * 0.08 * scale;
+      camera.lookAt(0, 10, -150);
+    } else {
+      // Default gameplay coordinates
+      camera.position.x = driftX + mouseInfluence.x * 10 + shake;
+      camera.position.y = 25 + driftY + mouseInfluence.y * 10 + shake;
+      if (camera.position.z !== 90) {
+        camera.position.z += (90 - camera.position.z) * 0.05 * scale;
+      }
+      camera.lookAt(0, 0, -50);
+    }
     
     renderer.render(scene, camera);
   }

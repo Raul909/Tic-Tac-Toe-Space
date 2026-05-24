@@ -964,22 +964,8 @@
     },
     
     getUserLocationAndWeather() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            this.userLocation = {
-              lat: position.coords.latitude,
-              lon: position.coords.longitude
-            };
-            this.fetchWeather();
-          },
-          (error) => {
-            this.setDefaultWeather();
-          }
-        );
-      } else {
-        this.setDefaultWeather();
-      }
+      // Geolocation prompts removed for absolute user privacy and a seamless UX.
+      this.setDefaultWeather();
     },
     
     async fetchWeather() {
@@ -1181,100 +1167,7 @@
     },
     
     addReferencePoint() {
-      // Add Earth as reference point (Your Location) with highly realistic procedural textures
-      const earthGeometry = new THREE.SphereGeometry(8, 32, 32);
-      const earthTexture = TextureGenerator.generate('earth', 'albedo');
-      const earthBump = TextureGenerator.generate('earth', 'bump');
-      const earthRoughness = TextureGenerator.generate('earth', 'roughness');
-      
-      const earthMaterial = new THREE.MeshStandardMaterial({
-        map: earthTexture,
-        bumpMap: earthBump,
-        bumpScale: 0.85,
-        roughnessMap: earthRoughness,
-        metalness: 0.12,
-        roughness: 0.8,
-        emissive: 0x4A90E2,
-        emissiveIntensity: 0.05
-      });
-      const earth = new THREE.Mesh(earthGeometry, earthMaterial);
-      earth.position.set(0, 0, 0);
-      earth.castShadow = true;
-      earth.receiveShadow = true;
-      
-      // Clouds Layer
-      const cloudGeo = new THREE.SphereGeometry(8.2, 32, 32);
-      const cloudTex = TextureGenerator.generate('earth-clouds', 'albedo');
-      const cloudMat = new THREE.MeshStandardMaterial({
-        map: cloudTex,
-        transparent: true,
-        opacity: 0.55,
-        depthWrite: false,
-        blending: THREE.NormalBlending
-      });
-      const clouds = new THREE.Mesh(cloudGeo, cloudMat);
-      earth.add(clouds);
-      earth.userData.clouds = clouds; // Reference to rotate in render loop
-      
-      // Brighter atmosphere glow
-      const glowGeometry = new THREE.SphereGeometry(10.2, 24, 24);
-      const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00d4ff,
-        transparent: true,
-        opacity: 0.45,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending
-      });
-      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-      earth.add(glow);
-      
-      // Larger, brighter label
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      
-      // Background for better visibility
-      ctx.fillStyle = 'rgba(0, 5, 16, 0.85)';
-      ctx.fillRect(0, 0, 512, 128);
-      
-      // Border
-      ctx.strokeStyle = '#00d4ff';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(2, 2, 508, 124);
-      
-      // Text
-      ctx.fillStyle = '#00d4ff';
-      ctx.font = 'bold 48px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('🌍 YOUR LOCATION', 256, 80);
-      
-      const texture = new THREE.CanvasTexture(canvas);
-      const spriteMaterial = new THREE.SpriteMaterial({ 
-        map: texture, 
-        transparent: true,
-        depthTest: false
-      });
-      const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.position.set(0, 20, 0);
-      sprite.scale.set(60, 15, 1);
-      earth.add(sprite);
-      
-      earth.userData = {
-        id: 'your-location',
-        name: 'Your Location',
-        type: 'Earth Reference',
-        radius: 8,
-        temp: '15°C',
-        mass: '5.97e24 kg',
-        moons: 1,
-        distance: 0,
-        description: 'Your actual location on Earth, synchronized with your browser telemetry.'
-      };
-      
-      this.scene.add(earth);
-      this.referenceEarth = earth;
-      this.objects.push(earth);
+      // Reference Earth point removed at user request.
     },
     
     clearScene() {
@@ -2190,24 +2083,6 @@
       const data = this.currentTab === 'solar' ? this.solarSystem : 
                    this.currentTab === 'stars' ? this.nearbyStars : 
                    this.currentTab === 'constellations' ? this.constellations : this.nebulae;
-      
-      // Inject "Your Location" (referenceEarth) at the top of the list for all tabs
-      const userLocationItem = document.createElement('div');
-      userLocationItem.className = 'space-object-item';
-      userLocationItem.setAttribute('data-id', 'your-location');
-      userLocationItem.addEventListener('click', () => this.selectObject('your-location', true));
-
-      const locName = document.createElement('div');
-      locName.className = 'font-bold text-nasa';
-      locName.textContent = '🌍 Your Location';
-      userLocationItem.appendChild(locName);
-
-      const locType = document.createElement('div');
-      locType.className = 'text-xs text-gray-400';
-      locType.textContent = 'Earth Reference';
-      userLocationItem.appendChild(locType);
-
-      list.appendChild(userLocationItem);
       
       // Populate standard items
       data.forEach((o, i) => {
