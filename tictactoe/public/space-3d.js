@@ -659,6 +659,7 @@
   let sunGroup = null;
   let sunProceduralGroup = null;
   let sunModelGroup = null;
+  let shootingStarModel = null;
   let proximaCentauri = null;
   let alphaCentauriA = null;
   let alphaCentauriB = null;
@@ -1942,6 +1943,79 @@
 
   for (let i = 0; i < MAX_SS; i++) shootingStars.push(createShootingStarObject());
 
+  // ── Asynchronously Load 3D Shooting Star Model ──
+  if (typeof THREE.GLTFLoader !== 'undefined') {
+    const gltfLoader = new THREE.GLTFLoader();
+    const getModelUrl = (path) => {
+      if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
+        const base = window.BACKEND_URL.replace(/\/$/, '');
+        const cleanPath = path.startsWith('/') ? path : '/' + path;
+        return base + cleanPath;
+      }
+      return path;
+    };
+    const starPaths = [
+      getModelUrl('/models/shooting_star.glb'),
+      getModelUrl('/models/shootingstar.glb'),
+      getModelUrl('/models/shootingstar/scene.gltf')
+    ];
+    let starAttemptIndex = 0;
+
+    function loadStarModel(path) {
+      console.log(`[GLTFLoader] Attempting to load 3D shooting star model from: ${path}`);
+      gltfLoader.load(
+        path,
+        (gltf) => {
+          console.log(`[GLTFLoader] Successfully loaded 3D shooting star model from: ${path}`);
+          shootingStarModel = gltf.scene;
+
+          // Compute bounding box for auto-scaling
+          const box = new THREE.Box3().setFromObject(shootingStarModel);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          // Scale to fit ~12 units length
+          const targetDim = 12.0;
+          const scale = maxDim > 0 ? targetDim / maxDim : 1.0;
+          shootingStarModel.scale.set(scale, scale, scale);
+
+          // Disable shadows for high performance
+          shootingStarModel.traverse((node) => {
+            if (node.isMesh) {
+              node.castShadow = false;
+              node.receiveShadow = false;
+              if (node.material) {
+                node.material.side = THREE.DoubleSide;
+                if (node.material.transparent) {
+                  node.material.depthWrite = false;
+                }
+              }
+            }
+          });
+
+          // Add the model clones to our shootingStars objects!
+          shootingStars.forEach(s => {
+            if (s.model) scene.remove(s.model);
+            s.model = shootingStarModel.clone();
+            s.model.visible = false;
+            scene.add(s.model);
+          });
+        },
+        undefined,
+        (error) => {
+          console.warn(`[GLTFLoader] Failed to load 3D shooting star model from ${path}:`, error);
+          starAttemptIndex++;
+          if (starAttemptIndex < starPaths.length) {
+            loadStarModel(starPaths[starAttemptIndex]);
+          } else {
+            console.log('[GLTFLoader] Standing by on procedural line-based shooting stars.');
+          }
+        }
+      );
+    }
+
+    loadStarModel(starPaths[starAttemptIndex]);
+  }
+
   function spawnShootingStar() {
     const star = shootingStars.find(s => !s.active);
     if (!star) return;
@@ -2244,11 +2318,35 @@
         s.active = false;
         s.mesh.material.opacity = 0;
         s.mesh.visible = false;
+        if (s.model) {
+          s.model.visible = false;
+        }
         continue;
       }
 
       // Advance head along direction
       _v1.copy(s.start).addScaledVector(s.direction, s.t * s.travel);
+
+      // Update 3D shooting star model if active
+      if (s.model) {
+        s.model.visible = true;
+        s.model.position.copy(_v1);
+        s.model.lookAt(_v2.copy(_v1).add(s.direction));
+        
+        // Correct GLTF forward vector: rotation offset if needed (standard GLTF faces -Z)
+        s.model.rotateY(Math.PI); // Adjust if the trail goes backwards or rotate as needed
+        
+        // Dynamic fade/opacity matching the line trail
+        s.model.traverse((node) => {
+          if (node.isMesh && node.material) {
+            if (!node.userData.originalOpacity) {
+              node.userData.originalOpacity = node.material.opacity || 1.0;
+              node.material.transparent = true;
+            }
+            node.material.opacity = node.userData.originalOpacity * brightness;
+          }
+        });
+      }
 
       // O(1) ring-buffer: overwrite oldest slot, advance head index
       if (!s.trailHead) s.trailHead = 0;
