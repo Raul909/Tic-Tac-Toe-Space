@@ -42,44 +42,26 @@
   renderer.shadowMap.enabled = false; // Disable shadows for performance
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.95; // Slightly below 1 — keeps space jet-black, stars pop
+  renderer.toneMappingExposure = 1.0;
   renderer.outputEncoding = THREE.sRGBEncoding;
   camera.position.set(0, 25, 90);
   
-  // Sharp telescope-PSF star point texture — bright pinpoint core, tiny airy disk, instant fall-off
-  // This mimics how a real telescope images a star: near-delta-function core, faint diffraction halo
+  // Bright round star particle texture — solid glowing core with smooth radial falloff
   function createCircleTexture() {
-    const S = 64;
+    const S = 32;
     const canvas = document.createElement('canvas');
     canvas.width = S;
     canvas.height = S;
     const ctx = canvas.getContext('2d');
     const cx = S / 2;
-
-    // 1. Tiny diffuse halo (very faint, wide)
-    const halo = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
-    halo.addColorStop(0,    'rgba(255,255,255,0.30)');
-    halo.addColorStop(0.12, 'rgba(255,255,255,0.12)');
-    halo.addColorStop(0.30, 'rgba(200,220,255,0.04)');
-    halo.addColorStop(0.60, 'rgba(150,200,255,0.01)');
-    halo.addColorStop(1,    'rgba(0,0,0,0)');
-    ctx.fillStyle = halo;
+    const gradient = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
+    gradient.addColorStop(0,    'rgba(255,255,255,1)');
+    gradient.addColorStop(0.35, 'rgba(255,255,255,0.9)');
+    gradient.addColorStop(0.65, 'rgba(255,255,255,0.35)');
+    gradient.addColorStop(0.85, 'rgba(255,255,255,0.08)');
+    gradient.addColorStop(1,    'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, S, S);
-
-    // 2. Sharp bright Airy disc core (radius = 4px out of 32)
-    const core = ctx.createRadialGradient(cx, cx, 0, cx, cx, S * 0.07);
-    core.addColorStop(0,   'rgba(255,255,255,1.0)');
-    core.addColorStop(0.5, 'rgba(255,255,255,0.95)');
-    core.addColorStop(1,   'rgba(255,255,255,0)');
-    ctx.fillStyle = core;
-    ctx.fillRect(0, 0, S, S);
-
-    // 3. Subtle 4-point diffraction spike (makes bright stars look like telescope images)
-    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, S); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, cx); ctx.lineTo(S, cx); ctx.stroke();
-
     const tex = new THREE.CanvasTexture(canvas);
     tex.needsUpdate = true;
     return tex;
@@ -574,13 +556,13 @@
         renderer.toneMappingExposure = 1.0;
       } else if (preset.name === 'frozen') {
         scene.fog.color.setHex(0x000820);
-        renderer.toneMappingExposure = 1.4;
+        renderer.toneMappingExposure = 1.0;
       } else if (preset.name === 'misty') {
         scene.fog.color.setHex(0x000308);
         renderer.toneMappingExposure = 1.1;
       } else {
         scene.fog.color.setHex(0x000208);
-        renderer.toneMappingExposure = 1.3;
+        renderer.toneMappingExposure = 1.0;
       }
     }
   };
@@ -605,17 +587,9 @@
       geo.setDrawRange(0, activeCount);
     });
     
-    // Toggle Sgr A* volumetric gas streams visibility
-    if (sgrParticles) {
-      sgrParticles.visible = (mode === 'HD');
-    }
     // Toggle lensed secondary accretion disk visibility
     if (lensedAccretionDisk) {
       lensedAccretionDisk.visible = (mode === 'HD');
-    }
-    // Toggle Andromeda starburst dust stream visibility
-    if (andromedaDust) {
-      andromedaDust.visible = (mode === 'HD');
     }
     
     // Toggle nebula gas density
@@ -1628,83 +1602,31 @@
   andromedaGalaxy.rotation.set(Math.PI / 4.5, -Math.PI / 5, Math.PI / 7);
   scene.add(andromedaGalaxy);
 
-  // ── Andromeda Orbiting Nebula Haze (HD mode only) ──
-  // Realistic DSO-style: large overlapping soft cloud puffs, not hard dots
-  // Each puff is a 128x128 multi-layer nebula sprite — together they form a telescopic dust lane haze
-  const androDustGeo = new THREE.BufferGeometry();
-  const androDustPositions = [];
-  const androDustColors = [];
-  androDustData = [];
+  // ── Sagittarius A* Black Hole — Clean Interstellar-style design ──
+  // Pure black event horizon sphere with a thin elegant accretion disk and a photon ring.
+  // No orbiting gas particle clouds — just a clean, cinematic silhouette.
   
-  const ANDRO_HAZE_COUNT = 480; // More particles needed at large size for good coverage
-  for (let i = 0; i < ANDRO_HAZE_COUNT; i++) {
-    // Distribute in elliptical disk matching the galaxy plane (thin disk, wide radius)
-    const r = 8 + Math.random() * 36;
-    const angle = Math.random() * Math.PI * 2;
-    const ySpread = (Math.random() - 0.5) * 3.5; // Very thin disk — galaxy is edge-on-ish
-    
-    androDustPositions.push(Math.cos(angle) * r, ySpread, Math.sin(angle) * r);
-    androDustData.push({ r, angle, speed: 0.001 + (1 / r) * 0.04 });
-    
-    const c = new THREE.Color();
-    if (r < 14) {
-      // Core: warm aging stars, yellow-orange galactic bulge
-      c.setHSL(0.08 + Math.random() * 0.06, 0.75, 0.35 + Math.random() * 0.12);
-    } else if (r < 24) {
-      // Mid arms: mix of warm and blue star-forming regions
-      const armRand = Math.random();
-      if (armRand < 0.4) c.setHSL(0.57 + Math.random() * 0.08, 0.85, 0.30 + Math.random() * 0.15); // blue HII
-      else if (armRand < 0.7) c.setHSL(0.08 + Math.random() * 0.05, 0.70, 0.28 + Math.random() * 0.10); // gold
-      else c.setHSL(0.0, 0.0, 0.18 + Math.random() * 0.08); // dark dust lane
-    } else {
-      // Outer halo: cool blue-white faint halo stars, very dim
-      c.setHSL(0.60 + Math.random() * 0.06, 0.60, 0.18 + Math.random() * 0.10);
-    }
-    androDustColors.push(c.r, c.g, c.b);
-  }
-  
-  androDustGeo.setAttribute('position', new THREE.Float32BufferAttribute(androDustPositions, 3));
-  androDustGeo.setAttribute('color', new THREE.Float32BufferAttribute(androDustColors, 3));
-  
-  const androDustMat = new THREE.PointsMaterial({
-    size: 14,               // Large overlapping cloud puffs — neighbouring puffs merge into haze
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.055,         // Very low opacity per puff — 480 puffs accumulate into thick cloud
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    map: createNebulaTexture(),   // Volumetric cloud puff — looks like HST dust lane
-    sizeAttenuation: true
-  });
-  
-  andromedaDust = new THREE.Points(androDustGeo, androDustMat);
-  andromedaDust.visible = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
-  andromedaGalaxy.add(andromedaDust);
-
-  // ── Sagittarius A* Black Hole Setup ──
-  const sagittariusTexture = createSagittariusATexture();
-  
-  // Event Horizon Sphere
-  const eventHorizonGeo = new THREE.SphereGeometry(5.8, 32, 32);
+  // Event Horizon — perfectly absorbing black sphere
+  const eventHorizonGeo = new THREE.SphereGeometry(6.0, 64, 64);
   const eventHorizonMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
   eventHorizon = new THREE.Mesh(eventHorizonGeo, eventHorizonMat);
-  eventHorizon.position.set(-190, 38, -290); // Left distant side
+  eventHorizon.position.set(-190, 38, -290);
   scene.add(eventHorizon);
 
-  // Relativistic Gravitational Lensing Glow (orange outline)
-  const lensingGlowGeo = new THREE.SphereGeometry(7.85, 32, 32);
-  const lensingGlowMat = new THREE.ShaderMaterial({
+  // Thin photon-ring glow rim — sharp Fresnel edge, NOT a fat orange ball
+  const photonRimGeo = new THREE.SphereGeometry(6.35, 64, 64);
+  const photonRimMat = new THREE.ShaderMaterial({
     uniforms: {
-      glowColor: { value: new THREE.Color(0xff8800) }
+      glowColor: { value: new THREE.Color(0xffaa44) }
     },
     vertexShader: `
       varying vec3 vNormal;
       varying vec3 vView;
       void main() {
         vNormal = normalize(normalMatrix * normal);
-        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-        vView = normalize(-mvPosition.xyz);
-        gl_Position = projectionMatrix * mvPosition;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vView = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
       }
     `,
     fragmentShader: `
@@ -1712,8 +1634,8 @@
       varying vec3 vNormal;
       varying vec3 vView;
       void main() {
-        float intensity = pow(1.0 - dot(vNormal, vView), 4.5);
-        gl_FragColor = vec4(glowColor, intensity * 0.98);
+        float rim = pow(1.0 - abs(dot(vNormal, vView)), 8.0); // Very sharp edge-only glow
+        gl_FragColor = vec4(glowColor, rim * 0.65);
       }
     `,
     side: THREE.BackSide,
@@ -1721,71 +1643,22 @@
     transparent: true,
     depthWrite: false
   });
-  const lensingGlow = new THREE.Mesh(lensingGlowGeo, lensingGlowMat);
-  eventHorizon.add(lensingGlow);
+  eventHorizon.add(new THREE.Mesh(photonRimGeo, photonRimMat));
 
-  // ── Animated WebGL Accretion Disk (primary — wide plasma torus) ──
-  // Uses FBM polar-coordinate shader with live Doppler beaming. No static texture needed.
-  const accretionDiskMat = createAccretionDiskShaderMaterial(7.8, 25);
-  accretionDisk = new THREE.Mesh(new THREE.RingGeometry(7.8, 25, 96, 4), accretionDiskMat);
-  accretionDisk.rotation.set(Math.PI / 2.2, Math.PI / 12, 0);
+  // ── Thin Elegant Accretion Disk (Interstellar-style) ──
+  // Narrow ring with animated FBM plasma — inner bright white, outer dim orange-red
+  const accretionDiskMat = createAccretionDiskShaderMaterial(6.8, 18);
+  accretionDisk = new THREE.Mesh(new THREE.RingGeometry(6.8, 18, 128, 1), accretionDiskMat);
+  accretionDisk.rotation.set(Math.PI / 2.15, Math.PI / 14, 0);
   eventHorizon.add(accretionDisk);
 
-  // ── Einstein Relativistic Lensing Disk (HD only — photon ring above event horizon) ──
-  const lensedAccretionDiskMat = createAccretionDiskShaderMaterial(6.0, 12);
-  lensedAccretionDisk = new THREE.Mesh(new THREE.RingGeometry(6.0, 12, 96, 4), lensedAccretionDiskMat);
+  // ── Gravitational Lensing Ring (HD only) — thin photon ring perpendicular to disk ──
+  // In Interstellar, light bends around the BH, creating a second ring visible above/below
+  const lensedAccretionDiskMat = createAccretionDiskShaderMaterial(6.2, 10);
+  lensedAccretionDisk = new THREE.Mesh(new THREE.RingGeometry(6.2, 10, 128, 1), lensedAccretionDiskMat);
   lensedAccretionDisk.lookAt(camera.position);
   lensedAccretionDisk.visible = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
   eventHorizon.add(lensedAccretionDisk);
-
-  // ── Volumetric Accretion Gas Cloud (HD mode only) ──
-  // Realistic: overlapping large soft puffs accumulate into a coherent misty plasma cloud
-  // like a real astrophotograph of gas accreting around a singularity
-  const sgrPartGeo = new THREE.BufferGeometry();
-  const sgrPartPositions = [];
-  const sgrPartColors = [];
-  sgrPartData = [];
-  
-  for (let i = 0; i < sgrPartCount; i++) {
-    const r = 8.0 + Math.random() * 17;
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 0.012 + (1 / r) * 0.40;
-    const yOffset = (Math.random() - 0.5) * 2.0; // Thin disk
-    
-    sgrPartPositions.push(Math.cos(angle) * r, yOffset, Math.sin(angle) * r);
-    sgrPartData.push({ r, angle, speed, y: yOffset });
-    
-    // Doppler-biased colors: approaching side is hot white-gold, receding is dim deep red
-    const approaching = Math.cos(angle) < 0;
-    const c = new THREE.Color();
-    if (approaching) {
-      // Approaching: ultra-hot white-gold to bright orange
-      c.setHSL(0.06 + Math.random() * 0.05, 0.95, 0.55 + Math.random() * 0.35);
-    } else {
-      // Receding: dim deep red to dark orange
-      c.setHSL(0.02 + Math.random() * 0.03, 0.90, 0.18 + Math.random() * 0.15);
-    }
-    sgrPartColors.push(c.r, c.g, c.b);
-  }
-  
-  sgrPartGeo.setAttribute('position', new THREE.Float32BufferAttribute(sgrPartPositions, 3));
-  sgrPartGeo.setAttribute('color', new THREE.Float32BufferAttribute(sgrPartColors, 3));
-  
-  const sgrPartMat = new THREE.PointsMaterial({
-    size: 8.0,              // Large overlapping cloud puffs — merge into coherent plasma cloud
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.40,          // Low per-puff opacity; 400 puffs layer into a thick volumetric cloud
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    map: createNebulaTexture(),   // Soft multi-layer puff texture — not a hard dot
-    sizeAttenuation: true
-  });
-  
-  sgrParticles = new THREE.Points(sgrPartGeo, sgrPartMat);
-  sgrParticles.rotation.set(Math.PI / 2.2, Math.PI / 12, 0);
-  sgrParticles.visible = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
-  eventHorizon.add(sgrParticles);
 
   // ─── Shooting Stars ─────────────────────────────────────────────────────────
   // Rare, solitary cinematic meteors with smooth 28-point gradient trails.
@@ -2031,48 +1904,22 @@
     
     // ── Accretion Disk: tick animated shader time + orbital rotation ──
     if (accretionDisk) {
-      accretionDisk.rotation.z += 0.006 * scale;
+      accretionDisk.rotation.z += 0.004 * scale;
       if (accretionDisk.material && accretionDisk.material.uniforms)
         accretionDisk.material.uniforms.time.value = currentTime * 0.001;
     }
     if (lensedAccretionDisk) {
       lensedAccretionDisk.lookAt(camera.position);
-      lensedAccretionDisk.rotation.z -= 0.004 * scale;
+      lensedAccretionDisk.rotation.z -= 0.003 * scale;
       if (lensedAccretionDisk.material && lensedAccretionDisk.material.uniforms)
         lensedAccretionDisk.material.uniforms.time.value = currentTime * 0.001;
     }
-    if (sgrParticles && (localStorage.getItem('graphicsMode') || 'HD') === 'HD') {
-      const posAttr = sgrParticles.geometry.attributes.position;
-      for (let i = 0; i < sgrPartCount; i++) {
-        const d = sgrPartData[i];
-        if (d) {
-          d.angle += d.speed * scale;
-          posAttr.setX(i, Math.cos(d.angle) * d.r);
-          posAttr.setZ(i, Math.sin(d.angle) * d.r);
-        }
-      }
-      posAttr.needsUpdate = true;
-    }
     if (eventHorizon) {
-      // Subtle cosmic frame dragging/wobble
       eventHorizon.rotation.y += 0.0003 * scale;
-      eventHorizon.rotation.x = Math.sin(currentTime * 0.0004) * 0.03;
+      eventHorizon.rotation.x = Math.sin(currentTime * 0.0004) * 0.02;
     }
     if (andromedaGalaxy) {
-      // Oblique spiral arm rotation
       andromedaGalaxy.rotation.z += 0.00012 * scale;
-    }
-    if (andromedaDust && (localStorage.getItem('graphicsMode') || 'HD') === 'HD') {
-      const posAttr = andromedaDust.geometry.attributes.position;
-      for (let i = 0; i < androDustData.length; i++) {
-        const d = androDustData[i];
-        if (d) {
-          d.angle += d.speed * scale;
-          posAttr.setX(i, Math.cos(d.angle) * d.r);
-          posAttr.setZ(i, Math.sin(d.angle) * d.r);
-        }
-      }
-      posAttr.needsUpdate = true;
     }
     
     if (moon) {
