@@ -4,21 +4,25 @@ This folder contains screenshots of the Tic Tac Toe Mission Control app.
 
 ## Required Screenshots
 
-Visit: **https://tictactoe-multiplayer-kx9u.onrender.com/**
+Visit: **https://tic-tac-toe-space.pages.dev**
 
 ### 1. auth-screen.png
+![auth-screen](auth-screen.png)
 - Login/Register page with 3D space background
 - Shows planets, stars, and authentication form
 
 ### 2. game-board.png
+![game-board](game-board.png)
 - Active game with X's and O's on the board
 - Shows the mission control interface
 
 ### 3. victory-share.png
+![victory-share](victory-share.png)
 - Victory screen with social share buttons
 - Shows Twitter, Facebook, WhatsApp options
 
 ### 4. space-explorer.png
+![space-explorer](space-explorer.png)
 - 3D Space Explorer (any tab: Solar System, Stars, or Nebulae)
 - Shows 3D controls and objects
 

@@ -15,7 +15,7 @@ If you find this premium space-combat experience interesting, please **Star** an
 
 *   **Static Client Mesh**: Deployed on **Cloudflare Pages** for sub-millisecond global CDN edge delivery.
 *   **Persistent Core Server**: Deployed on **Render** utilizing automated blueprint synchronization.
-*   **Active Comm Link**: [https://tic-tac-toe-space.pages.dev](https://tic-tac-toe-space.pages.dev)
+*   🚀 **Active Comm Link**: **[https://tic-tac-toe-space.pages.dev](https://tic-tac-toe-space.pages.dev)**
 
 ---
 
@@ -37,12 +37,12 @@ If you find this premium space-combat experience interesting, please **Star** an
 
 | 👤 Entry Portal | 🚀 Tactical Grid Arena |
 |:---:|:---:|
-| ![Entry Portal](screenshots/auth-screen.png) | ![Tactical Grid Arena](screenshots/game-board.png) |
+| ![Entry Portal](https://raw.githubusercontent.com/Raul909/Tic-Tac-Toe-Space/main/screenshots/auth-screen.png) | ![Tactical Grid Arena](https://raw.githubusercontent.com/Raul909/Tic-Tac-Toe-Space/main/screenshots/game-board.png) |
 | *Log in using authorized credentials or establish a temporary Guest Call Sign to launch instantly.* | *Interact with zero latency. Active sectors glow with a volumetric solar corona.* |
 
 | 🌌 Space Explorer | 🏆 Victory Telemetry |
 |:---:|:---:|
-| ![Space Explorer](screenshots/space-explorer.png) | ![Victory Telemetry](screenshots/victory-share.png) |
+| ![Space Explorer](https://raw.githubusercontent.com/Raul909/Tic-Tac-Toe-Space/main/screenshots/space-explorer.png) | ![Victory Telemetry](https://raw.githubusercontent.com/Raul909/Tic-Tac-Toe-Space/main/screenshots/victory-share.png) |
 | *Navigate through Saturn's rings, nearby stars, and realistic, volumetric gas nebulae.* | *Achieve victory to view dynamic telemetry, score updates, and engaging space facts.* |
 
 ---
@@ -81,25 +81,5 @@ If you find this premium space-combat experience interesting, please **Star** an
     ```
 
 *Note: Redis and RabbitMQ are optional for local development. The system automatically falls back to in-process memory lists and in-memory message queues.*
-
----
-
-## 📡 Production Sector Deployments
-
-### 1. Backend (Render Blueprint)
-1.  Connect your GitHub repository to the **Render Dashboard**.
-2.  Create a **New Blueprint** pointing to the `render.yaml` template.
-3.  Inject the following environmental variables:
-    *   `NODE_ENV` = `production`
-    *   `ALLOWED_ORIGINS` = `https://your-client-domain.pages.dev`
-    *   `MONGODB_URI` = *Your secure connection string*
-    *   `RABBITMQ_URL` = *Your CloudAMQP URL*
-
-### 2. Frontend (Cloudflare Pages)
-1.  Connect your repo in **Workers & Pages** → **Connect to Git**.
-2.  Configure build parameters:
-    *   **Build Command**: (Leave blank)
-    *   **Output Directory**: `tictactoe/public`
-3.  Publish to trigger global deployment.
 
 
