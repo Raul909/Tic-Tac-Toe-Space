@@ -142,6 +142,145 @@
     texture.needsUpdate = true;
     return texture;
   }
+
+  // Relativistic Doppler-beaming Accretion Disk generator for Sagittarius A*
+  function createSagittariusATexture() {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const cx = size / 2;
+    const cy = size / 2;
+    
+    ctx.clearRect(0, 0, size, size);
+    
+    // 1. Emissive accretion disc glow gradient (orange-red to gold and violet outskirts)
+    const grad = ctx.createRadialGradient(cx, cy, 10, cx, cy, size / 2);
+    grad.addColorStop(0, 'rgba(0,0,0,1)'); // event horizon core
+    grad.addColorStop(0.12, 'rgba(255, 255, 255, 1)'); // photon ring
+    grad.addColorStop(0.20, 'rgba(255, 160, 0, 0.95)'); // gold core gas
+    grad.addColorStop(0.40, 'rgba(230, 70, 0, 0.7)'); // red-orange orbiting plasma
+    grad.addColorStop(0.70, 'rgba(100, 15, 200, 0.25)'); // extreme violet outskirts
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    
+    // 2. Swirling orbital gas filaments with relativistic Doppler asymmetry (brighter left)
+    ctx.strokeStyle = 'rgba(255, 210, 50, 0.07)';
+    ctx.lineWidth = 1.8;
+    for (let r = 24; r < size / 2 - 15; r += 3) {
+      ctx.beginPath();
+      for (let a = 0; a < Math.PI * 2; a += 0.06) {
+        const leftHemisphere = Math.cos(a) < 0;
+        const beamingFactor = leftHemisphere ? 1.45 : 0.65;
+        
+        const distortion = Math.sin(a * 5 + r * 0.35) * 2.2;
+        const x = cx + Math.cos(a) * (r + distortion);
+        const y = cy + Math.sin(a) * (r + distortion);
+        
+        ctx.strokeStyle = `rgba(255, ${leftHemisphere ? 220 : 150}, 50, ${0.08 * beamingFactor})`;
+        if (a === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  // Hyper-detailed Spiral Galaxy generator for Andromeda (starburst hubs & dust lanes)
+  function createAndromedaTexture() {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const cx = size / 2;
+    const cy = size / 2;
+    
+    ctx.clearRect(0, 0, size, size);
+    
+    // 1. Galactic bulge core glow (yellow-white aging stars cluster)
+    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.18);
+    coreGrad.addColorStop(0, 'rgba(255, 252, 240, 1.0)');
+    coreGrad.addColorStop(0.2, 'rgba(255, 225, 170, 0.9)');
+    coreGrad.addColorStop(0.5, 'rgba(255, 160, 70, 0.45)');
+    coreGrad.addColorStop(1, 'rgba(255, 160, 70, 0)');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 2. High-density star forming spiral arms (cyan giants & pink starbursts)
+    const numArms = 2;
+    const maxR = size * 0.45;
+    
+    for (let arm = 0; arm < numArms; arm++) {
+      const armOffset = (arm * Math.PI * 2) / numArms;
+      for (let i = 0; i < 700; i++) {
+        const percent = i / 700;
+        const r = percent * maxR;
+        const theta = percent * Math.PI * 3.8 + armOffset;
+        
+        const spread = (percent * 24) + 1.5;
+        const dx = (Math.random() - 0.5) * spread;
+        const dy = (Math.random() - 0.5) * spread;
+        
+        const x = cx + Math.cos(theta) * r + dx;
+        const y = cy + Math.sin(theta) * r + dy;
+        
+        let color;
+        const starSize = Math.random() * 2.2 + 0.6;
+        if (percent < 0.2) {
+          color = `rgba(255, 195, 130, ${0.22 * (1 - percent)})`;
+        } else if (percent < 0.6) {
+          color = Math.random() > 0.45 
+            ? `rgba(0, 190, 255, ${0.40 * (1 - percent)})` 
+            : `rgba(255, 90, 190, ${0.28 * (1 - percent)})`;
+        } else {
+          color = `rgba(60, 130, 255, ${0.50 * (1 - percent)})`;
+        }
+        
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, starSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        if (Math.random() > 0.95) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.90 * (1 - percent)})`;
+          ctx.beginPath();
+          ctx.arc(x, y, 0.75, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    
+    // 3. Obscuring gas lanes / dark dust bands
+    for (let arm = 0; arm < numArms; arm++) {
+      const armOffset = (arm * Math.PI * 2) / numArms + 0.28;
+      for (let i = 80; i < 480; i += 3) {
+        const percent = i / 600;
+        const r = percent * maxR;
+        const theta = percent * Math.PI * 3.8 + armOffset;
+        const spread = percent * 10 + 1;
+        const x = cx + Math.cos(theta) * r + (Math.random() - 0.5) * spread;
+        const y = cy + Math.sin(theta) * r + (Math.random() - 0.5) * spread;
+        
+        ctx.fillStyle = `rgba(18, 4, 0, ${0.16 * (1 - percent)})`;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.random() * 5 + 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
   
   // Weather Preset System
   let currentPreset = { fog: 0.0003, starDensity: 1, planetGlow: 1 };
@@ -224,6 +363,11 @@
   // Weather system
   let bgWeatherParticles = null;
   let currentBgWeather = 'clear';
+  
+  // Custom Space Background Objects
+  let andromedaGalaxy = null;
+  let eventHorizon = null;
+  let accretionDisk = null;
   
   function syncBackgroundWeather() {
     if (window.SpaceGallery3D && window.SpaceGallery3D.currentWeather) {
@@ -1040,6 +1184,92 @@
   }
   astInstanced.instanceMatrix.needsUpdate = true;
 
+  // ── Andromeda Galaxy Mesh Setup ──
+  const andromedaTexture = createAndromedaTexture();
+  const andromedaGeo = new THREE.PlaneGeometry(90, 90);
+  const andromedaMaterial = new THREE.MeshBasicMaterial({
+    map: andromedaTexture,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    opacity: 0.88,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  andromedaGalaxy = new THREE.Mesh(andromedaGeo, andromedaMaterial);
+  andromedaGalaxy.position.set(230, 45, -340); // Distant background balance
+  andromedaGalaxy.rotation.set(Math.PI / 4.5, -Math.PI / 5, Math.PI / 7);
+  scene.add(andromedaGalaxy);
+
+  // ── Sagittarius A* Black Hole Setup ──
+  const sagittariusTexture = createSagittariusATexture();
+  
+  // Event Horizon Sphere
+  const eventHorizonGeo = new THREE.SphereGeometry(5.8, 32, 32);
+  const eventHorizonMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  eventHorizon = new THREE.Mesh(eventHorizonGeo, eventHorizonMat);
+  eventHorizon.position.set(-190, 38, -290); // Left distant side
+  scene.add(eventHorizon);
+
+  // Relativistic Gravitational Lensing Glow (orange outline)
+  const lensingGlowGeo = new THREE.SphereGeometry(7.85, 32, 32);
+  const lensingGlowMat = new THREE.ShaderMaterial({
+    uniforms: {
+      glowColor: { value: new THREE.Color(0xff8800) }
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      varying vec3 vView;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        vView = normalize(-mvPosition.xyz);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 glowColor;
+      varying vec3 vNormal;
+      varying vec3 vView;
+      void main() {
+        float intensity = pow(1.0 - dot(vNormal, vView), 4.5);
+        gl_FragColor = vec4(glowColor, intensity * 0.98);
+      }
+    `,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false
+  });
+  const lensingGlow = new THREE.Mesh(lensingGlowGeo, lensingGlowMat);
+  eventHorizon.add(lensingGlow);
+
+  // Emissive Accretion Disk Ring
+  const accretionDiskGeo = new THREE.RingGeometry(7.8, 25, 64);
+  const ringPosAttr = accretionDiskGeo.attributes.position;
+  const ringUvAttr = accretionDiskGeo.attributes.uv;
+  const ringInnerR = 7.8;
+  const ringOuterR = 25;
+  for (let j = 0; j < ringPosAttr.count; j++) {
+    const rx = ringPosAttr.getX(j);
+    const ry = ringPosAttr.getY(j);
+    const rDist = Math.sqrt(rx*rx + ry*ry);
+    const u = (rDist - ringInnerR) / (ringOuterR - ringInnerR);
+    ringUvAttr.setXY(j, u, 0.5);
+  }
+  ringUvAttr.needsUpdate = true;
+
+  const accretionDiskMat = new THREE.MeshBasicMaterial({
+    map: sagittariusTexture,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    opacity: 0.96,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  accretionDisk = new THREE.Mesh(accretionDiskGeo, accretionDiskMat);
+  accretionDisk.rotation.set(Math.PI / 2.2, Math.PI / 12, 0);
+  eventHorizon.add(accretionDisk);
+
   // ─── Shooting Stars ─────────────────────────────────────────────────────────
   // Rare, solitary cinematic meteors with smooth 28-point gradient trails.
   // One fires every 8–22 s. Direction mirrors real shower meteors (upper-right → lower-left).
@@ -1243,6 +1473,20 @@
       p.mesh.position.z = cz + sinAngle * p.radius;
       p.mesh.rotation.y += p.rotationSpeed * scale;
     });
+    
+    // ── Accretion Disk orbital rotation & relativistic black hole breathing ──
+    if (accretionDisk) {
+      accretionDisk.rotation.z += 0.006 * scale;
+    }
+    if (eventHorizon) {
+      // Subtle cosmic frame dragging/wobble
+      eventHorizon.rotation.y += 0.0003 * scale;
+      eventHorizon.rotation.x = Math.sin(currentTime * 0.0004) * 0.03;
+    }
+    if (andromedaGalaxy) {
+      // Oblique spiral arm rotation
+      andromedaGalaxy.rotation.z += 0.00012 * scale;
+    }
     
     if (moon) {
       moon.rotation.y += 0.02 * scale;
