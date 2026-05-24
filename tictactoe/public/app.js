@@ -1265,12 +1265,21 @@ function app() {
       
       this.socket.on('game:start', (data) => {
         this.clearWinningCells();
-        window.SoundManager.play('start');
+        if (window.SoundManager) window.SoundManager.play('start');
         this.board = data.board;
         this.currentTurn = data.currentTurn;
         this.scores = data.scores;
         this.gameActive = true;
+        this.gameOver = false;
+        this.rematchRequested = false;
+        this.rematchFrom = '';
         this.mode = data.tournamentMatch ? 'tournament' : 'online';
+        if (data.players) {
+          const self = data.players.find(p => p.name === this.user.username);
+          if (self) {
+            this.mySymbol = self.symbol;
+          }
+        }
         this.setScreen('game');
         this.updateGameStatus();
       });
