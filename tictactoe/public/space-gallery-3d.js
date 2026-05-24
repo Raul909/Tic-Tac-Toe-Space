@@ -818,15 +818,18 @@
     fallbackMode: false,
     
     solarSystem: [
-      { name: 'Sun', type: 'Star', radius: 20, distance: 0, color: 0xFDB813, temp: '5778K', mass: '1.989×10³⁰ kg' },
-      { name: 'Mercury', type: 'Planet', radius: 4, distance: 80, color: 0x8C7853, orbit: 0.24, temp: '167°C', moons: 0 },
-      { name: 'Venus', type: 'Planet', radius: 9, distance: 120, color: 0xFFC649, orbit: 0.62, temp: '464°C', moons: 0 },
-      { name: 'Earth', type: 'Planet', radius: 10, distance: 170, color: 0x4A90E2, orbit: 1, temp: '15°C', moons: 1 },
-      { name: 'Mars', type: 'Planet', radius: 5, distance: 220, color: 0xE27B58, orbit: 1.88, temp: '-65°C', moons: 2 },
-      { name: 'Jupiter', type: 'Planet', radius: 18, distance: 300, color: 0xC88B3A, orbit: 11.86, temp: '-110°C', moons: 79 },
-      { name: 'Saturn', type: 'Planet', radius: 16, distance: 380, color: 0xFAD5A5, orbit: 29.46, temp: '-140°C', moons: 82, rings: true },
-      { name: 'Uranus', type: 'Planet', radius: 12, distance: 450, color: 0x4FD0E7, orbit: 84.01, temp: '-195°C', moons: 27 },
-      { name: 'Neptune', type: 'Planet', radius: 12, distance: 510, color: 0x4166F5, orbit: 164.79, temp: '-200°C', moons: 14 }
+      { name: 'Sun', type: 'Star', radius: 48, distance: 0, color: 0xFDB813, temp: '5778K', mass: '1.989×10³⁰ kg' },
+      { name: 'Mercury', type: 'Planet', radius: 2.5, distance: 100, color: 0x8C7853, orbit: 0.24, temp: '167°C', moons: 0 },
+      { name: 'Venus', type: 'Planet', radius: 5.8, distance: 140, color: 0xFFC649, orbit: 0.62, temp: '464°C', moons: 0 },
+      { name: 'Earth', type: 'Planet', radius: 6.0, distance: 190, color: 0x4A90E2, orbit: 1.0, temp: '15°C', moons: 1 },
+      { name: 'Mars', type: 'Planet', radius: 3.2, distance: 235, color: 0xE27B58, orbit: 1.88, temp: '-65°C', moons: 2 },
+      { name: 'Ceres', type: 'Dwarf Planet', radius: 1.5, distance: 270, color: 0x8D847B, orbit: 4.6, temp: '-105°C', moons: 0 },
+      { name: 'Jupiter', type: 'Planet', radius: 18.0, distance: 340, color: 0xC88B3A, orbit: 11.86, temp: '-110°C', moons: 79 },
+      { name: 'Saturn', type: 'Planet', radius: 15.0, distance: 420, color: 0xFAD5A5, orbit: 29.46, temp: '-140°C', moons: 82, rings: true },
+      { name: 'Uranus', type: 'Planet', radius: 9.5, distance: 495, color: 0x4FD0E7, orbit: 84.01, temp: '-195°C', moons: 27 },
+      { name: 'Neptune', type: 'Planet', radius: 9.2, distance: 555, color: 0x4166F5, orbit: 164.79, temp: '-200°C', moons: 14 },
+      { name: 'Pluto', type: 'Dwarf Planet', radius: 1.8, distance: 605, color: 0xC0A98B, orbit: 248.0, temp: '-230°C', moons: 5 },
+      { name: 'Eris', type: 'Dwarf Planet', radius: 1.7, distance: 650, color: 0xD3C2B0, orbit: 557.0, temp: '-243°C', moons: 1 }
     ],
     
     nearbyStars: [
@@ -964,8 +967,12 @@
     },
     
     getUserLocationAndWeather() {
-      // Geolocation prompts removed for absolute user privacy and a seamless UX.
-      this.setDefaultWeather();
+      if (window.appInstance && window.appInstance.weather) {
+        this.currentWeather = window.appInstance.weather;
+        this.addWeatherEffect();
+      } else {
+        this.setDefaultWeather();
+      }
     },
     
     async fetchWeather() {
@@ -1323,18 +1330,56 @@
           this.scene.add(sun);
           this.objects.push(sun);
           
+          // Concentric corona ray layers for high-end volumetric effect
           const glowTexture = TextureGenerator.generate('star-glow', 'albedo');
           const glowMaterial = new THREE.SpriteMaterial({
             map: glowTexture,
             color: data.color,
             transparent: true,
-            opacity: 0.9,
+            opacity: 0.85,
             blending: THREE.AdditiveBlending
           });
           const glow = new THREE.Sprite(glowMaterial);
           glow.scale.set(data.radius * 2.2, data.radius * 2.2, 1);
           glow.name = 'sunCoronaRay';
           sun.add(glow);
+
+          const outerGlowMaterial = new THREE.SpriteMaterial({
+            map: glowTexture,
+            color: 0xff3300,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending
+          });
+          const outerGlow = new THREE.Sprite(outerGlowMaterial);
+          outerGlow.scale.set(data.radius * 3.5, data.radius * 3.5, 1);
+          outerGlow.name = 'sunOuterCorona';
+          sun.add(outerGlow);
+
+          // Procedural 3D solar flare arches (wobbling torus loops around core)
+          const flareGroup = new THREE.Group();
+          flareGroup.name = 'solarFlares';
+          sun.add(flareGroup);
+          
+          for (let f = 0; f < 3; f++) {
+            const flareGeo = new THREE.TorusGeometry(data.radius * 1.02, 0.65, 8, 24, Math.PI * 0.35);
+            const flareMat = new THREE.MeshBasicMaterial({
+              color: f === 0 ? 0xff4500 : f === 1 ? 0xff8c00 : 0xff3300,
+              transparent: true,
+              opacity: 0.75,
+              blending: THREE.AdditiveBlending,
+              side: THREE.DoubleSide,
+              depthWrite: false
+            });
+            const flare = new THREE.Mesh(flareGeo, flareMat);
+            flare.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            flare.userData = {
+              rotX: (Math.random() - 0.5) * 0.015,
+              rotY: (Math.random() - 0.5) * 0.015,
+              rotZ: (Math.random() - 0.5) * 0.015
+            };
+            flareGroup.add(flare);
+          }
         } else {
           const geometry = new THREE.SphereGeometry(data.radius, 32, 32); // 32 segs
           const texture = TextureGenerator.generate(data.name, 'albedo');
@@ -1428,6 +1473,39 @@
           this.scene.add(orbit);
         }
       });
+
+      // ── Create Asteroid Belt Particle System ──
+      const asteroidCount = 300;
+      const asteroidGeo = new THREE.BufferGeometry();
+      const asteroidPositions = [];
+      const asteroidData = [];
+      
+      for (let i = 0; i < asteroidCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const r = 245 + Math.random() * 35; // Positioned beautifully between Mars (235) and Jupiter (340)
+        const yOffset = (Math.random() - 0.5) * 8;
+        const speed = 0.0008 + Math.random() * 0.0006;
+        
+        asteroidPositions.push(Math.cos(angle) * r, yOffset, Math.sin(angle) * r);
+        asteroidData.push({ r, angle, speed, y: yOffset });
+      }
+      
+      asteroidGeo.setAttribute('position', new THREE.Float32BufferAttribute(asteroidPositions, 3));
+      
+      const asteroidMat = new THREE.PointsMaterial({
+        size: 2.2,
+        color: 0x8D847B,
+        transparent: true,
+        opacity: 0.65,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      
+      const asteroidBelt = new THREE.Points(asteroidGeo, asteroidMat);
+      asteroidBelt.name = 'asteroidBelt';
+      this.scene.add(asteroidBelt);
+      this.asteroidBeltData = asteroidData;
+      this.asteroidBeltMesh = asteroidBelt;
     },
     
     createStars() {
@@ -2158,8 +2236,8 @@
       // Rotate objects
       this.objects.forEach(obj => {
         if (obj.userData.angle !== undefined && this.currentTab === 'solar') {
-          // Orbit planets
-          obj.userData.angle += 0.001 * (obj.userData.orbit || 1);
+          // Orbit planets (closer planets move faster, physically accurate Keplerian speed ratios)
+          obj.userData.angle += 0.004 / (obj.userData.orbit || 1);
           obj.position.x = Math.cos(obj.userData.angle) * obj.userData.distance;
           obj.position.z = Math.sin(obj.userData.angle) * obj.userData.distance;
         }
@@ -2178,12 +2256,31 @@
           if (obj.material && obj.material.uniforms && obj.material.uniforms.time) {
             obj.material.uniforms.time.value = currentTime * 0.0001;
           }
+          
           const sunCoronaRay = obj.getObjectByName('sunCoronaRay');
           if (sunCoronaRay) {
             const rayPulse = 1.0 + Math.sin(currentTime * 0.0015) * 0.05;
             sunCoronaRay.scale.set(obj.userData.radius * 2.2 * rayPulse, obj.userData.radius * 2.2 * rayPulse, 1);
             sunCoronaRay.material.rotation = Math.sin(currentTime * 0.0002) * 0.08;
             sunCoronaRay.material.opacity = 0.8 + Math.cos(currentTime * 0.0007) * 0.12;
+          }
+
+          const sunOuterCorona = obj.getObjectByName('sunOuterCorona');
+          if (sunOuterCorona) {
+            const rayPulse = 1.0 + Math.cos(currentTime * 0.001) * 0.06;
+            sunOuterCorona.scale.set(obj.userData.radius * 3.5 * rayPulse, obj.userData.radius * 3.5 * rayPulse, 1);
+            sunOuterCorona.material.rotation = -Math.sin(currentTime * 0.00012) * 0.05;
+            sunOuterCorona.material.opacity = 0.45 + Math.sin(currentTime * 0.0006) * 0.08;
+          }
+
+          // Orbit 3D solar flare arches
+          const flares = obj.getObjectByName('solarFlares');
+          if (flares) {
+            flares.children.forEach(flare => {
+              flare.rotation.x += flare.userData.rotX;
+              flare.rotation.y += flare.userData.rotY;
+              flare.rotation.z += flare.userData.rotZ;
+            });
           }
         }
 
@@ -2213,6 +2310,27 @@
           });
         }
       });
+      
+      // Orbit asteroid belt particles dynamically inside space gallery
+      if (this.asteroidBeltMesh && this.currentTab === 'solar') {
+        const posAttr = this.asteroidBeltMesh.geometry.attributes.position;
+        for (let i = 0; i < 300; i++) {
+          const ast = this.asteroidBeltData[i];
+          ast.angle += ast.speed;
+          posAttr.setX(i, Math.cos(ast.angle) * ast.r);
+          posAttr.setZ(i, Math.sin(ast.angle) * ast.r);
+        }
+        posAttr.needsUpdate = true;
+        this.asteroidBeltMesh.visible = true;
+      } else if (this.asteroidBeltMesh) {
+        this.asteroidBeltMesh.visible = false;
+      }
+
+      // Synchronize weather state from Alpine in real time
+      if (window.appInstance && window.appInstance.weather && window.appInstance.weather !== this.currentWeather) {
+        this.currentWeather = window.appInstance.weather;
+        this.addWeatherEffect();
+      }
       
       this.renderer.render(this.scene, this.camera);
     },

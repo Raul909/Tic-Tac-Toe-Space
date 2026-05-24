@@ -3,6 +3,7 @@ function app() {
   return {
     screen: 'home',
     spaceExplorerFreeFlight: false,
+    graphicsMode: localStorage.getItem('graphicsMode') || 'HD',
     authTab: 'login',
     socket: null,
     view3D: true,
@@ -1062,17 +1063,29 @@ function app() {
       });
     },
 
-    initWeatherSync() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            this.fetchWeather(pos.coords.latitude, pos.coords.longitude);
-          },
-          () => this.applyWeatherPreset('clear')
-        );
-      } else {
-        this.applyWeatherPreset('clear');
+    async initWeatherSync() {
+      try {
+        // Silent IP geolocation to completely avoid intrusive browser location popups
+        const ipRes = await fetch('https://freeipapi.com/api/json');
+        if (!ipRes.ok) throw new Error('IP geolocation failed');
+        const ipData = await ipRes.json();
+        
+        if (ipData && typeof ipData.latitude === 'number' && typeof ipData.longitude === 'number') {
+          console.log(`Silent IP geolocation: ${ipData.cityName || 'Unknown City'}, ${ipData.countryName || 'Unknown Country'} (${ipData.latitude}, ${ipData.longitude})`);
+          await this.fetchWeather(ipData.latitude, ipData.longitude);
+          return;
+        }
+      } catch (err) {
+        console.warn('Silent IP weather lookup failed, falling back to time-of-day defaults:', err);
       }
+      
+      // Fallback: simple weather based on time of day
+      const hour = new Date().getHours();
+      let defaultWeather = 'clear';
+      if (hour < 6 || hour >= 18) {
+        defaultWeather = Math.random() > 0.5 ? 'rain' : 'snow';
+      }
+      this.applyWeatherPreset(defaultWeather);
     },
 
     initGyroscope() {
@@ -2280,6 +2293,15 @@ function app() {
         window.SoundManager.changePack(pack);
       }
       this.saveStats();
+    },
+    
+    changeGraphicsMode(mode) {
+      if (window.SoundManager) window.SoundManager.play('click');
+      this.graphicsMode = mode;
+      localStorage.setItem('graphicsMode', mode);
+      if (window.CinematicSpace && window.CinematicSpace.setGraphicsMode) {
+        window.CinematicSpace.setGraphicsMode(mode);
+      }
     },
     
     previewSound(pack) {

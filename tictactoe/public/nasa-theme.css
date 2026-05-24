@@ -1074,3 +1074,85 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+/* ── Flagship 3D X/O Breathing & Orbiting Planets Loading System ── */
+@keyframes breatheRotateX {
+  0% {
+    transform: rotateX(15deg) rotateY(0deg) rotateZ(45deg) scale3d(0.85, 0.85, 0.85);
+    opacity: 0.9;
+    filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.6));
+  }
+  50% {
+    transform: rotateX(215deg) rotateY(360deg) rotateZ(135deg) scale3d(1.15, 1.15, 1.15);
+    opacity: 0.25;
+    filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.2));
+  }
+  100% {
+    transform: rotateX(375deg) rotateY(720deg) rotateZ(225deg) scale3d(0.85, 0.85, 0.85);
+    opacity: 0.9;
+    filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.6));
+  }
+}
+
+@keyframes breatheRotateO {
+  0% {
+    transform: rotateX(75deg) rotateY(45deg) rotateZ(0deg) scale3d(1.18, 1.18, 1.18);
+    opacity: 0.25;
+    filter: drop-shadow(0 0 4px rgba(255, 107, 53, 0.2));
+  }
+  50% {
+    transform: rotateX(255deg) rotateY(-45deg) rotateZ(180deg) scale3d(0.82, 0.82, 0.82);
+    opacity: 0.95;
+    filter: drop-shadow(0 0 15px rgba(255, 107, 53, 0.7));
+  }
+  100% {
+    transform: rotateX(435deg) rotateY(45deg) rotateZ(360deg) scale3d(1.18, 1.18, 1.18);
+    opacity: 0.25;
+    filter: drop-shadow(0 0 4px rgba(255, 107, 53, 0.2));
+  }
+}
+
+.loader-3d-x {
+  animation: breatheRotateX 4s infinite ease-in-out;
+  transform-style: preserve-3d;
+}
+
+.loader-3d-o {
+  animation: breatheRotateO 4s infinite ease-in-out;
+}
+
+@keyframes orbitEarth {
+  0% { transform: rotate(0deg) translateX(55px) rotate(0deg) rotateX(-50deg); z-index: 10; opacity: 1; }
+  50% { transform: rotate(180deg) translateX(55px) rotate(-180deg) rotateX(-50deg); z-index: -10; opacity: 0.25; }
+  100% { transform: rotate(360deg) translateX(55px) rotate(-360deg) rotateX(-50deg); z-index: 10; opacity: 1; }
+}
+
+@keyframes orbitMars {
+  0% { transform: rotate(120deg) translateX(70px) rotate(-120deg) rotateX(-35deg); z-index: -10; opacity: 0.2; }
+  50% { transform: rotate(300deg) translateX(70px) rotate(-300deg) rotateX(-35deg); z-index: 10; opacity: 1; }
+  100% { transform: rotate(480deg) translateX(70px) rotate(-480deg) rotateX(-35deg); z-index: -10; opacity: 0.2; }
+}
+
+@keyframes orbitJupiter {
+  0% { transform: rotate(240deg) translateX(90px) rotate(-240deg) rotateX(-20deg); z-index: 10; opacity: 1; }
+  50% { transform: rotate(420deg) translateX(90px) rotate(-420deg) rotateX(-20deg); z-index: -10; opacity: 0.15; }
+  100% { transform: rotate(600deg) translateX(90px) rotate(-600deg) rotateX(-20deg); z-index: 10; opacity: 1; }
+}
+
+.loader-planet-earth {
+  top: calc(50% - 5px);
+  left: calc(50% - 5px);
+  animation: orbitEarth 3.2s infinite linear;
+}
+
+.loader-planet-mars {
+  top: calc(50% - 4px);
+  left: calc(50% - 4px);
+  animation: orbitMars 4.8s infinite linear;
+}
+
+.loader-planet-jupiter {
+  top: calc(50% - 7px);
+  left: calc(50% - 7px);
+  animation: orbitJupiter 7.2s infinite linear;
+}
+

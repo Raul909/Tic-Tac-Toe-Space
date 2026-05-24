@@ -145,7 +145,7 @@
 
   // Relativistic Doppler-beaming Accretion Disk generator for Sagittarius A*
   function createSagittariusATexture() {
-    const size = 256;
+    const size = 1024;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
@@ -155,36 +155,85 @@
     
     ctx.clearRect(0, 0, size, size);
     
-    // 1. Emissive accretion disc glow gradient (orange-red to gold and violet outskirts)
-    const grad = ctx.createRadialGradient(cx, cy, 10, cx, cy, size / 2);
-    grad.addColorStop(0, 'rgba(0,0,0,1)'); // event horizon core
-    grad.addColorStop(0.12, 'rgba(255, 255, 255, 1)'); // photon ring
-    grad.addColorStop(0.20, 'rgba(255, 160, 0, 0.95)'); // gold core gas
-    grad.addColorStop(0.40, 'rgba(230, 70, 0, 0.7)'); // red-orange orbiting plasma
-    grad.addColorStop(0.70, 'rgba(100, 15, 200, 0.25)'); // extreme violet outskirts
-    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    // 1. Soft background plasma glow
+    const grad = ctx.createRadialGradient(cx, cy, size * 0.05, cx, cy, size * 0.48);
+    grad.addColorStop(0, 'rgba(0,0,0,1)'); // Core event horizon shadow
+    grad.addColorStop(0.08, 'rgba(255, 255, 255, 1.0)'); // Photon Ring
+    grad.addColorStop(0.12, 'rgba(255, 200, 50, 0.95)'); // Ultra-hot gold gas
+    grad.addColorStop(0.25, 'rgba(230, 80, 10, 0.7)'); // Orbiting orange plasma
+    grad.addColorStop(0.45, 'rgba(150, 20, 220, 0.25)'); // Volumetric violet outskirts
+    grad.addColorStop(1.0, 'rgba(0,0,0,0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
     
-    // 2. Swirling orbital gas filaments with relativistic Doppler asymmetry (brighter left)
-    ctx.strokeStyle = 'rgba(255, 210, 50, 0.07)';
-    ctx.lineWidth = 1.8;
-    for (let r = 24; r < size / 2 - 15; r += 3) {
+    // 2. High-fidelity swirling turbulent plasma filaments
+    for (let r = size * 0.08; r < size * 0.45; r += 2) {
       ctx.beginPath();
-      for (let a = 0; a < Math.PI * 2; a += 0.06) {
-        const leftHemisphere = Math.cos(a) < 0;
-        const beamingFactor = leftHemisphere ? 1.45 : 0.65;
+      const percent = (r - size * 0.08) / (size * 0.37);
+      
+      for (let a = 0; a < Math.PI * 2; a += 0.02) {
+        const cosA = Math.cos(a);
+        const sinA = Math.sin(a);
         
-        const distortion = Math.sin(a * 5 + r * 0.35) * 2.2;
-        const x = cx + Math.cos(a) * (r + distortion);
-        const y = cy + Math.sin(a) * (r + distortion);
+        const leftHemisphere = cosA < 0;
+        const beamingFactor = leftHemisphere ? (1.8 + Math.abs(cosA) * 1.5) : (0.45 - cosA * 0.2);
         
-        ctx.strokeStyle = `rgba(255, ${leftHemisphere ? 220 : 150}, 50, ${0.08 * beamingFactor})`;
+        // Turbulence/magnetic clumping using multiple frequencies
+        const noise1 = Math.sin(a * 8 + r * 0.12) * 4.0;
+        const noise2 = Math.cos(a * 24 - r * 0.05) * 1.5;
+        const noise3 = Math.sin(a * 4 - r * 0.2) * 2.0;
+        const distortion = noise1 + noise2 + noise3;
+        
+        const distR = r + distortion * (1.0 - percent * 0.5);
+        const x = cx + cosA * distR;
+        const y = cy + sinA * distR;
+        
+        let colorR = 255;
+        let colorG = leftHemisphere ? 190 + Math.floor(Math.abs(cosA) * 65) : 80 + Math.floor(Math.abs(cosA) * 70);
+        let colorB = leftHemisphere ? 30 + Math.floor(Math.abs(cosA) * 120) : 10;
+        
+        const baseOpacity = 0.08 * (1.0 - percent * 0.7);
+        const opacity = baseOpacity * beamingFactor;
+        
+        ctx.strokeStyle = `rgba(${colorR}, ${colorG}, ${colorB}, ${opacity})`;
+        ctx.lineWidth = 1.6 + (1.0 - percent) * 1.2;
+        
         if (a === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
       ctx.closePath();
       ctx.stroke();
+    }
+    
+    // 3. Orbiting "clumpy" plasma hotspots
+    for (let i = 0; i < 35; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const r = size * 0.10 + Math.random() * size * 0.28;
+      const percent = (r - size * 0.1) / (size * 0.28);
+      const cosA = Math.cos(angle);
+      const leftHemisphere = cosA < 0;
+      
+      const x = cx + cosA * r;
+      const y = cy + Math.sin(angle) * r;
+      
+      const sizeRadius = (4 + Math.random() * 12) * (1.0 - percent * 0.5);
+      const spotGrad = ctx.createRadialGradient(x, y, 0, x, y, sizeRadius);
+      
+      const beaming = leftHemisphere ? 2.5 : 0.45;
+      const alpha = (0.15 + Math.random() * 0.25) * (1.0 - percent) * beaming;
+      
+      const colorR = 255;
+      const colorG = leftHemisphere ? 210 : 100;
+      const colorB = leftHemisphere ? 120 : 20;
+      
+      spotGrad.addColorStop(0, `rgba(${colorR}, ${colorG}, ${colorB}, ${alpha})`);
+      spotGrad.addColorStop(0.5, `rgba(${colorR}, ${colorG - 30}, ${colorB}, ${alpha * 0.5})`);
+      spotGrad.addColorStop(1, `rgba(0, 0, 0, 0)`);
+      
+      ctx.fillStyle = spotGrad;
+      ctx.beginPath();
+      ctx.arc(x, y, sizeRadius, 0, Math.PI * 2);
+      ctx.fill();
     }
     
     const texture = new THREE.CanvasTexture(canvas);
@@ -194,7 +243,7 @@
 
   // Hyper-detailed Spiral Galaxy generator for Andromeda (starburst hubs & dust lanes)
   function createAndromedaTexture() {
-    const size = 512;
+    const size = 1024;
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
@@ -205,28 +254,29 @@
     ctx.clearRect(0, 0, size, size);
     
     // 1. Galactic bulge core glow (yellow-white aging stars cluster)
-    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.18);
-    coreGrad.addColorStop(0, 'rgba(255, 252, 240, 1.0)');
-    coreGrad.addColorStop(0.2, 'rgba(255, 225, 170, 0.9)');
-    coreGrad.addColorStop(0.5, 'rgba(255, 160, 70, 0.45)');
-    coreGrad.addColorStop(1, 'rgba(255, 160, 70, 0)');
+    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.22);
+    coreGrad.addColorStop(0, 'rgba(255, 255, 245, 1.0)');
+    coreGrad.addColorStop(0.15, 'rgba(255, 235, 180, 0.95)');
+    coreGrad.addColorStop(0.40, 'rgba(255, 175, 80, 0.65)');
+    coreGrad.addColorStop(0.70, 'rgba(240, 110, 40, 0.25)');
+    coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = coreGrad;
     ctx.beginPath();
-    ctx.arc(cx, cy, size * 0.18, 0, Math.PI * 2);
+    ctx.arc(cx, cy, size * 0.22, 0, Math.PI * 2);
     ctx.fill();
     
     // 2. High-density star forming spiral arms (cyan giants & pink starbursts)
     const numArms = 2;
-    const maxR = size * 0.45;
+    const maxR = size * 0.46;
     
     for (let arm = 0; arm < numArms; arm++) {
       const armOffset = (arm * Math.PI * 2) / numArms;
-      for (let i = 0; i < 700; i++) {
-        const percent = i / 700;
+      for (let i = 0; i < 1500; i++) {
+        const percent = i / 1500;
         const r = percent * maxR;
-        const theta = percent * Math.PI * 3.8 + armOffset;
+        const theta = percent * Math.PI * 4.2 + armOffset;
         
-        const spread = (percent * 24) + 1.5;
+        const spread = (percent * 42) + 2.0;
         const dx = (Math.random() - 0.5) * spread;
         const dy = (Math.random() - 0.5) * spread;
         
@@ -234,15 +284,21 @@
         const y = cy + Math.sin(theta) * r + dy;
         
         let color;
-        const starSize = Math.random() * 2.2 + 0.6;
-        if (percent < 0.2) {
-          color = `rgba(255, 195, 130, ${0.22 * (1 - percent)})`;
-        } else if (percent < 0.6) {
-          color = Math.random() > 0.45 
-            ? `rgba(0, 190, 255, ${0.40 * (1 - percent)})` 
-            : `rgba(255, 90, 190, ${0.28 * (1 - percent)})`;
+        const starSize = Math.random() * 2.5 + 0.5;
+        
+        if (percent < 0.15) {
+          color = `rgba(255, 210, 150, ${0.35 * (1 - percent)})`;
+        } else if (percent < 0.65) {
+          const rand = Math.random();
+          if (rand > 0.6) {
+            color = `rgba(0, 220, 255, ${0.55 * (1 - percent)})`;
+          } else if (rand > 0.35) {
+            color = `rgba(255, 110, 210, ${0.45 * (1 - percent)})`;
+          } else {
+            color = `rgba(255, 255, 255, ${0.60 * (1 - percent)})`;
+          }
         } else {
-          color = `rgba(60, 130, 255, ${0.50 * (1 - percent)})`;
+          color = `rgba(80, 150, 255, ${0.70 * (1 - percent)})`;
         }
         
         ctx.fillStyle = color;
@@ -250,29 +306,29 @@
         ctx.arc(x, y, starSize, 0, Math.PI * 2);
         ctx.fill();
         
-        if (Math.random() > 0.95) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${0.90 * (1 - percent)})`;
+        if (Math.random() > 0.97) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * (1 - percent)})`;
           ctx.beginPath();
-          ctx.arc(x, y, 0.75, 0, Math.PI * 2);
+          ctx.arc(x, y, 0.85, 0, Math.PI * 2);
           ctx.fill();
         }
       }
     }
     
-    // 3. Obscuring gas lanes / dark dust bands
+    // 3. Dense obscuring gas lanes / dark dust bands
     for (let arm = 0; arm < numArms; arm++) {
-      const armOffset = (arm * Math.PI * 2) / numArms + 0.28;
-      for (let i = 80; i < 480; i += 3) {
-        const percent = i / 600;
+      const armOffset = (arm * Math.PI * 2) / numArms + 0.22;
+      for (let i = 100; i < 900; i += 3) {
+        const percent = i / 1000;
         const r = percent * maxR;
-        const theta = percent * Math.PI * 3.8 + armOffset;
-        const spread = percent * 10 + 1;
+        const theta = percent * Math.PI * 4.2 + armOffset;
+        const spread = percent * 18 + 2;
         const x = cx + Math.cos(theta) * r + (Math.random() - 0.5) * spread;
         const y = cy + Math.sin(theta) * r + (Math.random() - 0.5) * spread;
         
-        ctx.fillStyle = `rgba(18, 4, 0, ${0.16 * (1 - percent)})`;
+        ctx.fillStyle = `rgba(20, 6, 2, ${0.28 * (1 - percent)})`;
         ctx.beginPath();
-        ctx.arc(x, y, Math.random() * 5 + 2.5, 0, Math.PI * 2);
+        ctx.arc(x, y, Math.random() * 8 + 3.0, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -332,6 +388,44 @@
   cinematic.renderFrame = () => {
     renderer.render(scene, camera);
   };
+  
+  cinematic.setGraphicsMode = (mode) => {
+    // Reconfigure star fields dynamically without memory alloc / garbage collection
+    starLayers.forEach((stars, i) => {
+      const geo = stars.geometry;
+      const posAttr = geo.attributes.position;
+      const count = posAttr.count;
+      
+      let activeCount = count;
+      if (mode === 'SD') {
+        if (i === 0) activeCount = Math.floor(count * 0.15); // cap core background stars
+        else if (i === 2) activeCount = Math.floor(count * 0.1); // cap grey space dust particles
+        else if (i === 4) activeCount = Math.floor(count * 0.1); // cap colored star clusters
+      }
+      geo.setDrawRange(0, activeCount);
+    });
+    
+    // Toggle Sgr A* volumetric gas streams visibility
+    if (sgrParticles) {
+      sgrParticles.visible = (mode === 'HD');
+    }
+    // Toggle lensed secondary accretion disk visibility
+    if (lensedAccretionDisk) {
+      lensedAccretionDisk.visible = (mode === 'HD');
+    }
+    // Toggle Andromeda starburst dust stream visibility
+    if (andromedaDust) {
+      andromedaDust.visible = (mode === 'HD');
+    }
+    
+    // Toggle nebula gas density
+    if (nebula) {
+      nebula.material.opacity = (mode === 'HD') ? 0.025 : 0.008;
+    }
+    if (coreNebula) {
+      coreNebula.material.opacity = (mode === 'HD') ? 0.035 : 0.012;
+    }
+  };
 
   // Interactive Mouse & Mobile Parallax Effects
   const mouse = { x: 0, y: 0 };
@@ -383,14 +477,28 @@
   let andromedaGalaxy = null;
   let eventHorizon = null;
   let accretionDisk = null;
+  let sgrParticles = null;
+  let andromedaDust = null;
+  let lensedAccretionDisk = null;
+  let sgrPartData = [];
+  const sgrPartCount = 400;
+  let androDustData = [];
+  const androDustCount = 350;
+  let proximaCentauri = null;
+  let alphaCentauriA = null;
+  let alphaCentauriB = null;
   
   function syncBackgroundWeather() {
+    let weather = 'clear';
     if (window.SpaceGallery3D && window.SpaceGallery3D.currentWeather) {
-      const weather = window.SpaceGallery3D.currentWeather;
-      if (weather !== currentBgWeather) {
-        currentBgWeather = weather;
-        updateBackgroundWeather();
-      }
+      weather = window.SpaceGallery3D.currentWeather;
+    } else if (window.appInstance && window.appInstance.weather) {
+      weather = window.appInstance.weather;
+    }
+    
+    if (weather !== currentBgWeather) {
+      currentBgWeather = weather;
+      updateBackgroundWeather();
     }
   }
   
@@ -977,6 +1085,7 @@
     mesh.position.set(pos.x, pos.y, pos.z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+    mesh.userData = { name: name.toUpperCase() }; // Store name for hover HUD
     scene.add(mesh);
     
     if (hasAtmos) {
@@ -1160,6 +1269,11 @@
   moon.castShadow = true; earth.add(moon); moon.position.set(8,0,0);
   const mars = createPlanet('mars', 3.2, 0xCD5C5C, {x:-50, y:20, z:-70});
   planets.push({ mesh: mars, speed: 0.0005, radius: 65, angle: Math.PI, rotationSpeed: 0.008 });
+  
+  // Dwarf Planet Ceres (Asteroid Belt Anchor)
+  const ceres = createPlanet('ceres', 1.2, 0x8D847B, {x:-75, y:2, z:-75});
+  planets.push({ mesh: ceres, speed: 0.0003, radius: 75, angle: Math.PI * 0.4, rotationSpeed: 0.005 });
+
   const jupiter = createPlanet('jupiter', 8.5, 0xC88B3A, {x:80, y:35, z:-100});
   planets.push({ mesh: jupiter, speed: 0.0002, radius: 90, angle: Math.PI/2, rotationSpeed: 0.015 });
   const saturn = createPlanet('saturn', 7.5, 0xE8D4A0, {x:-70, y:-25, z:-90}, true);
@@ -1168,7 +1282,76 @@
   planets.push({ mesh: uranus, speed: 0.0001, radius: 110, angle: Math.PI/3, rotationSpeed: 0.009 });
   const neptune = createPlanet('neptune', 5.2, 0x4169E1, {x:-85, y:15, z:-130});
   planets.push({ mesh: neptune, speed: 0.00008, radius: 125, angle: Math.PI*1.7, rotationSpeed: 0.01 });
-  
+
+  // Dwarf Planet Pluto
+  const pluto = createPlanet('pluto', 1.8, 0xC0A98B, {x:-145, y:-10, z:-150});
+  planets.push({ mesh: pluto, speed: 0.00004, radius: 145, angle: Math.PI * 0.8, rotationSpeed: 0.006 });
+
+  // Dwarf Planet Eris
+  const eris = createPlanet('eris', 1.6, 0xD3C2B0, {x:160, y:25, z:-170});
+  planets.push({ mesh: eris, speed: 0.00002, radius: 160, angle: Math.PI * 1.3, rotationSpeed: 0.007 });
+
+  // ── Closest Star Systems ──
+  // Proxima Centauri (Nearby Red Dwarf)
+  proximaCentauri = new THREE.Mesh(
+    new THREE.SphereGeometry(3.5, 32, 32),
+    new THREE.MeshBasicMaterial({ color: 0xFF4500 })
+  );
+  proximaCentauri.position.set(160, 80, -220);
+  proximaCentauri.userData = { name: "PROXIMA CENTAURI STAR" };
+  const proxCoronaMat = new THREE.SpriteMaterial({
+    map: createCircleTexture(),
+    color: 0xFF3300,
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const proxCorona = new THREE.Sprite(proxCoronaMat);
+  proxCorona.scale.set(18, 18, 1);
+  proximaCentauri.add(proxCorona);
+  scene.add(proximaCentauri);
+
+  // Alpha Centauri A (Binary System Anchor)
+  alphaCentauriA = new THREE.Mesh(
+    new THREE.SphereGeometry(5.2, 32, 32),
+    new THREE.MeshBasicMaterial({ color: 0xFFF8DC })
+  );
+  alphaCentauriA.position.set(-240, 90, -180);
+  alphaCentauriA.userData = { name: "ALPHA CENTAURI A STAR" };
+  const alphaACoronaMat = new THREE.SpriteMaterial({
+    map: createCircleTexture(),
+    color: 0xFFFACD,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const alphaACorona = new THREE.Sprite(alphaACoronaMat);
+  alphaACorona.scale.set(24, 24, 1);
+  alphaCentauriA.add(alphaACorona);
+  scene.add(alphaCentauriA);
+
+  // Alpha Centauri B (Orbiting A)
+  alphaCentauriB = new THREE.Mesh(
+    new THREE.SphereGeometry(4.2, 32, 32),
+    new THREE.MeshBasicMaterial({ color: 0xFFA07A })
+  );
+  alphaCentauriB.position.set(18, 5, -15);
+  alphaCentauriB.userData = { name: "ALPHA CENTAURI B STAR" };
+  const alphaBCoronaMat = new THREE.SpriteMaterial({
+    map: createCircleTexture(),
+    color: 0xFF7F50,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const alphaBCorona = new THREE.Sprite(alphaBCoronaMat);
+  alphaBCorona.scale.set(20, 20, 1);
+  alphaCentauriB.add(alphaBCorona);
+  alphaCentauriA.add(alphaCentauriB);
+
   // Lighting
   scene.add(new THREE.AmbientLight(0x1a1a3a, 0.6));
   const sunL = new THREE.PointLight(0xFFD700, 4.0, 500); sunL.position.copy(sun.position); sunL.castShadow = true; scene.add(sunL);
@@ -1188,12 +1371,12 @@
   const _astQuat   = new THREE.Quaternion();
   const _astPos    = new THREE.Vector3();
   for (let i = 0; i < AST_COUNT; i++) {
-    const angle = Math.random() * Math.PI * 2, dist = 105 + Math.random() * 30;
-    const sc = 0.3 + Math.random() * 0.8;
-    const yPos = (Math.random()-0.5)*15;
-    asteroids.push({ rot: (Math.random()-0.5)*0.02, orb: 0.0001+Math.random()*0.0002, angle, dist, rotX: 0, rotY: 0, sc, y: yPos });
+    const angle = Math.random() * Math.PI * 2, dist = 72 + Math.random() * 12; // Between Mars (65) and Jupiter (90)
+    const sc = 0.2 + Math.random() * 0.5;
+    const yPos = (Math.random()-0.5)*4.5;
+    asteroids.push({ rot: (Math.random()-0.5)*0.02, orb: 0.0003+Math.random()*0.0004, angle, dist, rotX: 0, rotY: 0, sc, y: yPos });
     _astScale.setScalar(sc);
-    _astPos.set(Math.cos(angle)*dist, (Math.random()-0.5)*15, Math.sin(angle)*dist);
+    _astPos.set(Math.cos(angle)*dist, yPos, Math.sin(angle)*dist);
     _astMatrix.compose(_astPos, _astQuat, _astScale);
     astInstanced.setMatrixAt(i, _astMatrix);
   }
@@ -1214,6 +1397,46 @@
   andromedaGalaxy.position.set(230, 45, -340); // Distant background balance
   andromedaGalaxy.rotation.set(Math.PI / 4.5, -Math.PI / 5, Math.PI / 7);
   scene.add(andromedaGalaxy);
+
+  // ── Andromeda Orbiting Stars & Dust Clouds (HD mode only) ──
+  const androDustGeo = new THREE.BufferGeometry();
+  const androDustPositions = [];
+  const androDustColors = [];
+  androDustData = [];
+  
+  for (let i = 0; i < androDustCount; i++) {
+    const r = 12 + Math.random() * 30;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.003 + (1 / r) * 0.08;
+    
+    androDustPositions.push(Math.cos(angle) * r, 0, Math.sin(angle) * r);
+    androDustData.push({ r, angle, speed });
+    
+    const c = new THREE.Color();
+    if (r < 18) {
+      c.setHSL(0.08 + Math.random() * 0.05, 0.8, 0.45 + Math.random() * 0.15); // gold core
+    } else {
+      c.setHSL(0.55 + Math.random() * 0.06, 0.8, 0.5 + Math.random() * 0.2); // blue arms
+    }
+    androDustColors.push(c.r, c.g, c.b);
+  }
+  
+  androDustGeo.setAttribute('position', new THREE.Float32BufferAttribute(androDustPositions, 3));
+  androDustGeo.setAttribute('color', new THREE.Float32BufferAttribute(androDustColors, 3));
+  
+  const androDustMat = new THREE.PointsMaterial({
+    size: 2.2,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.75,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    map: createCircleTexture()
+  });
+  
+  andromedaDust = new THREE.Points(androDustGeo, androDustMat);
+  andromedaDust.visible = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
+  andromedaGalaxy.add(andromedaDust);
 
   // ── Sagittarius A* Black Hole Setup ──
   const sagittariusTexture = createSagittariusATexture();
@@ -1284,6 +1507,59 @@
   accretionDisk = new THREE.Mesh(accretionDiskGeo, accretionDiskMat);
   accretionDisk.rotation.set(Math.PI / 2.2, Math.PI / 12, 0);
   eventHorizon.add(accretionDisk);
+
+  // ── Einstein Relativistic Gravitational Lensing accretion disk (HD mode only) ──
+  const lensedAccretionDiskGeo = new THREE.RingGeometry(6.5, 13, 64);
+  const lensedAccretionDiskMat = new THREE.MeshBasicMaterial({
+    map: sagittariusTexture,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    opacity: 0.88,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  lensedAccretionDisk = new THREE.Mesh(lensedAccretionDiskGeo, lensedAccretionDiskMat);
+  lensedAccretionDisk.lookAt(camera.position);
+  lensedAccretionDisk.visible = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
+  eventHorizon.add(lensedAccretionDisk);
+
+  // ── Volumetric Accretion Gas Particles (HD mode only) ──
+  const sgrPartGeo = new THREE.BufferGeometry();
+  const sgrPartPositions = [];
+  const sgrPartColors = [];
+  sgrPartData = [];
+  
+  for (let i = 0; i < sgrPartCount; i++) {
+    const r = 8.5 + Math.random() * 16;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.015 + (1 / r) * 0.45;
+    const yOffset = (Math.random() - 0.5) * 1.5;
+    
+    sgrPartPositions.push(Math.cos(angle) * r, yOffset, Math.sin(angle) * r);
+    sgrPartData.push({ r, angle, speed, y: yOffset });
+    
+    const c = new THREE.Color();
+    c.setHSL(0.04 + Math.random() * 0.05, 0.9, 0.5 + Math.random() * 0.3);
+    sgrPartColors.push(c.r, c.g, c.b);
+  }
+  
+  sgrPartGeo.setAttribute('position', new THREE.Float32BufferAttribute(sgrPartPositions, 3));
+  sgrPartGeo.setAttribute('color', new THREE.Float32BufferAttribute(sgrPartColors, 3));
+  
+  const sgrPartMat = new THREE.PointsMaterial({
+    size: 2.2,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    map: createCircleTexture()
+  });
+  
+  sgrParticles = new THREE.Points(sgrPartGeo, sgrPartMat);
+  sgrParticles.rotation.set(Math.PI / 2.2, Math.PI / 12, 0);
+  sgrParticles.visible = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
+  eventHorizon.add(sgrParticles);
 
   // ─── Shooting Stars ─────────────────────────────────────────────────────────
   // Rare, solitary cinematic meteors with smooth 28-point gradient trails.
@@ -1477,6 +1753,39 @@
       coronaSprite.material.rotation = Math.sin(currentTime * 0.00015) * 0.04;
       coronaSprite.material.opacity = 0.70 + Math.cos(currentTime * 0.0005) * 0.08;
     }
+
+    // Binary star and nearby star systems animations
+    if (alphaCentauriA) {
+      alphaCentauriA.rotation.y += 0.002 * scale;
+      const alphaACoronaPulse = 1.0 + Math.sin(currentTime * 0.0006) * 0.02;
+      const ray = alphaCentauriA.children[0];
+      if (ray) {
+        ray.scale.set(24 * alphaACoronaPulse, 24 * alphaACoronaPulse, 1);
+        ray.material.rotation = Math.sin(currentTime * 0.0002) * 0.03;
+      }
+    }
+    if (alphaCentauriB) {
+      alphaCentauriB.rotation.y -= 0.003 * scale;
+      if (!alphaCentauriB.orbAng) alphaCentauriB.orbAng = 0;
+      alphaCentauriB.orbAng += 0.001 * scale;
+      alphaCentauriB.position.set(Math.cos(alphaCentauriB.orbAng) * 20, 2, Math.sin(alphaCentauriB.orbAng) * 20);
+      
+      const alphaBCoronaPulse = 1.0 + Math.cos(currentTime * 0.0007) * 0.025;
+      const ray = alphaCentauriB.children[0];
+      if (ray) {
+        ray.scale.set(20 * alphaBCoronaPulse, 20 * alphaBCoronaPulse, 1);
+        ray.material.rotation = -Math.sin(currentTime * 0.00025) * 0.035;
+      }
+    }
+    if (proximaCentauri) {
+      proximaCentauri.rotation.y += 0.001 * scale;
+      const proxPulse = 1.0 + Math.sin(currentTime * 0.0009) * 0.03;
+      const ray = proximaCentauri.children[0];
+      if (ray) {
+        ray.scale.set(18 * proxPulse, 18 * proxPulse, 1);
+        ray.material.rotation = Math.sin(currentTime * 0.0001) * 0.05;
+      }
+    }
     
     // Planets - Batch update
     const cx = sun.position.x, cz = sun.position.z;
@@ -1493,6 +1802,22 @@
     if (accretionDisk) {
       accretionDisk.rotation.z += 0.006 * scale;
     }
+    if (lensedAccretionDisk) {
+      lensedAccretionDisk.lookAt(camera.position);
+      lensedAccretionDisk.rotation.z -= 0.004 * scale;
+    }
+    if (sgrParticles && (localStorage.getItem('graphicsMode') || 'HD') === 'HD') {
+      const posAttr = sgrParticles.geometry.attributes.position;
+      for (let i = 0; i < sgrPartCount; i++) {
+        const d = sgrPartData[i];
+        if (d) {
+          d.angle += d.speed * scale;
+          posAttr.setX(i, Math.cos(d.angle) * d.r);
+          posAttr.setZ(i, Math.sin(d.angle) * d.r);
+        }
+      }
+      posAttr.needsUpdate = true;
+    }
     if (eventHorizon) {
       // Subtle cosmic frame dragging/wobble
       eventHorizon.rotation.y += 0.0003 * scale;
@@ -1501,6 +1826,18 @@
     if (andromedaGalaxy) {
       // Oblique spiral arm rotation
       andromedaGalaxy.rotation.z += 0.00012 * scale;
+    }
+    if (andromedaDust && (localStorage.getItem('graphicsMode') || 'HD') === 'HD') {
+      const posAttr = andromedaDust.geometry.attributes.position;
+      for (let i = 0; i < androDustCount; i++) {
+        const d = androDustData[i];
+        if (d) {
+          d.angle += d.speed * scale;
+          posAttr.setX(i, Math.cos(d.angle) * d.r);
+          posAttr.setZ(i, Math.sin(d.angle) * d.r);
+        }
+      }
+      posAttr.needsUpdate = true;
     }
     
     if (moon) {
@@ -1589,8 +1926,8 @@
     
     // ── Interactive Hover HUD Raycaster ──
     const hud = document.getElementById('space-explorer-hud');
-    const hudName = document.getElementById('space-explorer-name');
-    if (hud && hudName && typeof THREE !== 'undefined' && camera && scene) {
+    const hudText = document.getElementById('space-explorer-text');
+    if (hud && hudText && typeof THREE !== 'undefined' && camera && scene) {
       if (!window.spaceRaycaster) {
         window.spaceRaycaster = new THREE.Raycaster();
       }
@@ -1599,19 +1936,48 @@
       const targets = [];
       if (andromedaGalaxy) targets.push(andromedaGalaxy);
       if (eventHorizon) targets.push(eventHorizon);
+      if (typeof sun !== 'undefined' && sun) targets.push(sun);
+      
+      planets.forEach(p => {
+        if (p.mesh) {
+          targets.push(p.mesh);
+          p.mesh.children.forEach(c => {
+            if (c instanceof THREE.Mesh && c.name !== 'saturnRings') {
+              targets.push(c);
+            }
+          });
+        }
+      });
+      
+      if (proximaCentauri) targets.push(proximaCentauri);
+      if (alphaCentauriA) {
+        targets.push(alphaCentauriA);
+        targets.push(alphaCentauriB);
+      }
       
       const intersects = window.spaceRaycaster.intersectObjects(targets);
       if (intersects.length > 0) {
         const obj = intersects[0].object;
         let nameText = "";
+        
         if (obj === andromedaGalaxy) {
           nameText = "ANDROMEDA GALAXY";
         } else if (obj === eventHorizon) {
           nameText = "SAGITTARIUS A* BLACK HOLE";
+        } else if (typeof sun !== 'undefined' && obj === sun) {
+          nameText = "THE SUN (STAR)";
+        } else if (obj.userData && obj.userData.name) {
+          nameText = obj.userData.name.toUpperCase();
+        } else if (obj.parent && obj.parent.userData && obj.parent.userData.name) {
+          nameText = obj.parent.userData.name.toUpperCase();
         }
         
         if (nameText) {
-          hudName.textContent = nameText;
+          if (nameText === 'EARTH') {
+            hudText.textContent = "[HOME PLANET: EARTH]";
+          } else {
+            hudText.textContent = `[ANOMALY IDENTIFIED: ${nameText}]`;
+          }
           hud.style.opacity = '1';
         } else {
           hud.style.opacity = '0';
@@ -1647,6 +2013,13 @@
     
     renderer.render(scene, camera);
   }
+  
+  // Set initial graphics quality mode from localStorage
+  const startupGraphicsMode = localStorage.getItem('graphicsMode') || 'HD';
+  if (cinematic.setGraphicsMode) {
+    cinematic.setGraphicsMode(startupGraphicsMode);
+  }
+  
   animate(0);
   
   let resizeTimeout;
