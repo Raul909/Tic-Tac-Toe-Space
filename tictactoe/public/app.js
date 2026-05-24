@@ -158,6 +158,7 @@ function app() {
     rematchFrom: '',
     muted: false,
     toggleMute() { this.muted = window.SoundManager.toggleMute(); },
+    isFullscreen: false,
     
     // Custom Background Music State
     customMusicPlaying: false,
@@ -1082,6 +1083,15 @@ function app() {
 
     init() {
       window.appInstance = this;
+      
+      const updateFullscreen = () => {
+        this.isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      };
+      updateFullscreen();
+      document.addEventListener('fullscreenchange', updateFullscreen);
+      document.addEventListener('webkitfullscreenchange', updateFullscreen);
+      document.addEventListener('mozfullscreenchange', updateFullscreen);
+      document.addEventListener('MSFullscreenChange', updateFullscreen);
 
       // Keyboard shortcuts: F key toggles fullscreen only
       document.addEventListener('keydown', (e) => {
