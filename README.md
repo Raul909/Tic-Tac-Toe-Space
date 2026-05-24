@@ -6,6 +6,11 @@ Welcome to **Tic-Tac-Toe: Mission Control**, a premium, high-fidelity tactical g
 
 ---
 
+## 🌟 Support the Mission!
+If you find this premium space-combat experience interesting, please **Star** and **Fork** this repository! Your support keeps our cosmic telemetry systems online and funded. 🚀
+
+---
+
 ## ⚡ Operational Telemetry & Live Link
 
 *   **Static Client Mesh**: Deployed on **Cloudflare Pages** for sub-millisecond global CDN edge delivery.
@@ -18,11 +23,11 @@ Welcome to **Tic-Tac-Toe: Mission Control**, a premium, high-fidelity tactical g
 
 *   **🌐 Real-Time Warp Link**: Join/create multiplayer sectors instantly via unique, ephemeral 4-character encryption keys (room codes).
 *   **🤖 Operator Training AI**: Test grid formations against a Minimax AI agent with Alpha-Beta pruning, operating across three tactical difficulties (`easy`, `normal`, `hard`).
-*   **🌌 3D Celestial Cartography**: Explore a fully interactive 3D WebGL solar system, stars, constellations, and nebulae powered by Three.js. Includes orbit dampening and real-time weather synchronization.
+*   **🌌 3D Celestial Cartography**: Explore a fully interactive 3D WebGL solar system, procedurally textured nearby stars with twinkling coronas, shimmering constellation links, and GPU-drifting volumetric gas nebulae powered by custom shaders.
 *   **🎵 Custom Acoustic Deck**: Upload your own orbital soundtrack to play in the background while commanding the grid. Audio tracks loop continuously and sync with the master audio mute controls.
 *   **⚡ Quantum Reconnection**: A 30-second handshake grace period prevents match termination during solar flares (network drops).
 *   **🏆 Combat Badge Ledger**: 8 unlockable achievements with persistent local telemetry tracking.
-*   **📱 Tactical Mobile HUD**: Viewport locking, touch-safe tap targets (minimum 44x44px), and adaptive layouts for pocket devices.
+*   **📱 Tactical Mobile HUD & Eased Transitions**: Eased cross-fade screens and modal transitions. Viewport locking, touch-safe tap targets (minimum 44x44px), and adaptive layouts for pocket and tablet devices with dynamic WebGL aspect ratio correction.
 
 ---
 
