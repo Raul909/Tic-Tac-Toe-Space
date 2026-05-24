@@ -1815,6 +1815,15 @@
           this.scene.add(planetGroup);
           this.objects.push(planetGroup);
 
+          const proceduralGroup = new THREE.Group();
+          proceduralGroup.name = data.name + 'ProceduralGroup';
+          planetGroup.add(proceduralGroup);
+
+          const modelGroup = new THREE.Group();
+          modelGroup.name = data.name + 'ModelGroup';
+          modelGroup.visible = false;
+          planetGroup.add(modelGroup);
+
           const geometry = new THREE.SphereGeometry(data.radius, 32, 32);
           const texture = TextureGenerator.generate(data.name, 'albedo');
           
@@ -1837,7 +1846,7 @@
           planetMesh.name = data.name + 'Mesh';
           planetMesh.castShadow = true;
           planetMesh.receiveShadow = true;
-          planetGroup.add(planetMesh);
+          proceduralGroup.add(planetMesh);
           
           const angle = Math.random() * Math.PI * 2;
           planetGroup.position.x = Math.cos(angle) * data.distance;
@@ -1871,12 +1880,25 @@
             });
             const ring = new THREE.Mesh(ringGeometry, ringMaterial);
             ring.rotation.x = Math.PI / 2.2;
-            planetGroup.add(ring);
+            proceduralGroup.add(ring);
           }
           
           // Add Moons for Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, Eris
           const moonsForPlanet = moonConfigs.filter(m => m.parent === data.name);
           moonsForPlanet.forEach(moon => {
+            const moonGroup = new THREE.Group();
+            moonGroup.name = moon.name + 'Group';
+            planetGroup.add(moonGroup);
+
+            const moonProceduralGroup = new THREE.Group();
+            moonProceduralGroup.name = moon.name + 'ProceduralGroup';
+            moonGroup.add(moonProceduralGroup);
+
+            const moonModelGroup = new THREE.Group();
+            moonModelGroup.name = moon.name + 'ModelGroup';
+            moonModelGroup.visible = false;
+            moonGroup.add(moonModelGroup);
+
             const moonGeo = new THREE.SphereGeometry(moon.radius, 16, 16);
             const moonMat = new THREE.MeshStandardMaterial({
               map: TextureGenerator.generate('Moon', 'albedo'),
@@ -1884,22 +1906,44 @@
               roughness: 0.9
             });
             const moonMesh = new THREE.Mesh(moonGeo, moonMat);
-            moonMesh.name = moon.name;
+            moonMesh.name = moon.name + 'Mesh';
+            moonProceduralGroup.add(moonMesh);
             
             const moonAngle = Math.random() * Math.PI * 2;
-            moonMesh.position.x = Math.cos(moonAngle) * moon.distance;
-            moonMesh.position.z = Math.sin(moonAngle) * moon.distance;
+            moonGroup.position.x = Math.cos(moonAngle) * moon.distance;
+            moonGroup.position.z = Math.sin(moonAngle) * moon.distance;
             
-            moonMesh.userData = {
+            moonGroup.userData = {
               isMoon: true,
               name: moon.name,
               angle: moonAngle,
               distance: moon.distance,
               speed: moon.orbit * 0.015
             };
-            
-            planetGroup.add(moonMesh);
+
+            const moonLower = moon.name.toLowerCase();
+            if (moonLower === 'europa' || moonLower === 'ganymede' || moonLower === 'callisto' || moonLower === 'titan') {
+              let modelName = moonLower === 'europa' ? 'europa' : moonLower === 'ganymede' ? 'ganymede_moon' : moonLower === 'callisto' ? 'callisto_moon' : 'titan_moon_3d_model';
+              this.setupPlanetModelLoader(modelName, moon.name, moonGroup, moonProceduralGroup, moonModelGroup, moon.radius, moon.radius * 2.0, moon.color, 4500 + i * 200);
+            }
           });
+
+          // Trigger planet model loading
+          const pName = data.name.toLowerCase();
+          if (pName !== 'ceres' && pName !== 'eris') {
+            let delay = 1000;
+            let targetDim = data.radius * 2.0;
+            if (pName === 'pluto') { delay = 500; }
+            else if (pName === 'mercury') { delay = 1000; }
+            else if (pName === 'jupiter') { delay = 1500; }
+            else if (pName === 'venus') { delay = 2000; }
+            else if (pName === 'mars') { delay = 2500; }
+            else if (pName === 'saturn') { delay = 3000; targetDim = 46.0; }
+            else if (pName === 'uranus') { delay = 3500; targetDim = 26.0; }
+            else if (pName === 'neptune') { delay = 4000; }
+
+            this.setupPlanetModelLoader(pName, data.name, planetGroup, proceduralGroup, modelGroup, data.radius, targetDim, data.color, delay);
+          }
           
           const orbitGeometry = new THREE.RingGeometry(data.distance - 0.5, data.distance + 0.5, 128);
           const orbitMaterial = new THREE.MeshBasicMaterial({
@@ -1946,6 +1990,133 @@
       this.scene.add(asteroidBelt);
       this.asteroidBeltData = asteroidData;
       this.asteroidBeltMesh = asteroidBelt;
+    },
+
+    setupPlanetModelLoader(modelName, displayName, planetGroup, proceduralGroup, modelGroup, targetRadius, targetDim, planetColor, delay = 0) {
+      // Add loading torus ring spinner
+      const loaderGeo = new THREE.TorusGeometry(targetRadius * 1.2, targetRadius * 0.03, 8, 32);
+      const loaderMat = new THREE.MeshBasicMaterial({
+        color: planetColor,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const loader = new THREE.Mesh(loaderGeo, loaderMat);
+      loader.name = 'planetLoader';
+      planetGroup.add(loader);
+
+      if (typeof THREE.GLTFLoader !== 'undefined') {
+        const gltfLoader = new THREE.GLTFLoader();
+        const getModelUrl = (path) => {
+          if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
+            const base = window.BACKEND_URL.replace(/\/$/, '');
+            const cleanPath = path.startsWith('/') ? path : '/' + path;
+            return base + cleanPath;
+          }
+          return path;
+        };
+
+        const rawPaths = [
+          getModelUrl(`/models/${modelName}.glb`),
+          getModelUrl(`/models/${modelName.replace('_', '')}.glb`),
+          getModelUrl(`/models/${modelName}/scene.gltf`)
+        ];
+        if (modelName === 'saturn') {
+          rawPaths.unshift(getModelUrl('/models/c40e9e63bff644d1a466650d31bd1a8c.glb'));
+        }
+        const paths = Array.from(new Set(rawPaths));
+        let attempt = 0;
+
+        const loadModel = (path) => {
+          console.log(`[GLTFLoader] Space Gallery: Attempting to load 3D ${displayName} model from: ${path}`);
+          gltfLoader.load(
+            path,
+            (gltf) => {
+              console.log(`[GLTFLoader] Space Gallery: Successfully loaded ${displayName} model from: ${path}`);
+              while (modelGroup.children.length > 0) {
+                modelGroup.remove(modelGroup.children[0]);
+              }
+
+              const modelScene = gltf.scene;
+
+              // Compute bounding box for auto-scaling and auto-centering
+              const box = new THREE.Box3().setFromObject(modelScene);
+              const size = box.getSize(new THREE.Vector3());
+              const center = box.getCenter(new THREE.Vector3());
+              const maxDim = Math.max(size.x, size.y, size.z);
+
+              const scale = maxDim > 0 ? targetDim / maxDim : 1.0;
+              
+              modelScene.scale.set(scale, scale, scale);
+              modelScene.position.sub(center.multiplyScalar(scale));
+
+              // Set up AnimationMixer if it has built-in animations
+              if (gltf.animations && gltf.animations.length > 0) {
+                const mixer = new THREE.AnimationMixer(modelScene);
+                const action = mixer.clipAction(gltf.animations[0]);
+                action.play();
+                if (!this.mixers) this.mixers = [];
+                this.mixers.push(mixer);
+              }
+
+              modelScene.traverse((node) => {
+                if (node.isMesh) {
+                  node.castShadow = false;
+                  node.receiveShadow = false;
+                  if (node.material) {
+                    node.material.side = THREE.DoubleSide;
+                    if (node.material.transparent) {
+                      node.material.depthWrite = false;
+                    }
+                    if (node.material.map) {
+                      node.material.map.anisotropy = 4;
+                    }
+                  }
+                }
+              });
+
+              modelGroup.add(modelScene);
+              modelGroup.visible = true;
+
+              // Hide procedural layers and loader
+              proceduralGroup.visible = false;
+              if (loader) {
+                loader.visible = false;
+                planetGroup.remove(loader);
+              }
+            },
+            undefined,
+            (error) => {
+              console.warn(`[GLTFLoader] Space Gallery: Failed to load ${displayName} model from ${path}:`, error);
+              attempt++;
+              if (attempt < paths.length) {
+                loadModel(paths[attempt]);
+              } else {
+                console.log(`[GLTFLoader] Space Gallery: ${displayName} 3D model fallback active.`);
+                if (loader) {
+                  loader.visible = false;
+                  planetGroup.remove(loader);
+                }
+              }
+            }
+          );
+        }
+
+        if (delay > 0) {
+          setTimeout(() => {
+            loadModel(paths[attempt]);
+          }, delay);
+        } else {
+          loadModel(paths[attempt]);
+        }
+      } else {
+        console.warn(`[GLTFLoader] THREE.GLTFLoader is undefined for ${displayName}. Fallback.`);
+        if (loader) {
+          loader.visible = false;
+          planetGroup.remove(loader);
+        }
+      }
     },
     
     createStars() {
@@ -2822,6 +2993,12 @@
           if (mesh) {
             mesh.rotation.y += 0.005;
           }
+
+          // Rotate model if visible
+          const modelGroup = obj.getObjectByName(obj.userData.name + 'ModelGroup');
+          if (modelGroup && modelGroup.visible) {
+            modelGroup.rotation.y += 0.002;
+          }
           
           // Orbit and rotate its moons
           obj.children.forEach(child => {
@@ -2830,6 +3007,20 @@
               child.position.x = Math.cos(child.userData.angle) * child.userData.distance;
               child.position.z = Math.sin(child.userData.angle) * child.userData.distance;
               child.rotation.y += 0.01;
+
+              // Rotate moon model group if active
+              const moonModel = child.getObjectByName(child.userData.name + 'ModelGroup');
+              if (moonModel && moonModel.visible) {
+                moonModel.rotation.y += 0.003;
+              }
+
+              // Animate moon loader spinner if present and visible
+              const moonLoader = child.getObjectByName('planetLoader');
+              if (moonLoader && moonLoader.visible) {
+                moonLoader.rotation.z += 0.04;
+                moonLoader.rotation.x = Math.sin(currentTime * 0.003) * 0.2;
+                moonLoader.scale.setScalar(1.0 + Math.sin(currentTime * 0.005) * 0.1);
+              }
             }
           });
         }

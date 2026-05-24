@@ -1699,6 +1699,9 @@
         getModelUrl(`/models/${modelName.replace('_', '')}.glb`),
         getModelUrl(`/models/${modelName}/scene.gltf`)
       ];
+      if (modelName === 'saturn') {
+        rawPaths.unshift(getModelUrl('/models/c40e9e63bff644d1a466650d31bd1a8c.glb'));
+      }
       const paths = Array.from(new Set(rawPaths));
       let attempt = 0;
 
@@ -1897,17 +1900,62 @@
   planets.push({ mesh: jupiterGroup, speed: 0.0002, radius: 90, angle: Math.PI/2, rotationSpeed: 0.015 });
   setupPlanetModelLoader('jupiter', 'jupiter', jupiterGroup, jupiterProceduralGroup, jupiterModelGroup, 8.5, 17.0, 0xC88B3A, 1500);
 
-  // Saturn (Procedural Only)
-  const saturn = createPlanet('saturn', 7.5, 0xE8D4A0, {x:-70, y:-25, z:-90}, true);
-  planets.push({ mesh: saturn, speed: 0.00015, radius: 80, angle: Math.PI*1.5, rotationSpeed: 0.012 });
+  // Saturn Setup
+  const saturnGroup = new THREE.Group();
+  saturnGroup.position.set(-70, -25, -90);
+  saturnGroup.userData = { name: 'SATURN' };
+  scene.add(saturnGroup);
 
-  // Uranus (Procedural Only)
-  const uranus = createPlanet('uranus', 5.5, 0x4FD0E7, {x:95, y:-30, z:-120}, true);
-  planets.push({ mesh: uranus, speed: 0.0001, radius: 110, angle: Math.PI/3, rotationSpeed: 0.009 });
+  const saturnProceduralGroup = new THREE.Group();
+  saturnGroup.add(saturnProceduralGroup);
 
-  // Neptune (Procedural Only)
-  const neptune = createPlanet('neptune', 5.2, 0x4169E1, {x:-85, y:15, z:-130});
-  planets.push({ mesh: neptune, speed: 0.00008, radius: 125, angle: Math.PI*1.7, rotationSpeed: 0.01 });
+  const saturnModelGroup = new THREE.Group();
+  saturnModelGroup.visible = false;
+  saturnGroup.add(saturnModelGroup);
+
+  const saturn = createPlanet('saturn', 7.5, 0xE8D4A0, {x:0, y:0, z:0}, true);
+  saturnProceduralGroup.add(saturn);
+
+  planets.push({ mesh: saturnGroup, speed: 0.00015, radius: 80, angle: Math.PI*1.5, rotationSpeed: 0.012 });
+  setupPlanetModelLoader('saturn', 'saturn', saturnGroup, saturnProceduralGroup, saturnModelGroup, 7.5, 23.0, 0xE8D4A0, 3000);
+
+  // Uranus Setup
+  const uranusGroup = new THREE.Group();
+  uranusGroup.position.set(95, -30, -120);
+  uranusGroup.userData = { name: 'URANUS' };
+  scene.add(uranusGroup);
+
+  const uranusProceduralGroup = new THREE.Group();
+  uranusGroup.add(uranusProceduralGroup);
+
+  const uranusModelGroup = new THREE.Group();
+  uranusModelGroup.visible = false;
+  uranusGroup.add(uranusModelGroup);
+
+  const uranus = createPlanet('uranus', 5.5, 0x4FD0E7, {x:0, y:0, z:0}, true);
+  uranusProceduralGroup.add(uranus);
+
+  planets.push({ mesh: uranusGroup, speed: 0.0001, radius: 110, angle: Math.PI/3, rotationSpeed: 0.009 });
+  setupPlanetModelLoader('uranus', 'uranus', uranusGroup, uranusProceduralGroup, uranusModelGroup, 5.5, 15.0, 0x4FD0E7, 3500);
+
+  // Neptune Setup
+  const neptuneGroup = new THREE.Group();
+  neptuneGroup.position.set(-85, 15, -130);
+  neptuneGroup.userData = { name: 'NEPTUNE' };
+  scene.add(neptuneGroup);
+
+  const neptuneProceduralGroup = new THREE.Group();
+  neptuneGroup.add(neptuneProceduralGroup);
+
+  const neptuneModelGroup = new THREE.Group();
+  neptuneModelGroup.visible = false;
+  neptuneGroup.add(neptuneModelGroup);
+
+  const neptune = createPlanet('neptune', 5.2, 0x4169E1, {x:0, y:0, z:0});
+  neptuneProceduralGroup.add(neptune);
+
+  planets.push({ mesh: neptuneGroup, speed: 0.00008, radius: 125, angle: Math.PI*1.7, rotationSpeed: 0.01 });
+  setupPlanetModelLoader('neptune', 'neptune', neptuneGroup, neptuneProceduralGroup, neptuneModelGroup, 5.2, 10.4, 0x4169E1, 4000);
 
   // Pluto Setup
   const plutoGroup = new THREE.Group();
