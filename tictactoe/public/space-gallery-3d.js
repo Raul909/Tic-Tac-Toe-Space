@@ -869,11 +869,10 @@
         powerPreference: 'high-performance'
       });
       this.renderer.setSize(container.clientWidth, 600);
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap at 1.5 — saves ~44% GPU fill on Retina
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 2.2;
-      this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      this.renderer.shadowMap.enabled = false; // disable shadows — biggest perf win in a 3D gallery
       container.appendChild(this.renderer.domElement);
       
       // Orbit Controls for 3D rotation
@@ -1039,7 +1038,7 @@
         return;
       }
       
-      const particleCount = this.currentWeather === 'cloudy' ? 500 : 1000;
+      const particleCount = this.currentWeather === 'cloudy' ? 250 : 450; // reduced from 500/1000
       const geometry = new THREE.BufferGeometry();
       const positions = [];
       
@@ -1290,15 +1289,13 @@
         // Bright sun light
         const sunLight = new THREE.PointLight(0xFFD700, 4, 800);
         sunLight.position.set(0, 0, 0);
-        sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 1024;
-        sunLight.shadow.mapSize.height = 1024;
+        sunLight.castShadow = false; // shadows off for performance
         this.scene.add(sunLight);
       } else {
         // Very bright three-point lighting
         const keyLight = new THREE.DirectionalLight(0xffffff, 3);
         keyLight.position.set(100, 100, 100);
-        keyLight.castShadow = true;
+        keyLight.castShadow = false; // shadows disabled globally
         this.scene.add(keyLight);
         
         const fillLight = new THREE.DirectionalLight(0xffffff, 2);
@@ -1314,7 +1311,7 @@
     createSolarSystem() {
       this.solarSystem.forEach((data, i) => {
         if (data.name === 'Sun') {
-          const geometry = new THREE.SphereGeometry(data.radius, 48, 48);
+          const geometry = new THREE.SphereGeometry(data.radius, 32, 32); // 32 segs — visually identical to 48 at this scale
           const material = new THREE.ShaderMaterial({
             uniforms: {
               time: { value: 0 }
@@ -1411,7 +1408,7 @@
           glow.name = 'sunCoronaRay';
           sun.add(glow);
         } else {
-          const geometry = new THREE.SphereGeometry(data.radius, 48, 48);
+          const geometry = new THREE.SphereGeometry(data.radius, 32, 32); // 32 segs
           const texture = TextureGenerator.generate(data.name, 'albedo');
           
           const matParams = {
@@ -1444,7 +1441,7 @@
           planet.userData = { ...data, id: i, angle };
           
           if (data.name === 'Earth') {
-            const cloudGeo = new THREE.SphereGeometry(data.radius + 0.2, 48, 48);
+            const cloudGeo = new THREE.SphereGeometry(data.radius + 0.2, 32, 32);
             const cloudTex = TextureGenerator.generate('earth-clouds', 'albedo');
             const cloudMat = new THREE.MeshStandardMaterial({
               map: cloudTex,
@@ -1549,7 +1546,7 @@
     generateNebulaGeometry(name, radius, colorHex) {
       const positions = [];
       const colors = [];
-      const particleCount = 5000;
+      const particleCount = 2800; // reduced from 5000 — ~44% fewer particles, imperceptible difference
       const color = new THREE.Color(colorHex);
       
       switch(name.toLowerCase()) {
@@ -2143,12 +2140,13 @@
     },
     
     animate() {
-      requestAnimationFrame(() => this.animate());
-      
+      requestAnimationFrame(this._animateBound || (this._animateBound = () => this.animate()));
+
+      // Pause when tab is hidden — zero GPU cost
+      if (document.hidden) return;
+
       const container = document.getElementById('space-gallery-3d');
-      if (!container || container.offsetParent === null) {
-        return;
-      }
+      if (!container || container.offsetParent === null) return;
       
       // Update controls for smooth damping
       if (this.controls) {
@@ -2158,7 +2156,7 @@
       // Throttle HUD updates to every 10 frames to reduce DOM lag
       if (!this._frameCount) this._frameCount = 0;
       this._frameCount++;
-      if (this._frameCount % 10 === 0) {
+      if (this._frameCount % 20 === 0) { // every 20 frames — HUD is not time-critical
         this.updateHUD();
       }
       
