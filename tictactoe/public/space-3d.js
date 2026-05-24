@@ -64,6 +64,185 @@
     return texture;
   }
 
+  // Soft Gaussian glow — ultra-smooth fall-off for accretion gas particles
+  // Overlapping soft discs blend into misty volumetric haze instead of hard pinpoints
+  function createSoftGlowTexture() {
+    const S = 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = S;
+    canvas.height = S;
+    const ctx = canvas.getContext('2d');
+    const cx = S / 2;
+    const g = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
+    g.addColorStop(0,    'rgba(255,255,255,0.95)');
+    g.addColorStop(0.12, 'rgba(255,230,180,0.75)');
+    g.addColorStop(0.30, 'rgba(255,140,60,0.40)');
+    g.addColorStop(0.55, 'rgba(255,80,20,0.15)');
+    g.addColorStop(0.80, 'rgba(200,40,5,0.04)');
+    g.addColorStop(1,    'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, S, S);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  // ─── Reusable Stellar Shader Factory ─────────────────────────────────────────
+  // Creates a live WebGL granulation + limb-darkening shader for any star type.
+  // darkColor  : deep plasma / convection cell troughs
+  // midColor   : photosphere mid-tone
+  // hotColor   : solar granule peak brightness
+  // edgeColor  : chromosphere / corona edge glow
+  function createStellarShaderMaterial(darkColor, midColor, hotColor, edgeColor) {
+    return new THREE.ShaderMaterial({
+      uniforms: { time: { value: 0 } },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vViewDir;
+        void main() {
+          vUv = uv;
+          vNormal = normalize(normalMatrix * normal);
+          vec4 worldPos = modelViewMatrix * vec4(position, 1.0);
+          vViewDir = normalize(-worldPos.xyz);
+          gl_Position = projectionMatrix * worldPos;
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vViewDir;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+        float noise(vec2 p) {
+          vec2 ip = floor(p);
+          vec2 fp = fract(p);
+          fp = fp * fp * (3.0 - 2.0 * fp);
+          return mix(mix(hash(ip), hash(ip+vec2(1,0)), fp.x),
+                     mix(hash(ip+vec2(0,1)), hash(ip+vec2(1,1)), fp.x), fp.y);
+        }
+        float fbm(vec2 p) {
+          float v = 0.0, a = 0.5;
+          for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.1; a *= 0.48; }
+          return v;
+        }
+        void main() {
+          vec2 uv = vUv * 8.0;
+          float spd = time * 0.12;
+          float n1 = fbm(uv + vec2(spd*0.7, spd*0.3));
+          float n2 = fbm(uv*1.3 - vec2(spd*0.2, spd*0.8) + vec2(n1*2.0));
+          float n3 = fbm(uv*0.7 + vec2(n2*1.5, spd*0.15));
+          float combined = n1*0.4 + n2*0.4 + n3*0.2;
+          float granules = fbm(uv*3.5 + vec2(spd*0.05));
+          float spots = smoothstep(0.55, 0.70, granules) * 0.35;
+          vec3 dark = vec3(${darkColor[0]}, ${darkColor[1]}, ${darkColor[2]});
+          vec3 mid  = vec3(${midColor[0]},  ${midColor[1]},  ${midColor[2]});
+          vec3 hot  = vec3(${hotColor[0]},  ${hotColor[1]},  ${hotColor[2]});
+          vec3 edge = vec3(${edgeColor[0]}, ${edgeColor[1]}, ${edgeColor[2]});
+          vec3 col = mix(dark, mid, combined);
+          col = mix(col, hot, smoothstep(0.55, 0.85, combined));
+          col -= spots;
+          float NdV = dot(vNormal, vViewDir);
+          float limb = 1.0 - pow(1.0 - max(0.0, NdV), 0.6);
+          col *= (0.35 + 0.65 * limb);
+          float edgeFactor = pow(1.0 - max(0.0, NdV), 4.0);
+          col += edge * edgeFactor * 1.2;
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `
+    });
+  }
+
+  // ─── Animated Accretion Disk Shader ──────────────────────────────────────────
+  // Full WebGL FBM polar-coordinate plasma shader with live Doppler beaming.
+  // Runs 100% on GPU — zero CPU data overhead per frame.
+  function createAccretionDiskShaderMaterial(innerR, outerR) {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        time:   { value: 0 },
+        innerR: { value: innerR },
+        outerR: { value: outerR }
+      },
+      vertexShader: `
+        varying vec2 vPos;
+        void main() {
+          vPos = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform float innerR;
+        uniform float outerR;
+        varying vec2 vPos;
+
+        float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+        float noise(vec2 p) {
+          vec2 i=floor(p), f=fract(p);
+          f=f*f*(3.0-2.0*f);
+          return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),
+                     mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+        }
+        float fbm(vec2 p) {
+          float v=0.0, a=0.5;
+          for(int i=0;i<5;i++){v+=a*noise(p);p*=2.1;a*=0.48;}
+          return v;
+        }
+
+        void main() {
+          float r = length(vPos);
+          if (r < innerR * 0.96 || r > outerR * 1.04) { discard; }
+
+          float t = (r - innerR) / (outerR - innerR); // 0=inner hot, 1=outer cool
+          float theta = atan(vPos.y, vPos.x);          // polar angle -PI..PI
+
+          // Gas advection: spiral outward over time
+          float speed = time * 0.35;
+          float spiralUv = theta / (2.0 * 3.14159) + t * 2.8 - speed * (1.0 - t * 0.6);
+          vec2 pUv = vec2(spiralUv * 6.0, t * 4.0);
+
+          float plasma = fbm(pUv + vec2(speed * 0.4, 0.0));
+          float plasma2 = fbm(pUv * 1.7 - vec2(0.0, speed * 0.6) + plasma * 0.9);
+          float intensity = plasma * 0.55 + plasma2 * 0.45;
+
+          // Relativistic Doppler beaming: left side (approaching) is brighter/bluer
+          float doppler = (cos(theta) < 0.0)
+            ? (1.5 + abs(cos(theta)) * 1.2)   // approaching — white-gold blaze
+            : (0.55 - cos(theta) * 0.15);      // receding   — dim red
+
+          // Radial soft fade: sharp photon ring at inner edge, smooth fade to outer
+          float innerFade = smoothstep(0.0, 0.07, t);
+          float outerFade = 1.0 - smoothstep(0.65, 1.0, t);
+          float radialMask = innerFade * outerFade;
+
+          // Photosphere color ramp
+          vec3 photonRing = vec3(1.0, 1.0, 0.9);          // white photon ring
+          vec3 hotGold    = vec3(1.0, 0.75, 0.15);         // ultra-hot inner gas
+          vec3 midOrange  = vec3(1.0, 0.38, 0.04);         // mid plasma
+          vec3 coolRed    = vec3(0.55, 0.06, 0.0);         // cool outer edge
+
+          vec3 baseColor = mix(photonRing, hotGold, smoothstep(0.0, 0.15, t));
+          baseColor = mix(baseColor, midOrange, smoothstep(0.15, 0.55, t));
+          baseColor = mix(baseColor, coolRed,   smoothstep(0.55, 1.0, t));
+
+          // Turbulence brightening
+          vec3 turbColor = mix(midOrange, photonRing, clamp(intensity * 1.2 - 0.3, 0.0, 1.0));
+          baseColor = mix(baseColor, turbColor, 0.45);
+
+          float alpha = radialMask * doppler * clamp(intensity * 1.4, 0.5, 1.0) * 0.94;
+          gl_FragColor = vec4(baseColor, alpha);
+        }
+      `,
+      side: THREE.DoubleSide,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+  }
+
   // Volumetric cloud-puff texture for nebulae — fast canvas multi-puff (no CPU FBM)
   function createNebulaTexture() {
     const S = 128;
@@ -1244,6 +1423,29 @@
     texture.needsUpdate = true;
     return texture;
   }
+
+  // Colored corona for non-solar stars — accepts RGB 0-255 for star-specific chromosphere tints
+  function generateCoronaTextureColored(r, g, b) {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const cx = size / 2;
+    const grad = ctx.createRadialGradient(cx, cx, 0, cx, cx, cx);
+    grad.addColorStop(0,    `rgba(255, 255, 255, 1.0)`);
+    grad.addColorStop(0.05, `rgba(${r}, ${Math.min(255,g+40)}, ${Math.min(255,b+40)}, 0.95)`);
+    grad.addColorStop(0.12, `rgba(${r}, ${g}, ${b}, 0.70)`);
+    grad.addColorStop(0.25, `rgba(${r}, ${Math.max(0,g-30)}, ${Math.max(0,b-20)}, 0.30)`);
+    grad.addColorStop(0.45, `rgba(${Math.max(0,r-30)}, ${Math.max(0,g-50)}, 0, 0.10)`);
+    grad.addColorStop(0.70, `rgba(${Math.max(0,r-80)}, 0, 0, 0.025)`);
+    grad.addColorStop(1,    `rgba(0, 0, 0, 0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return tex;
+  }
   
   const coronaTexture = generateCoronaTexture();
   const coronaMaterial = new THREE.SpriteMaterial({
@@ -1291,64 +1493,71 @@
   const eris = createPlanet('eris', 1.6, 0xD3C2B0, {x:160, y:25, z:-170});
   planets.push({ mesh: eris, speed: 0.00002, radius: 160, angle: Math.PI * 1.3, rotationSpeed: 0.007 });
 
-  // ── Closest Star Systems ──
-  // Proxima Centauri (Nearby Red Dwarf)
+  // ── Closest Star Systems — Photorealistic WebGL Stellar Shaders ──
+  // Proxima Centauri — M-type red dwarf: deep crimson core, scarlet mid, warm orange edge
   proximaCentauri = new THREE.Mesh(
-    new THREE.SphereGeometry(3.5, 32, 32),
-    new THREE.MeshBasicMaterial({ color: 0xFF4500 })
+    new THREE.SphereGeometry(3.5, 48, 48),
+    createStellarShaderMaterial(
+      [0.55, 0.04, 0.0],   // dark: deep crimson convection troughs
+      [0.95, 0.22, 0.03],  // mid: burning scarlet photosphere
+      [1.0,  0.55, 0.12],  // hot: bright orange-white granule peaks
+      [1.0,  0.35, 0.0]    // edge: flaring orange-red chromosphere
+    )
   );
   proximaCentauri.position.set(160, 80, -220);
   proximaCentauri.userData = { name: "PROXIMA CENTAURI STAR" };
+  // Soft red corona sprite
   const proxCoronaMat = new THREE.SpriteMaterial({
-    map: createCircleTexture(),
-    color: 0xFF3300,
-    transparent: true,
-    opacity: 0.85,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
+    map: generateCoronaTextureColored(255, 60, 10),
+    transparent: true, opacity: 0.80,
+    blending: THREE.AdditiveBlending, depthWrite: false
   });
   const proxCorona = new THREE.Sprite(proxCoronaMat);
-  proxCorona.scale.set(18, 18, 1);
+  proxCorona.scale.set(22, 22, 1);
   proximaCentauri.add(proxCorona);
   scene.add(proximaCentauri);
 
-  // Alpha Centauri A (Binary System Anchor)
+  // Alpha Centauri A — G-type solar analog: bright yellow-white photosphere
   alphaCentauriA = new THREE.Mesh(
-    new THREE.SphereGeometry(5.2, 32, 32),
-    new THREE.MeshBasicMaterial({ color: 0xFFF8DC })
+    new THREE.SphereGeometry(5.2, 48, 48),
+    createStellarShaderMaterial(
+      [0.72, 0.32, 0.02],  // dark: deep amber convection troughs
+      [1.0,  0.72, 0.12],  // mid: golden-yellow photosphere
+      [1.0,  0.95, 0.55],  // hot: bright yellow-white granule peaks
+      [1.0,  0.80, 0.30]   // edge: warm golden chromosphere
+    )
   );
   alphaCentauriA.position.set(-240, 90, -180);
   alphaCentauriA.userData = { name: "ALPHA CENTAURI A STAR" };
   const alphaACoronaMat = new THREE.SpriteMaterial({
-    map: createCircleTexture(),
-    color: 0xFFFACD,
-    transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
+    map: generateCoronaTextureColored(255, 220, 130),
+    transparent: true, opacity: 0.75,
+    blending: THREE.AdditiveBlending, depthWrite: false
   });
   const alphaACorona = new THREE.Sprite(alphaACoronaMat);
-  alphaACorona.scale.set(24, 24, 1);
+  alphaACorona.scale.set(30, 30, 1);
   alphaCentauriA.add(alphaACorona);
   scene.add(alphaCentauriA);
 
-  // Alpha Centauri B (Orbiting A)
+  // Alpha Centauri B — K-type orange dwarf: rich warm peach-orange photosphere
   alphaCentauriB = new THREE.Mesh(
-    new THREE.SphereGeometry(4.2, 32, 32),
-    new THREE.MeshBasicMaterial({ color: 0xFFA07A })
+    new THREE.SphereGeometry(4.2, 48, 48),
+    createStellarShaderMaterial(
+      [0.60, 0.18, 0.0],   // dark: deep burnt-orange convection troughs
+      [0.98, 0.50, 0.08],  // mid: rich peach-orange photosphere
+      [1.0,  0.78, 0.35],  // hot: warm cream-orange granule peaks
+      [1.0,  0.60, 0.15]   // edge: orange-amber chromosphere
+    )
   );
   alphaCentauriB.position.set(18, 5, -15);
   alphaCentauriB.userData = { name: "ALPHA CENTAURI B STAR" };
   const alphaBCoronaMat = new THREE.SpriteMaterial({
-    map: createCircleTexture(),
-    color: 0xFF7F50,
-    transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
+    map: generateCoronaTextureColored(255, 160, 60),
+    transparent: true, opacity: 0.75,
+    blending: THREE.AdditiveBlending, depthWrite: false
   });
   const alphaBCorona = new THREE.Sprite(alphaBCoronaMat);
-  alphaBCorona.scale.set(20, 20, 1);
+  alphaBCorona.scale.set(26, 26, 1);
   alphaCentauriB.add(alphaBCorona);
   alphaCentauriA.add(alphaCentauriB);
 
@@ -1481,49 +1690,22 @@
   const lensingGlow = new THREE.Mesh(lensingGlowGeo, lensingGlowMat);
   eventHorizon.add(lensingGlow);
 
-  // Emissive Accretion Disk Ring
-  const accretionDiskGeo = new THREE.RingGeometry(7.8, 25, 64);
-  const ringPosAttr = accretionDiskGeo.attributes.position;
-  const ringUvAttr = accretionDiskGeo.attributes.uv;
-  const ringInnerR = 7.8;
-  const ringOuterR = 25;
-  for (let j = 0; j < ringPosAttr.count; j++) {
-    const rx = ringPosAttr.getX(j);
-    const ry = ringPosAttr.getY(j);
-    const rDist = Math.sqrt(rx*rx + ry*ry);
-    const u = (rDist - ringInnerR) / (ringOuterR - ringInnerR);
-    ringUvAttr.setXY(j, u, 0.5);
-  }
-  ringUvAttr.needsUpdate = true;
-
-  const accretionDiskMat = new THREE.MeshBasicMaterial({
-    map: sagittariusTexture,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    opacity: 0.96,
-    side: THREE.DoubleSide,
-    depthWrite: false
-  });
-  accretionDisk = new THREE.Mesh(accretionDiskGeo, accretionDiskMat);
+  // ── Animated WebGL Accretion Disk (primary — wide plasma torus) ──
+  // Uses FBM polar-coordinate shader with live Doppler beaming. No static texture needed.
+  const accretionDiskMat = createAccretionDiskShaderMaterial(7.8, 25);
+  accretionDisk = new THREE.Mesh(new THREE.RingGeometry(7.8, 25, 96, 4), accretionDiskMat);
   accretionDisk.rotation.set(Math.PI / 2.2, Math.PI / 12, 0);
   eventHorizon.add(accretionDisk);
 
-  // ── Einstein Relativistic Gravitational Lensing accretion disk (HD mode only) ──
-  const lensedAccretionDiskGeo = new THREE.RingGeometry(6.5, 13, 64);
-  const lensedAccretionDiskMat = new THREE.MeshBasicMaterial({
-    map: sagittariusTexture,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    opacity: 0.88,
-    side: THREE.DoubleSide,
-    depthWrite: false
-  });
-  lensedAccretionDisk = new THREE.Mesh(lensedAccretionDiskGeo, lensedAccretionDiskMat);
+  // ── Einstein Relativistic Lensing Disk (HD only — photon ring above event horizon) ──
+  const lensedAccretionDiskMat = createAccretionDiskShaderMaterial(6.0, 12);
+  lensedAccretionDisk = new THREE.Mesh(new THREE.RingGeometry(6.0, 12, 96, 4), lensedAccretionDiskMat);
   lensedAccretionDisk.lookAt(camera.position);
   lensedAccretionDisk.visible = (localStorage.getItem('graphicsMode') || 'HD') === 'HD';
   eventHorizon.add(lensedAccretionDisk);
 
   // ── Volumetric Accretion Gas Particles (HD mode only) ──
+  // Now uses soft Gaussian glow texture — overlapping discs blend into misty cloud
   const sgrPartGeo = new THREE.BufferGeometry();
   const sgrPartPositions = [];
   const sgrPartColors = [];
@@ -1538,8 +1720,10 @@
     sgrPartPositions.push(Math.cos(angle) * r, yOffset, Math.sin(angle) * r);
     sgrPartData.push({ r, angle, speed, y: yOffset });
     
+    // Doppler-biased color: approaching side (angle near PI) hotter/whiter
+    const approachBias = (Math.cos(angle) < 0) ? 0.5 + Math.random() * 0.4 : 0.2 + Math.random() * 0.2;
     const c = new THREE.Color();
-    c.setHSL(0.04 + Math.random() * 0.05, 0.9, 0.5 + Math.random() * 0.3);
+    c.setHSL(0.04 + Math.random() * 0.06, 0.95, approachBias);
     sgrPartColors.push(c.r, c.g, c.b);
   }
   
@@ -1547,13 +1731,13 @@
   sgrPartGeo.setAttribute('color', new THREE.Float32BufferAttribute(sgrPartColors, 3));
   
   const sgrPartMat = new THREE.PointsMaterial({
-    size: 2.2,
+    size: 3.0,
     vertexColors: true,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.72,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    map: createCircleTexture()
+    map: createSoftGlowTexture()  // Gaussian soft glow → misty volumetric haze
   });
   
   sgrParticles = new THREE.Points(sgrPartGeo, sgrPartMat);
@@ -1754,35 +1938,40 @@
       coronaSprite.material.opacity = 0.70 + Math.cos(currentTime * 0.0005) * 0.08;
     }
 
-    // Binary star and nearby star systems animations
+    // Binary star and nearby star systems — tick stellar shader time + corona pulse
     if (alphaCentauriA) {
       alphaCentauriA.rotation.y += 0.002 * scale;
+      if (alphaCentauriA.material && alphaCentauriA.material.uniforms)
+        alphaCentauriA.material.uniforms.time.value = currentTime * 0.0001;
       const alphaACoronaPulse = 1.0 + Math.sin(currentTime * 0.0006) * 0.02;
       const ray = alphaCentauriA.children[0];
-      if (ray) {
-        ray.scale.set(24 * alphaACoronaPulse, 24 * alphaACoronaPulse, 1);
+      if (ray && ray.material) {
+        ray.scale.set(30 * alphaACoronaPulse, 30 * alphaACoronaPulse, 1);
         ray.material.rotation = Math.sin(currentTime * 0.0002) * 0.03;
       }
     }
     if (alphaCentauriB) {
       alphaCentauriB.rotation.y -= 0.003 * scale;
+      if (alphaCentauriB.material && alphaCentauriB.material.uniforms)
+        alphaCentauriB.material.uniforms.time.value = currentTime * 0.0001;
       if (!alphaCentauriB.orbAng) alphaCentauriB.orbAng = 0;
       alphaCentauriB.orbAng += 0.001 * scale;
       alphaCentauriB.position.set(Math.cos(alphaCentauriB.orbAng) * 20, 2, Math.sin(alphaCentauriB.orbAng) * 20);
-      
       const alphaBCoronaPulse = 1.0 + Math.cos(currentTime * 0.0007) * 0.025;
       const ray = alphaCentauriB.children[0];
-      if (ray) {
-        ray.scale.set(20 * alphaBCoronaPulse, 20 * alphaBCoronaPulse, 1);
+      if (ray && ray.material) {
+        ray.scale.set(26 * alphaBCoronaPulse, 26 * alphaBCoronaPulse, 1);
         ray.material.rotation = -Math.sin(currentTime * 0.00025) * 0.035;
       }
     }
     if (proximaCentauri) {
       proximaCentauri.rotation.y += 0.001 * scale;
+      if (proximaCentauri.material && proximaCentauri.material.uniforms)
+        proximaCentauri.material.uniforms.time.value = currentTime * 0.0001;
       const proxPulse = 1.0 + Math.sin(currentTime * 0.0009) * 0.03;
       const ray = proximaCentauri.children[0];
-      if (ray) {
-        ray.scale.set(18 * proxPulse, 18 * proxPulse, 1);
+      if (ray && ray.material) {
+        ray.scale.set(22 * proxPulse, 22 * proxPulse, 1);
         ray.material.rotation = Math.sin(currentTime * 0.0001) * 0.05;
       }
     }
@@ -1798,13 +1987,17 @@
       p.mesh.rotation.y += p.rotationSpeed * scale;
     });
     
-    // ── Accretion Disk orbital rotation & relativistic black hole breathing ──
+    // ── Accretion Disk: tick animated shader time + orbital rotation ──
     if (accretionDisk) {
       accretionDisk.rotation.z += 0.006 * scale;
+      if (accretionDisk.material && accretionDisk.material.uniforms)
+        accretionDisk.material.uniforms.time.value = currentTime * 0.001;
     }
     if (lensedAccretionDisk) {
       lensedAccretionDisk.lookAt(camera.position);
       lensedAccretionDisk.rotation.z -= 0.004 * scale;
+      if (lensedAccretionDisk.material && lensedAccretionDisk.material.uniforms)
+        lensedAccretionDisk.material.uniforms.time.value = currentTime * 0.001;
     }
     if (sgrParticles && (localStorage.getItem('graphicsMode') || 'HD') === 'HD') {
       const posAttr = sgrParticles.geometry.attributes.position;
