@@ -87,38 +87,199 @@
     /* ── Tailwind escape-hatch selectors (colorblind mode) ──────────────── */
     body.colorblind .border-mars\/50  { border-color: rgba(0,102,255,.5)   !important; }
     body.colorblind .border-earth\/50 { border-color: rgba(255,170,0,.5)   !important; }
+
+    /* ── Breathing AI Core Loading Styles ─────────────────────────── */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #060913;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .breathing-scene {
+      position: relative;
+      width: 320px;
+      height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Ambient Starfield background */
+    .breathing-starfield {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+    }
+    .ambient-star {
+      position: absolute;
+      background: #ffffff;
+      border-radius: 50%;
+      opacity: 0;
+      animation: twinkle var(--duration) ease-in-out infinite var(--delay);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; transform: scale(0.5); }
+      50% { opacity: var(--max-opacity); transform: scale(1); }
+    }
+    /* Main Animated Container */
+    .quantum-container {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      animation: coreFloat 6s ease-in-out infinite;
+    }
+    @keyframes coreFloat {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(2deg); }
+    }
+    /* Deep Tech Atmospheric Rings (Breathing Effect) */
+    .pulse-ring {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border: 1px solid transparent;
+      border-radius: 50%;
+      transform-origin: center;
+    }
+    .pulse-ring:nth-child(1) {
+      border-radius: 50%;
+      background: padding-box transparent;
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      animation: pulseWave 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    .pulse-ring:nth-child(2) {
+      top: 16px; left: 16px; right: 16px; bottom: 16px;
+      border: 1px solid rgba(147, 51, 234, 0.15);
+      animation: pulseWave 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      animation-delay: 1.3s;
+    }
+    .pulse-ring:nth-child(3) {
+      top: 32px; left: 32px; right: 32px; bottom: 32px;
+      border: 1px solid rgba(52, 211, 153, 0.08);
+      animation: pulseWave 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      animation-delay: 2.6s;
+    }
+    @keyframes pulseWave {
+      0%, 100% { transform: scale(1); opacity: 0.3; filter: blur(1px); }
+      50% { transform: scale(1.12); opacity: 0.9; filter: blur(0px); }
+    }
+    /* Wind-Whoosh Particles mimicking energy trails */
+    .wind-stream {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+    }
+    .wind-particle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      background: linear-gradient(90deg, var(--color) 0%, transparent 80%);
+      height: 2px;
+      border-radius: 100px;
+      transform-origin: 0 0;
+      opacity: 0;
+      animation: windWhoosh var(--speed) linear infinite;
+      animation-delay: var(--delay);
+      width: var(--length);
+    }
+    @keyframes windWhoosh {
+      0% {
+        transform: rotate(var(--angle)) translateX(30px) scaleX(0);
+        opacity: 0;
+      }
+      20% {
+        opacity: var(--opacity);
+        transform: rotate(var(--angle)) translateX(45px) scaleX(1.5);
+      }
+      80% {
+        opacity: var(--opacity);
+        transform: rotate(var(--angle)) translateX(95px) scaleX(1);
+      }
+      100% {
+        transform: rotate(var(--angle)) translateX(120px) scaleX(0);
+        opacity: 0;
+      }
+    }
+    /* Master Orb SVG Styling */
+    .core-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+    /* Dynamic Morphing Keyframes for Smooth Breathing */
+    .morphing-core {
+      transform-origin: 70px 70px;
+      animation: organicBreathe 5s ease-in-out infinite;
+    }
+    @keyframes organicBreathe {
+      0%, 100% {
+        filter: drop-shadow(0 0 20px rgba(37, 99, 235, 0.6)) drop-shadow(0 0 40px rgba(147, 51, 234, 0.3));
+        transform: scale(0.95);
+      }
+      50% {
+        filter: drop-shadow(0 0 35px rgba(52, 211, 153, 0.8)) drop-shadow(0 0 65px rgba(37, 99, 235, 0.5));
+        transform: scale(1.05);
+      }
+    }
   </style>
 </head>
 <body class="bg-space text-white min-h-screen overflow-x-hidden" x-data="app()" x-init="init()" x-cloak>
   <!-- Loading Screen -->
   <div id="loading-screen" style="perspective: 1000px; opacity: 0; pointer-events: none;">
-  <script>
-    // Delay loading screen display to avoid flashing on fast loads
-    window.loadingScreenTimeout = setTimeout(() => {
-      const loader = document.getElementById('loading-screen');
-      if (loader) {
-        loader.style.opacity = '1';
-        loader.style.pointerEvents = 'auto';
-      }
-    }, 150);
-  </script>
-    <div class="text-center">
-      <!-- 3D X/O Portal Breathing Loader -->
-      <div class="relative w-32 h-32 mx-auto mb-6 flex items-center justify-center" style="transform-style: preserve-3d;">
-        <!-- Glowing 3D X wireframe -->
-        <div class="absolute w-16 h-16 border-2 border-nasa/60 rounded loader-3d-x shadow-[0_0_20px_rgba(0,212,255,0.4)]">
-          <div class="absolute inset-0 border-t-2 border-b-2 border-nasa"></div>
-          <div class="absolute inset-0 border-l-2 border-r-2 border-nasa"></div>
-        </div>
-        <!-- Glowing 3D O ring -->
-        <div class="absolute w-20 h-20 border-2 border-mars/60 rounded-full loader-3d-o shadow-[0_0_25px_rgba(255,107,53,0.4)]"></div>
-        <!-- Orbiting 3D Planets -->
-        <div class="absolute inset-0 loader-orbit-planets pointer-events-none">
-          <div class="absolute w-2.5 h-2.5 bg-[#4a90e2] rounded-full shadow-[0_0_8px_#4a90e2] loader-planet-earth"></div>
-          <div class="absolute w-2 h-2 bg-[#ff6b35] rounded-full shadow-[0_0_8px_#ff6b35] loader-planet-mars"></div>
-          <div class="absolute w-3.5 h-3.5 bg-[#c88b3a] rounded-full shadow-[0_0_10px_#c88b3a] loader-planet-jupiter"></div>
-        </div>
+    <script>
+      // Delay loading screen display to avoid flashing on fast loads
+      window.loadingScreenTimeout = setTimeout(() => {
+        const loader = document.getElementById('loading-screen');
+        if (loader) {
+          loader.style.opacity = '1';
+          loader.style.pointerEvents = 'auto';
+        }
+      }, 150);
+    </script>
+    <!-- Ambient Starfield background -->
+    <div class="breathing-starfield" id="starfield"></div>
+    
+    <div class="text-center relative z-10 flex flex-col items-center justify-center">
+      <!-- Main Animated Container -->
+      <div class="quantum-container mb-6">
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring"></div>
+        <div class="wind-stream" id="windStream"></div>
+        
+        <!-- Master Orb SVG -->
+        <svg class="core-svg" viewBox="0 0 140 140">
+          <defs>
+            <radialGradient id="aiCoreGrad" cx="35%" cy="30%" r="70%">
+              <stop offset="0%" stop-color="#a7f3d0" />
+              <stop offset="30%" stop-color="#60a5fa" />
+              <stop offset="70%" stop-color="#7c3aed" />
+              <stop offset="100%" stop-color="#1e1b4b" />
+            </radialGradient>
+            <filter id="quantumGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="6" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+          <g class="morphing-core" transform="translate(70, 70)">
+            <circle cx="0" cy="0" r="54" fill="none" stroke="rgba(147, 51, 234, 0.2)" stroke-width="1.5" />
+            <circle cx="0" cy="0" r="48" fill="url(#aiCoreGrad)" filter="url(#quantumGlow)" />
+            <path d="M -30 -10 Q 0 -25 30 -10" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="2" stroke-linecap="round" />
+            <path d="M -25 15 Q 0 5 25 15" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1.5" stroke-linecap="round" />
+          </g>
+        </svg>
       </div>
+      
       <div class="text-nasa text-xl font-bold tracking-widest font-mono uppercase animate-pulse">ESTABLISHING QUANTUM LINK</div>
       <div class="text-gray-400 text-xs tracking-wider font-mono mt-2">CALIBRATING ASTROMETRIC CORRELATION...</div>
     </div>
@@ -900,26 +1061,43 @@
                  x-transition:leave="transition opacity ease-in duration-200"
                  x-transition:leave-start="opacity-100"
                  x-transition:leave-end="opacity-0"
-                 class="absolute inset-0 bg-[#000208]/95 flex items-center justify-center z-40 pointer-events-auto rounded-lg"
+                 class="absolute inset-0 bg-[#000208]/95 flex flex-col items-center justify-center z-40 pointer-events-auto rounded-lg overflow-hidden"
                  style="backdrop-filter: blur(8px); perspective: 1000px;">
-              <div class="text-center">
-                <!-- 3D X/O Portal Breathing Loader -->
-                <div class="relative w-28 h-28 mx-auto mb-4 flex items-center justify-center" style="transform-style: preserve-3d;">
-                  <!-- Glowing 3D X wireframe -->
-                  <div class="absolute w-14 h-14 border-2 border-nasa/60 rounded loader-3d-x shadow-[0_0_20px_rgba(0,212,255,0.4)]">
-                    <div class="absolute inset-0 border-t-2 border-b-2 border-nasa"></div>
-                    <div class="absolute inset-0 border-l-2 border-r-2 border-nasa"></div>
-                  </div>
-                  <!-- Glowing 3D O ring -->
-                  <div class="absolute w-18 h-18 border-2 border-mars/60 rounded-full loader-3d-o shadow-[0_0_25px_rgba(255,107,53,0.4)]"></div>
-                  <!-- Orbiting 3D Planets -->
-                  <div class="absolute inset-0 loader-orbit-planets pointer-events-none">
-                    <div class="absolute w-2 h-2.5 bg-[#4a90e2] rounded-full shadow-[0_0_8px_#4a90e2] loader-planet-earth"></div>
-                    <div class="absolute w-1.5 h-1.5 bg-[#ff6b35] rounded-full shadow-[0_0_8px_#ff6b35] loader-planet-mars"></div>
-                    <div class="absolute w-3 h-3 bg-[#c88b3a] rounded-full shadow-[0_0_10px_#c88b3a] loader-planet-jupiter"></div>
-                  </div>
+              <!-- Ambient Starfield background -->
+              <div class="breathing-starfield" id="gallery-starfield"></div>
+              
+              <div class="text-center relative z-10 flex flex-col items-center justify-center scale-90">
+                <!-- Main Animated Container -->
+                <div class="quantum-container mb-4">
+                  <div class="pulse-ring"></div>
+                  <div class="pulse-ring"></div>
+                  <div class="pulse-ring"></div>
+                  <div class="wind-stream" id="gallery-windStream"></div>
+                  
+                  <!-- Master Orb SVG -->
+                  <svg class="core-svg" viewBox="0 0 140 140">
+                    <defs>
+                      <radialGradient id="aiCoreGradGallery" cx="35%" cy="30%" r="70%">
+                        <stop offset="0%" stop-color="#a7f3d0" />
+                        <stop offset="30%" stop-color="#60a5fa" />
+                        <stop offset="70%" stop-color="#7c3aed" />
+                        <stop offset="100%" stop-color="#1e1b4b" />
+                      </radialGradient>
+                      <filter id="quantumGlowGallery" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="6" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                      </filter>
+                    </defs>
+                    <g class="morphing-core" transform="translate(70, 70)">
+                      <circle cx="0" cy="0" r="54" fill="none" stroke="rgba(147, 51, 234, 0.2)" stroke-width="1.5" />
+                      <circle cx="0" cy="0" r="48" fill="url(#aiCoreGradGallery)" filter="url(#quantumGlowGallery)" />
+                      <path d="M -30 -10 Q 0 -25 30 -10" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="2" stroke-linecap="round" />
+                      <path d="M -25 15 Q 0 5 25 15" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1.5" stroke-linecap="round" />
+                    </g>
+                  </svg>
                 </div>
-                <div class="text-nasa text-[10px] font-mono tracking-widest uppercase animate-pulse">ESTABLISHING QUANTUM LINK...</div>
+                <div class="text-nasa text-xs font-mono tracking-widest uppercase animate-pulse">RECONSTRUCTING COHERENCE MATRIX</div>
+                <div class="text-gray-400 text-[10px] tracking-wider font-mono mt-1">ALIGNING TELEMETRY SECTORS...</div>
               </div>
             </div>
             
@@ -1648,13 +1826,65 @@
   <script src="/app.js"></script>
   
   <script>
+    // Starfield & Wind Particle Generator Factory
+    function initBreathingLoader(starfieldId, windStreamId) {
+      const starsContainer = document.getElementById(starfieldId);
+      if (starsContainer) {
+        if (starsContainer.children.length === 0) {
+          for (let i = 0; i < 40; i++) {
+            const star = document.createElement('div');
+            star.className = 'ambient-star';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.setProperty('--duration', (3 + Math.random() * 4) + 's');
+            star.style.setProperty('--delay', (Math.random() * -5) + 's');
+            star.style.setProperty('--max-opacity', (0.1 + Math.random() * 0.5));
+            const size = 1 + Math.random() * 2;
+            star.style.width = size + 'px';
+            star.style.height = size + 'px';
+            starsContainer.appendChild(star);
+          }
+        }
+      }
+
+      const windContainer = document.getElementById(windStreamId);
+      if (windContainer) {
+        if (windContainer.children.length === 0) {
+          const colors = ['#60a5fa', '#a7f3d0', '#c084fc', '#ffffff'];
+          for (let i = 0; i < 15; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'wind-particle';
+            const angle = Math.random() * 360;
+            const speed = 1.5 + Math.random() * 2;
+            const delay = Math.random() * -4;
+            const length = 40 + Math.random() * 50;
+            const opacity = 0.2 + Math.random() * 0.5;
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+            particle.style.setProperty('--angle', `${angle}deg`);
+            particle.style.setProperty('--speed', `${speed}s`);
+            particle.style.setProperty('--delay', `${delay}s`);
+            particle.style.setProperty('--opacity', opacity);
+            particle.style.setProperty('--color', randomColor);
+            particle.style.setProperty('--length', `${length}px`);
+            windContainer.appendChild(particle);
+          }
+        }
+      }
+    }
+
+    // Initialize loaders
+    initBreathingLoader('starfield', 'windStream');
+    initBreathingLoader('gallery-starfield', 'gallery-windStream');
+
     // Hide loading screen once Alpine is ready
     document.addEventListener('alpine:init', () => {
       clearTimeout(window.loadingScreenTimeout);
       const loader = document.getElementById('loading-screen');
       if (loader) {
-        loader.classList.add('hidden');
-        setTimeout(() => loader.remove(), 300);
+        loader.style.opacity = '0';
+        loader.style.pointerEvents = 'none';
+        setTimeout(() => loader.remove(), 500);
       }
     });
   </script>

@@ -2702,7 +2702,7 @@
   bhLoader.name = 'bhLoader';
   blackHoleGroup.add(bhLoader);
 
-  if (typeof THREE.GLTFLoader !== 'undefined') {
+  if (false && typeof THREE.GLTFLoader !== 'undefined') {
     const gltfLoader = new THREE.GLTFLoader();
     const getModelUrl = (path) => {
       if (typeof window.BACKEND_URL !== 'undefined' && window.BACKEND_URL) {
