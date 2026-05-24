@@ -733,60 +733,20 @@
     // hollow aperture ring + chromatic fringe, warm catseye catch-light,
     // anamorphic horizontal streak, inner Newton's interference ring
     drawCircleParticle() {
-      const S = 128;
+      const S = 32;
       const canvas = document.createElement('canvas');
       canvas.width = S;
       canvas.height = S;
       const ctx = canvas.getContext('2d');
       const cx = S / 2, cy = S / 2, r = S / 2;
 
-      // ── Layer 1: Hollow-centre bokeh disc with crisp aperture ring ────────────
-      const disc = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      disc.addColorStop(0.00, 'rgba(190, 215, 255, 0.00)'); // hollow dark core
-      disc.addColorStop(0.48, 'rgba(190, 215, 255, 0.01)'); // barely-there inner body
-      disc.addColorStop(0.74, 'rgba(210, 232, 255, 0.10)'); // building luminance
-      disc.addColorStop(0.84, 'rgba(240, 250, 255, 0.65)'); // crisp bright aperture ring
-      disc.addColorStop(0.90, 'rgba(200, 230, 255, 0.85)'); // peak ring brightness
-      disc.addColorStop(0.94, 'rgba(160, 205, 255, 0.50)'); // cyan chromatic fringe
-      disc.addColorStop(0.98, 'rgba(120, 170, 255, 0.15)'); // blue outer halo
-      disc.addColorStop(1.00, 'rgba(  0,   0,   0, 0.00)'); // clean transparent edge
-      ctx.fillStyle = disc;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-
-      // ── Layer 2: Warm off-centre catseye catch-light ──────────────────────────
-      const catchX = cx - r * 0.20;
-      const catchY = cy - r * 0.20;
-      const catchR = r * 0.26;
-      const catch_ = ctx.createRadialGradient(catchX, catchY, 0, catchX, catchY, catchR);
-      catch_.addColorStop(0.00, 'rgba(255, 248, 220, 0.60)'); // warm white specular core
-      catch_.addColorStop(0.45, 'rgba(255, 240, 190, 0.22)'); // warm glow
-      catch_.addColorStop(1.00, 'rgba(  0,   0,   0, 0.00)'); // smooth fade
-      ctx.fillStyle = catch_;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-
-      // ── Layer 3: Anamorphic horizontal lens streak ────────────────────────────
-      const streak = ctx.createLinearGradient(0, cy, S, cy);
-      streak.addColorStop(0.00, 'rgba( 80, 160, 255, 0.00)');
-      streak.addColorStop(0.25, 'rgba(100, 180, 255, 0.06)');
-      streak.addColorStop(0.50, 'rgba(160, 215, 255, 0.18)');
-      streak.addColorStop(0.75, 'rgba(100, 180, 255, 0.06)');
-      streak.addColorStop(1.00, 'rgba( 80, 160, 255, 0.00)');
-      ctx.fillStyle = streak;
-      ctx.fillRect(0, cy - 1.5, S, 3);
-
-      // ── Layer 4: Inner Newton's interference ring ─────────────────────────────
-      const newton = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r * 0.66);
-      newton.addColorStop(0.0, 'rgba(180, 215, 255, 0.00)');
-      newton.addColorStop(0.5, 'rgba(200, 228, 255, 0.09)');
-      newton.addColorStop(1.0, 'rgba(180, 215, 255, 0.00)');
-      ctx.fillStyle = newton;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fill();
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      g.addColorStop(0.2, 'rgba(255, 255, 255, 0.85)');
+      g.addColorStop(0.5, 'rgba(255, 255, 255, 0.35)');
+      g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, S, S);
 
       const texture = new THREE.CanvasTexture(canvas);
       texture.needsUpdate = true;

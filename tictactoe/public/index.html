@@ -604,15 +604,19 @@
       
       <div class="flex gap-2 mb-4 overflow-x-auto">
         <button @click="loadSpaceTab('solar')" 
+                :disabled="spaceTabLoading"
                 :class="spaceTab === 'solar' ? 'bg-nasa text-black' : 'bg-gray-800'"
                 class="px-3 sm:px-4 py-2 rounded transition text-[9px] sm:text-[10px] whitespace-nowrap font-retro">☀️ SOLAR SYSTEM</button>
         <button @click="loadSpaceTab('stars')" 
+                :disabled="spaceTabLoading"
                 :class="spaceTab === 'stars' ? 'bg-nasa text-black' : 'bg-gray-800'"
                 class="px-3 sm:px-4 py-2 rounded transition text-[9px] sm:text-[10px] whitespace-nowrap font-retro">⭐ NEARBY STARS</button>
         <button @click="loadSpaceTab('nebulae')" 
+                :disabled="spaceTabLoading"
                 :class="spaceTab === 'nebulae' ? 'bg-nasa text-black' : 'bg-gray-800'"
                 class="px-3 sm:px-4 py-2 rounded transition text-[9px] sm:text-[10px] whitespace-nowrap font-retro">🌌 NEBULAE</button>
         <button @click="loadSpaceTab('constellations')" 
+                :disabled="spaceTabLoading"
                 :class="spaceTab === 'constellations' ? 'bg-nasa text-black' : 'bg-gray-800'"
                 class="px-3 sm:px-4 py-2 rounded transition text-[9px] sm:text-[10px] whitespace-nowrap font-retro">✨ CONSTELLATIONS</button>
       </div>
@@ -621,6 +625,30 @@
         <div class="lg:col-span-3">
           <div class="glass nasa-bracket rounded-lg p-3 sm:p-4 shadow-2xl relative overflow-hidden">
             <div id="space-gallery-3d" class="rounded-lg" style="width: 100%; height: 600px;"></div>
+
+            <!-- Space Tab Transition Cinematic Loading Overlay -->
+            <div x-show="spaceTabLoading" 
+                 x-transition:enter="transition opacity ease-out duration-200"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition opacity ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="absolute inset-0 bg-[#000208]/90 flex items-center justify-center z-40 pointer-events-auto rounded-lg"
+                 style="backdrop-filter: blur(8px);">
+              <div class="text-center">
+                <!-- Floating Cinematic X/O Portal loading spinner -->
+                <div class="relative w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                  <!-- Glowing X wireframe -->
+                  <div class="absolute w-12 h-12 border-2 border-nasa/40 rounded animate-spin" style="animation-duration: 3s; transform: rotate(45deg); box-shadow: 0 0 15px rgba(0,212,255,0.2);"></div>
+                  <!-- Glowing O ring -->
+                  <div class="absolute w-16 h-16 border-2 border-mars/40 rounded-full animate-ping" style="animation-duration: 1.8s; box-shadow: 0 0 20px rgba(255,107,53,0.2);"></div>
+                  <!-- Tiny central core star -->
+                  <div class="w-2.5 h-2.5 bg-white rounded-full animate-pulse shadow-[0_0_10px_#fff]"></div>
+                </div>
+                <div class="text-nasa text-[10px] font-mono tracking-widest uppercase animate-pulse">ESTABLISHING QUANTUM LINK...</div>
+              </div>
+            </div>
             
             <!-- Real-time HUD Overlay -->
             <div class="absolute top-6 left-6 glass rounded px-3 py-2 text-xs space-y-1 pointer-events-none">
@@ -761,7 +789,8 @@
        x-transition:enter="transition ease-out duration-300"
        x-transition:enter-start="opacity-0"
        x-transition:enter-end="opacity-100"
-       class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+       class="fixed inset-0 flex items-center justify-center p-4 z-50"
+       style="background-color: rgba(0, 2, 8, 0.65);">
     <div class="glass nasa-bracket rounded-lg p-8 text-center max-w-md shadow-2xl"
          x-transition:enter="transition ease-out duration-500 delay-150"
          x-transition:enter-start="opacity-0 scale-50"

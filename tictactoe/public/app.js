@@ -161,6 +161,9 @@ function app() {
     customMusicPlaying: false,
     customMusicName: '',
     
+    // Space Explorer Tab loading transition state
+    spaceTabLoading: false,
+    
     triggerMusicUpload() {
       const fileInput = document.getElementById('bg-music-input');
       if (fileInput) {
@@ -1079,6 +1082,11 @@ function app() {
         this.gameOverTitle = `PLAYER ${winner} WINS`;
         this.gameOverSubtitle = 'VICTORY ACHIEVED';
         this.user.stats.wins++;
+        
+        // Celebratory win warp speed animation
+        if (window.CinematicSpace && typeof window.CinematicSpace.triggerWarp === 'function') {
+          window.CinematicSpace.triggerWarp(5000);
+        }
       } else if (winner === this.mySymbol || (this.mode === 'ai' && winner === 'X')) {
         window.SoundManager.play('win'); this.gameOverEmoji = '🏆';
         this.gameOverTitle = 'MISSION COMPLETE';
@@ -1087,6 +1095,11 @@ function app() {
         this.user.stats.winStreak++;
         this.user.stats.bestStreak = Math.max(this.user.stats.bestStreak, this.user.stats.winStreak);
         this.checkAchievements(winner, draw);
+        
+        // Celebratory win warp speed animation
+        if (window.CinematicSpace && typeof window.CinematicSpace.triggerWarp === 'function') {
+          window.CinematicSpace.triggerWarp(5000);
+        }
       } else {
         window.SoundManager.play('lose'); this.gameOverEmoji = '❌';
         this.gameOverTitle = 'MISSION FAILED';
@@ -1531,13 +1544,23 @@ function app() {
     },
     
     loadSpaceTab(tab) {
+      if (this.spaceTab === tab && window.SpaceGallery3D && window.SpaceGallery3D.scene) return;
+      this.spaceTabLoading = true;
       this.spaceTab = tab;
-      if (window.SpaceGallery3D) {
-        if (!window.SpaceGallery3D.scene) {
-          window.SpaceGallery3D.init();
+      
+      // Defer loading slightly to let the loading transition screen render and animate smoothly first
+      setTimeout(() => {
+        if (window.SpaceGallery3D) {
+          if (!window.SpaceGallery3D.scene) {
+            window.SpaceGallery3D.init();
+          }
+          window.SpaceGallery3D.loadTab(tab);
         }
-        window.SpaceGallery3D.loadTab(tab);
-      }
+        // Small delay before fading out to hide initial 3D frame block
+        setTimeout(() => {
+          this.spaceTabLoading = false;
+        }, 150);
+      }, 250);
     },
     
     resetSpaceView() {
