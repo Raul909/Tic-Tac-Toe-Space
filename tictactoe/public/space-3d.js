@@ -40,6 +40,63 @@
     return texture;
   }
 
+  // Volumetric cloud-puff texture for nebulae — fast canvas multi-puff (no CPU FBM)
+  function createNebulaTexture() {
+    const S = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = S;
+    canvas.height = S;
+    const ctx = canvas.getContext('2d');
+    const cx = S / 2, cy = S / 2;
+
+    // Layer 1: 14 overlapping radial sub-puffs at random offsets → organic cloud shape
+    for (let i = 0; i < 14; i++) {
+      const ox = (Math.random() - 0.5) * S * 0.5;
+      const oy = (Math.random() - 0.5) * S * 0.5;
+      const r  = S * (0.2 + Math.random() * 0.35);
+      const g  = ctx.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, r);
+      g.addColorStop(0,   'rgba(255,255,255,0.18)');
+      g.addColorStop(0.4, 'rgba(255,255,255,0.10)');
+      g.addColorStop(0.7, 'rgba(255,255,255,0.04)');
+      g.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, S, S);
+    }
+
+    // Layer 2: 5 stretched elliptical streaks for wispy tendrils
+    ctx.save();
+    for (let i = 0; i < 5; i++) {
+      const angle = Math.random() * Math.PI;
+      const sx = S * (0.15 + Math.random() * 0.2);
+      const sy = S * (0.05 + Math.random() * 0.08);
+      ctx.save();
+      ctx.translate(cx + (Math.random() - 0.5) * S * 0.3, cy + (Math.random() - 0.5) * S * 0.3);
+      ctx.rotate(angle);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, sx);
+      g.addColorStop(0,   'rgba(255,255,255,0.12)');
+      g.addColorStop(0.5, 'rgba(255,255,255,0.05)');
+      g.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.scale(1, sy / sx);
+      ctx.fillRect(-sx, -sx, sx * 2, sx * 2);
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // Soft outer vignette to blend edges
+    const vg = ctx.createRadialGradient(cx, cy, S * 0.25, cx, cy, S * 0.5);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.7)');
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, S, S);
+    ctx.globalCompositeOperation = 'source-over';
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
   // Cinematic multi-layer DSLR bokeh disc texture
   // 4 layers: hollow aperture ring + chromatic fringe, warm catseye catch-light,
   // anamorphic horizontal streak, inner Newton's interference ring
@@ -342,10 +399,10 @@
   }
   
   const starLayers = [
-    createStarLayer(16000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), true),
-    createStarLayer(6000,  1.6, 3000, () => new THREE.Color(0xffffff), true),
-    createStarLayer(20000, 0.6, 4500, () => new THREE.Color(0x445566), true),
-    createStarLayer(3000,  2.4, 2500, () => {
+    createStarLayer(25000, 1.0, 3000, () => Math.random() < 0.15 ? new THREE.Color(0x88ccff) : new THREE.Color(0xffffff), true),
+    createStarLayer(8000,  1.6, 3000, () => new THREE.Color(0xffffff), true),
+    createStarLayer(30000, 0.6, 4500, () => new THREE.Color(0x445566), true),
+    createStarLayer(4000,  2.4, 2500, () => {
       const r = Math.random();
       if (r < 0.25) return new THREE.Color(0xff9977); // Orange/Red giants
       if (r < 0.50) return new THREE.Color(0x88ddff); // Blue supergiants
@@ -353,7 +410,7 @@
       return new THREE.Color(0xffb7ff); // Purple stars
     }, true),
     // 5th Deep-Space star layer
-    createStarLayer(22000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), true)
+    createStarLayer(35000, 0.35, 5000, () => new THREE.Color().setHSL(0.58 + Math.random()*0.05, 0.45, 0.25 + Math.random()*0.15), true)
   ];
   const stars = starLayers[0]; // Reference for weather presets
   
@@ -381,15 +438,16 @@
   }
   nebulaGeo.setAttribute('position', new THREE.Float32BufferAttribute(nebPos, 3));
   nebulaGeo.setAttribute('color', new THREE.Float32BufferAttribute(nebCol, 3));
+  const _nebulaCloudTex = createNebulaTexture(); // single shared cloud puff — reuse for both layers
   const nebula = new THREE.Points(nebulaGeo, new THREE.PointsMaterial({ 
-    size: 10, // slightly larger for smoother blending
+    size: 70, // large overlapping puffs for volumetric cloud merging
     vertexColors: true, 
     transparent: true, 
-    opacity: 0.04, 
+    opacity: 0.065, 
     blending: THREE.AdditiveBlending, 
     depthWrite: false,
-    map: createCircleTexture(),
-    alphaTest: 0.01
+    map: _nebulaCloudTex,
+    alphaTest: 0.001
   }));
   scene.add(nebula);
 
@@ -407,14 +465,14 @@
   coreNebGeo.setAttribute('position', new THREE.Float32BufferAttribute(coreNebPos, 3));
   coreNebGeo.setAttribute('color', new THREE.Float32BufferAttribute(coreNebCol, 3));
   const coreNebula = new THREE.Points(coreNebGeo, new THREE.PointsMaterial({
-    size: 12,
+    size: 90, // even larger core puffs for dense volumetric glow
     vertexColors: true,
     transparent: true,
-    opacity: 0.03,
+    opacity: 0.05,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    map: createCircleTexture(),
-    alphaTest: 0.01
+    map: _nebulaCloudTex,
+    alphaTest: 0.001
   }));
   scene.add(coreNebula);
   
@@ -991,7 +1049,8 @@
   for (let i = 0; i < AST_COUNT; i++) {
     const angle = Math.random() * Math.PI * 2, dist = 105 + Math.random() * 30;
     const sc = 0.3 + Math.random() * 0.8;
-    asteroids.push({ rot: (Math.random()-0.5)*0.02, orb: 0.0001+Math.random()*0.0002, angle, dist, rotX: 0, rotY: 0, sc });
+    const yPos = (Math.random()-0.5)*15;
+    asteroids.push({ rot: (Math.random()-0.5)*0.02, orb: 0.0001+Math.random()*0.0002, angle, dist, rotX: 0, rotY: 0, sc, y: yPos });
     _astScale.setScalar(sc);
     _astPos.set(Math.cos(angle)*dist, (Math.random()-0.5)*15, Math.sin(angle)*dist);
     _astMatrix.compose(_astPos, _astQuat, _astScale);
@@ -1218,7 +1277,7 @@
       a.angle += a.orb * scale;
       a.rotX  += a.rot * scale;
       a.rotY  += a.rot * scale;
-      _astPos.set(cx + Math.cos(a.angle) * a.dist, _astPos.y || 0, cz + Math.sin(a.angle) * a.dist);
+      _astPos.set(cx + Math.cos(a.angle) * a.dist, a.y, cz + Math.sin(a.angle) * a.dist);
       _astEuler.set(a.rotX, a.rotY, 0);
       _astQuatTmp.setFromEuler(_astEuler);
       _astScale.setScalar(a.sc);

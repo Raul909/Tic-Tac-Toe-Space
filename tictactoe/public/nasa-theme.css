@@ -420,6 +420,8 @@ textarea:focus {
   background: rgba(0, 212, 255, 0.3) !important;
   border-color: var(--c-nasa) !important;
   box-shadow: 0 0 30px rgba(0, 212, 255, 0.8) !important;
+  will-change: transform, filter;
+  transform: translateZ(0); /* GPU compositor layer — isolates filter repaint */
 }
 
 /* Win-strike SVG line */
@@ -431,6 +433,8 @@ textarea:focus {
 #winning-line.active {
   opacity: 1;
   animation: neonPulse 1.5s ease-in-out infinite;
+  will-change: filter;
+  transform: translateZ(0); /* GPU compositor layer — isolates drop-shadow repaint */
 }
 
 

@@ -677,44 +677,54 @@
     },
 
     drawNebulaGas() {
+      const S = 256;
       const canvas = document.createElement('canvas');
-      canvas.width = 256; // Increase resolution to 256 for smooth wispy gas clouds without blocky artifacts
-      canvas.height = 256;
+      canvas.width = S;
+      canvas.height = S;
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
-      const halfW = w / 2;
-      
-      const imgData = ctx.createImageData(w, h);
-      const data = imgData.data;
-      for (let y = 0; y < h; y++) {
-        const dy = y - halfW;
-        for (let x = 0; x < w; x++) {
-          const dx = x - halfW;
-          const dist = Math.sqrt(dx*dx + dy*dy) / halfW;
-          const idx = (y * w + x) * 4;
-          
-          if (dist >= 1.0) {
-            data[idx] = 255;
-            data[idx+1] = 255;
-            data[idx+2] = 255;
-            data[idx+3] = 0;
-          } else {
-            let alpha = Math.pow(1.0 - dist, 1.8);
-            
-            const angle = Math.atan2(dy, dx);
-            const noiseVal = fbm3D(dx * 0.03, dy * 0.03, Math.sin(angle) * 3.5, 3);
-            alpha *= (0.3 + noiseVal * 0.9);
-            alpha = Math.max(0, Math.min(1.0, alpha));
-            
-            data[idx] = 255;
-            data[idx+1] = 255;
-            data[idx+2] = 255;
-            data[idx+3] = Math.floor(alpha * 255);
-          }
-        }
+      const cx = S / 2, cy = S / 2;
+
+      // 18 overlapping radial sub-puffs → organic volumetric cloud shape (0ms, no FBM)
+      for (let i = 0; i < 18; i++) {
+        const ox = (Math.random() - 0.5) * S * 0.55;
+        const oy = (Math.random() - 0.5) * S * 0.55;
+        const r  = S * (0.15 + Math.random() * 0.38);
+        const g  = ctx.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, r);
+        g.addColorStop(0,   'rgba(255,255,255,0.22)');
+        g.addColorStop(0.3, 'rgba(255,255,255,0.13)');
+        g.addColorStop(0.6, 'rgba(255,255,255,0.05)');
+        g.addColorStop(1,   'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, S, S);
       }
-      ctx.putImageData(imgData, 0, 0);
+
+      // 6 stretched elliptical streaks for wispy tendrils
+      for (let i = 0; i < 6; i++) {
+        const angle = Math.random() * Math.PI;
+        const sx = S * (0.18 + Math.random() * 0.22);
+        const sy = S * (0.04 + Math.random() * 0.07);
+        ctx.save();
+        ctx.translate(cx + (Math.random() - 0.5) * S * 0.35, cy + (Math.random() - 0.5) * S * 0.35);
+        ctx.rotate(angle);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, sx);
+        g.addColorStop(0,   'rgba(255,255,255,0.15)');
+        g.addColorStop(0.5, 'rgba(255,255,255,0.06)');
+        g.addColorStop(1,   'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.scale(1, sy / sx);
+        ctx.fillRect(-sx, -sx, sx * 2, sx * 2);
+        ctx.restore();
+      }
+
+      // Soft outer vignette to blend edges
+      const vg = ctx.createRadialGradient(cx, cy, S * 0.2, cx, cy, S * 0.5);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.65)');
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, S, S);
+      ctx.globalCompositeOperation = 'source-over';
+
       const texture = new THREE.CanvasTexture(canvas);
       return texture;
     },
@@ -847,6 +857,7 @@
     init() {
       const container = document.getElementById('space-gallery-3d');
       if (!container) return;
+      this.container = container; // cache to avoid DOM lookup in animate()
       
       // Scene
       this.scene = new THREE.Scene();
@@ -1038,7 +1049,7 @@
         return;
       }
       
-      const particleCount = this.currentWeather === 'cloudy' ? 250 : 450; // reduced from 500/1000
+      const particleCount = this.currentWeather === 'cloudy' ? 400 : 800; // restored for visual density
       const geometry = new THREE.BufferGeometry();
       const positions = [];
       
@@ -1546,7 +1557,7 @@
     generateNebulaGeometry(name, radius, colorHex) {
       const positions = [];
       const colors = [];
-      const particleCount = 2800; // reduced from 5000 — ~44% fewer particles, imperceptible difference
+      const particleCount = 5000; // full density — volumetric shader handles performance
       const color = new THREE.Color(colorHex);
       
       switch(name.toLowerCase()) {
@@ -1794,9 +1805,18 @@
         }
       }
       
+      // Per-particle size and opacity variation for volumetric depth
+      const sizeScales = new Float32Array(positions.length / 3);
+      const opacityScales = new Float32Array(positions.length / 3);
+      for (let k = 0; k < sizeScales.length; k++) {
+        sizeScales[k] = 0.3 + Math.random() * 1.7;    // 0.3x to 2.0x base size
+        opacityScales[k] = 0.15 + Math.random() * 0.85; // 0.15 to 1.0 opacity
+      }
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
       geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geometry.setAttribute('aSizeScale', new THREE.Float32BufferAttribute(sizeScales, 1));
+      geometry.setAttribute('aOpacityScale', new THREE.Float32BufferAttribute(opacityScales, 1));
       return geometry;
     },
 
@@ -1806,12 +1826,46 @@
         const particleTexture = TextureGenerator.generate('nebula-gas', 'albedo');
         const isHorsehead = data.name.toLowerCase() === 'horsehead nebula';
         
-        const material = new THREE.PointsMaterial({
-          size: data.radius * 0.26,
-          map: particleTexture,
-          vertexColors: true,
+        // Volumetric custom shader: per-particle size variation + near-camera depth fade
+        const material = new THREE.ShaderMaterial({
+          uniforms: {
+            uMap: { value: particleTexture },
+            uBaseSize: { value: data.radius * 0.26 },
+            uOpacity: { value: isHorsehead ? 0.95 : 0.65 },
+            uPixelRatio: { value: Math.min(window.devicePixelRatio, 1.5) }
+          },
+          vertexShader: `
+            attribute float aSizeScale;
+            attribute float aOpacityScale;
+            varying vec3 vColor;
+            varying float vOpacity;
+            uniform float uBaseSize;
+            uniform float uPixelRatio;
+            void main() {
+              vColor = color;
+              vOpacity = aOpacityScale;
+              vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+              // Distance-based near-camera fade: prevents hard particle clipping
+              float dist = length(mvPos.xyz);
+              vOpacity *= smoothstep(5.0, 35.0, dist);
+              gl_PointSize = uBaseSize * aSizeScale * uPixelRatio * (300.0 / -mvPos.z);
+              gl_Position = projectionMatrix * mvPos;
+            }
+          `,
+          fragmentShader: `
+            uniform sampler2D uMap;
+            uniform float uOpacity;
+            varying vec3 vColor;
+            varying float vOpacity;
+            void main() {
+              vec4 tex = texture2D(uMap, gl_PointCoord);
+              float a = tex.a * uOpacity * vOpacity;
+              if (a < 0.001) discard;
+              gl_FragColor = vec4(vColor * tex.rgb, a);
+            }
+          `,
           transparent: true,
-          opacity: isHorsehead ? 0.95 : 0.65,
+          vertexColors: true,
           blending: isHorsehead ? THREE.NormalBlending : THREE.AdditiveBlending,
           depthWrite: false
         });
@@ -2145,7 +2199,7 @@
       // Pause when tab is hidden — zero GPU cost
       if (document.hidden) return;
 
-      const container = document.getElementById('space-gallery-3d');
+      const container = this.container;
       if (!container || container.offsetParent === null) return;
       
       // Update controls for smooth damping
@@ -2225,7 +2279,7 @@
     },
     
     onResize() {
-      const container = document.getElementById('space-gallery-3d');
+      const container = this.container || document.getElementById('space-gallery-3d');
       if (!container) return;
       
       this.camera.aspect = container.clientWidth / 600;
