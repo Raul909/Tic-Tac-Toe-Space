@@ -2016,7 +2016,7 @@
   const mercury = createPlanet('mercury', 2.5, 0x8C7853, {x:0, y:0, z:0});
   mercuryProceduralGroup.add(mercury);
 
-  planets.push({ mesh: mercuryGroup, speed: 0.0015, radius: 30, angle: 0, rotationSpeed: 0.004 });
+  planets.push({ mesh: mercuryGroup, speed: 0.0015, radius: 20, angle: 0, rotationSpeed: 0.004 });
   setupPlanetModelLoader('mercury', 'mercury', mercuryGroup, mercuryProceduralGroup, mercuryModelGroup, 2.5, 5.0, 0x8C7853, 1000);
 
   // Venus Setup
@@ -2035,7 +2035,7 @@
   const venus = createPlanet('venus', 3.8, 0xFFC649, {x:0, y:0, z:0}, false, true, 0xFFE4B5);
   venusProceduralGroup.add(venus);
 
-  planets.push({ mesh: venusGroup, speed: 0.001, radius: 40, angle: Math.PI/4, rotationSpeed: 0.005 });
+  planets.push({ mesh: venusGroup, speed: 0.0011, radius: 25, angle: Math.PI/4, rotationSpeed: 0.005 });
   setupPlanetModelLoader('venus', 'venus', venusGroup, venusProceduralGroup, venusModelGroup, 3.8, 7.6, 0xFFC649, 2000);
 
   // Earth Setup
@@ -2081,7 +2081,7 @@
 
   setupPlanetModelLoader('the_moon_sharp', 'Moon', earthMoonGroup, earthMoonProceduralGroup, earthMoonModelGroup, 1.2, 2.4, 0xCCCCCC, 4000);
 
-  planets.push({ mesh: earthGroup, speed: 0.0008, radius: 50, angle: 0, rotationSpeed: 0.01 });
+  planets.push({ mesh: earthGroup, speed: 0.0008, radius: 33, angle: 0, rotationSpeed: 0.01 });
   setupPlanetModelLoader('earth_moon', 'earth', earthGroup, earthProceduralGroup, earthModelGroup, 4.5, 16.0, 0x2E5F8C, 0);
 
   // Mars Setup
@@ -2100,12 +2100,12 @@
   const mars = createPlanet('mars', 3.2, 0xCD5C5C, {x:0, y:0, z:0});
   marsProceduralGroup.add(mars);
 
-  planets.push({ mesh: marsGroup, speed: 0.0005, radius: 65, angle: Math.PI, rotationSpeed: 0.008 });
+  planets.push({ mesh: marsGroup, speed: 0.0006, radius: 42, angle: Math.PI, rotationSpeed: 0.008 });
   setupPlanetModelLoader('mars', 'mars', marsGroup, marsProceduralGroup, marsModelGroup, 3.2, 6.4, 0xCD5C5C, 2500);
   
   // Dwarf Planet Ceres (Asteroid Belt Anchor - Procedural Only)
   const ceres = createPlanet('ceres', 1.2, 0x8D847B, {x:-75, y:2, z:-75});
-  planets.push({ mesh: ceres, speed: 0.0003, radius: 75, angle: Math.PI * 0.4, rotationSpeed: 0.005 });
+  planets.push({ mesh: ceres, speed: 0.0004, radius: 50, angle: Math.PI * 0.4, rotationSpeed: 0.005 });
 
   // Jupiter Setup
   const jupiterGroup = new THREE.Group();
@@ -2123,7 +2123,7 @@
   const jupiter = createPlanet('jupiter', 8.5, 0xC88B3A, {x:0, y:0, z:0});
   jupiterProceduralGroup.add(jupiter);
 
-  planets.push({ mesh: jupiterGroup, speed: 0.0002, radius: 90, angle: Math.PI/2, rotationSpeed: 0.015 });
+  planets.push({ mesh: jupiterGroup, speed: 0.00025, radius: 58, angle: Math.PI/2, rotationSpeed: 0.015 });
   setupPlanetModelLoader('jupiter', 'jupiter', jupiterGroup, jupiterProceduralGroup, jupiterModelGroup, 8.5, 17.0, 0xC88B3A, 1500);
 
   // Saturn Setup
@@ -2142,7 +2142,7 @@
   const saturn = createPlanet('saturn', 7.5, 0xE8D4A0, {x:0, y:0, z:0}, true);
   saturnProceduralGroup.add(saturn);
 
-  planets.push({ mesh: saturnGroup, speed: 0.00015, radius: 80, angle: Math.PI*1.5, rotationSpeed: 0.012 });
+  planets.push({ mesh: saturnGroup, speed: 0.00015, radius: 75, angle: Math.PI*1.5, rotationSpeed: 0.012 });
   setupPlanetModelLoader('saturn', 'saturn', saturnGroup, saturnProceduralGroup, saturnModelGroup, 7.5, 23.0, 0xE8D4A0, 3000);
 
   // Uranus Setup
@@ -2161,7 +2161,7 @@
   const uranus = createPlanet('uranus', 5.5, 0x4FD0E7, {x:0, y:0, z:0}, true);
   uranusProceduralGroup.add(uranus);
 
-  planets.push({ mesh: uranusGroup, speed: 0.0001, radius: 110, angle: Math.PI/3, rotationSpeed: 0.009 });
+  planets.push({ mesh: uranusGroup, speed: 0.0001, radius: 90, angle: Math.PI/3, rotationSpeed: 0.009 });
   setupPlanetModelLoader('uranus', 'uranus', uranusGroup, uranusProceduralGroup, uranusModelGroup, 5.5, 15.0, 0x4FD0E7, 3500);
 
   // Neptune Setup
@@ -2180,7 +2180,7 @@
   const neptune = createPlanet('neptune', 5.2, 0x4169E1, {x:0, y:0, z:0});
   neptuneProceduralGroup.add(neptune);
 
-  planets.push({ mesh: neptuneGroup, speed: 0.00008, radius: 125, angle: Math.PI*1.7, rotationSpeed: 0.01 });
+  planets.push({ mesh: neptuneGroup, speed: 0.00007, radius: 102, angle: Math.PI*1.7, rotationSpeed: 0.01 });
   setupPlanetModelLoader('neptune', 'neptune', neptuneGroup, neptuneProceduralGroup, neptuneModelGroup, 5.2, 10.4, 0x4169E1, 4000);
 
   // Pluto Setup
@@ -2199,12 +2199,12 @@
   const pluto = createPlanet('pluto', 1.8, 0xC0A98B, {x:0, y:0, z:0});
   plutoProceduralGroup.add(pluto);
 
-  planets.push({ mesh: plutoGroup, speed: 0.00004, radius: 145, angle: Math.PI * 0.8, rotationSpeed: 0.006 });
+  planets.push({ mesh: plutoGroup, speed: 0.00003, radius: 110, angle: Math.PI * 0.8, rotationSpeed: 0.006 });
   setupPlanetModelLoader('pluto', 'pluto', plutoGroup, plutoProceduralGroup, plutoModelGroup, 1.8, 3.6, 0xC0A98B, 500);
 
   // Dwarf Planet Eris
   const eris = createPlanet('eris', 1.6, 0xD3C2B0, {x:160, y:25, z:-170});
-  planets.push({ mesh: eris, speed: 0.00002, radius: 160, angle: Math.PI * 1.3, rotationSpeed: 0.007 });
+  planets.push({ mesh: eris, speed: 0.00002, radius: 125, angle: Math.PI * 1.3, rotationSpeed: 0.007 });
 
   // Attach Moons for Background major planets
   createMoonsForPlanet3D('Mars', marsGroup, 4);
@@ -2413,6 +2413,33 @@
   proximaCentauri.add(proxCorona);
   scene.add(proximaCentauri);
 
+  // Proxima Centauri b — Exoplanet orbiting Proxima Centauri
+  // Rocky, potentially habitable world in the habitable zone
+  const proximaBGroup = new THREE.Group();
+  proximaBGroup.userData = { name: 'PROXIMA CENTAURI B', isMoon: true, angle: 0, distance: 8.0, speed: 0.02 };
+  proximaCentauri.add(proximaBGroup);
+
+  const proximaBProceduralGroup = new THREE.Group();
+  proximaBGroup.add(proximaBProceduralGroup);
+
+  const proximaBModelGroup = new THREE.Group();
+  proximaBModelGroup.visible = false;
+  proximaBGroup.add(proximaBModelGroup);
+
+  const proximaBMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1.5, 32, 32),
+    new THREE.MeshStandardMaterial({
+      map: generatePlanetTexture('earth'),
+      roughness: 0.7,
+      metalness: 0.1
+    })
+  );
+  proximaBMesh.userData = { name: 'PROXIMA CENTAURI B' };
+  proximaBProceduralGroup.add(proximaBMesh);
+  proximaBGroup.position.set(8, 0, 0);
+
+  setupPlanetModelLoader('proxima_centauri_b', 'Proxima Centauri b', proximaBGroup, proximaBProceduralGroup, proximaBModelGroup, 1.5, 3.0, 0x4A7A8C, 5000);
+
   // Alpha Centauri A — G-type solar analog: bright yellow-white photosphere
   alphaCentauriA = new THREE.Mesh(
     new THREE.SphereGeometry(5.2, 48, 48),
@@ -2476,7 +2503,7 @@
   const _astQuat   = new THREE.Quaternion();
   const _astPos    = new THREE.Vector3();
   for (let i = 0; i < AST_COUNT; i++) {
-    const angle = Math.random() * Math.PI * 2, dist = 72 + Math.random() * 12; // Between Mars (65) and Jupiter (90)
+    const angle = Math.random() * Math.PI * 2, dist = 46 + Math.random() * 10; // Between Mars (42) and Jupiter (58)
     const sc = 0.2 + Math.random() * 0.5;
     const yPos = (Math.random()-0.5)*4.5;
     asteroids.push({ rot: (Math.random()-0.5)*0.02, orb: 0.0003+Math.random()*0.0004, angle, dist, rotX: 0, rotY: 0, sc, y: yPos });
@@ -3133,6 +3160,23 @@
         ray.scale.set(22 * proxPulse, 22 * proxPulse, 1);
         ray.material.rotation = Math.sin(currentTime * 0.0001) * 0.05;
       }
+      // Proxima Centauri b — orbit around the star
+      proximaCentauri.children.forEach(child => {
+        if (child.userData && child.userData.name === 'PROXIMA CENTAURI B') {
+          child.userData.angle = (child.userData.angle || 0) + 0.02 * scale;
+          const d = child.userData.distance || 8.0;
+          child.position.x = Math.cos(child.userData.angle) * d;
+          child.position.z = Math.sin(child.userData.angle) * d;
+          // Self-rotation of the planet body
+          const procGrp = child.children[0];
+          if (procGrp) {
+            const meshChild = procGrp.children[0];
+            if (meshChild && meshChild.isMesh) meshChild.rotation.y += 0.008 * scale;
+          }
+          const mdlGrp = child.children[1];
+          if (mdlGrp && mdlGrp.visible) mdlGrp.rotation.y += 0.008 * scale;
+        }
+      });
     }
     
     // Planets - Batch update
