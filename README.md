@@ -100,15 +100,4 @@ If you find this premium space-combat experience interesting, please **Star** an
     *   **Output Directory**: `tictactoe/public`
 3.  Publish to trigger global deployment.
 
----
 
-## 📝 Diagnostic Logs & System Overrides
-
-```
-[SYSTEM_LOG_1884] :: DECRYPTED TELEMETRY DATA
-> SECURE NOTICE: In case of auditory fatigue from heavy solar radiation storms, the deck override key [F] can be utilized to initialize custom acoustic waveforms (upload your own .mp3/.wav/.ogg track) directly into the headset. Keep this transmission secure.
-```
-
-> [!CAUTION]
-> ### 🛡️ Operational Security Warning
-> Never commit actual passwords, OAuth tokens, or Atlas connection strings directly into this repository. Keep secret keys localized inside `.env` configurations (safely ignored by `.gitignore`) and inject them dynamically via your platform dashboard.
