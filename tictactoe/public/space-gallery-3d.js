@@ -53,13 +53,17 @@
   const TextureGenerator = {
     generate(name, type = 'albedo') {
       const canvas = document.createElement('canvas');
-      canvas.width = 1024;
-      canvas.height = 512;
+      const key = `${name.toLowerCase()}-${type.toLowerCase()}`;
+      if (key === 'star-surface-albedo') {
+        canvas.width = 512;
+        canvas.height = 256;
+      } else {
+        canvas.width = 1024;
+        canvas.height = 512;
+      }
       const ctx = canvas.getContext('2d');
       const w = canvas.width;
       const h = canvas.height;
-
-      const key = `${name.toLowerCase()}-${type.toLowerCase()}`;
 
       switch (key) {
         case 'sun-albedo':
@@ -108,6 +112,9 @@
           break;
         case 'star-glow-albedo':
           return this.drawStarGlow();
+        case 'star-surface-albedo':
+          this.drawStarSurface(ctx, w, h);
+          break;
         case 'nebula-gas-albedo':
           return this.drawNebulaGas();
         case 'circle-particle-albedo':
@@ -149,6 +156,33 @@
           data[idx] = Math.floor(239 + val * 16);
           data[idx+1] = Math.floor(68 + val * 172);
           data[idx+2] = Math.floor(68 + val * 40);
+          data[idx+3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    },
+
+    drawStarSurface(ctx, w, h) {
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const lat = (y / h) * Math.PI - Math.PI / 2;
+        const sinLat = Math.sin(lat);
+        const cosLat = Math.cos(lat);
+        for (let x = 0; x < w; x++) {
+          const lon = (x / w) * Math.PI * 2;
+          const px = cosLat * Math.cos(lon);
+          const py = sinLat;
+          const pz = cosLat * Math.sin(lon);
+          
+          // FBM noise to represent star surface granules
+          const val = fbm3D(px * 12, py * 12, pz * 12, 4);
+          const idx = (y * w + x) * 4;
+          const gray = Math.floor(180 + val * 75);
+          
+          data[idx] = gray;
+          data[idx+1] = gray;
+          data[idx+2] = gray;
           data[idx+3] = 255;
         }
       }
@@ -830,7 +864,8 @@
       this.getUserLocationAndWeather();
       
       // Camera — start wide so users see the full scene first
-      this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / 600, 0.1, 5000);
+      const height = container.clientHeight || 600;
+      this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / height, 0.1, 5000);
       this.camera.position.set(0, 150, 450);
       
       // Renderer
@@ -839,7 +874,7 @@
         alpha: true,
         powerPreference: 'high-performance'
       });
-      this.renderer.setSize(container.clientWidth, 600);
+      this.renderer.setSize(container.clientWidth, height);
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap at 1.5 — saves ~44% GPU fill on Retina
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 2.2;
@@ -1475,10 +1510,12 @@
     
     createStars() {
       const glowTexture = TextureGenerator.generate('star-glow');
+      const surfaceTexture = TextureGenerator.generate('star-surface');
       this.nearbyStars.forEach((data, i) => {
         const geometry = new THREE.SphereGeometry(data.radius, 32, 32);
         const material = new THREE.MeshBasicMaterial({ 
-          color: data.color
+          color: data.color,
+          map: surfaceTexture
         });
         const star = new THREE.Mesh(geometry, material);
         star.castShadow = true;
@@ -1501,6 +1538,7 @@
           blending: THREE.AdditiveBlending
         });
         const glow = new THREE.Sprite(glowMaterial);
+        glow.name = 'starGlow';
         glow.scale.set(data.radius * 4.5, data.radius * 4.5, 1);
         star.add(glow);
         
@@ -1781,6 +1819,7 @@
     },
 
     createNebulae() {
+      const surfaceTexture = TextureGenerator.generate('star-surface');
       this.nebulae.forEach((data, i) => {
         const geometry = this.generateNebulaGeometry(data.name, data.radius, data.color);
         const particleTexture = TextureGenerator.generate('nebula-gas', 'albedo');
@@ -1792,7 +1831,8 @@
             uMap: { value: particleTexture },
             uBaseSize: { value: data.radius * 0.26 },
             uOpacity: { value: isHorsehead ? 0.8 : 0.18 },
-            uPixelRatio: { value: Math.min(window.devicePixelRatio, 1.5) }
+            uPixelRatio: { value: Math.min(window.devicePixelRatio, 1.5) },
+            uTime: { value: 0 }
           },
           vertexShader: `
             attribute float aSizeScale;
@@ -1801,10 +1841,16 @@
             varying float vOpacity;
             uniform float uBaseSize;
             uniform float uPixelRatio;
+            uniform float uTime;
             void main() {
               vColor = color;
               vOpacity = aOpacityScale;
-              vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+              vec3 perturbedPos = position;
+              // Soft volumetric gas drifting swirling animation
+              perturbedPos.x += sin(uTime * 0.05 + position.y * 0.1) * 0.8;
+              perturbedPos.y += cos(uTime * 0.04 + position.x * 0.1) * 0.8;
+              perturbedPos.z += sin(uTime * 0.06 + position.z * 0.1) * 0.8;
+              vec4 mvPos = modelViewMatrix * vec4(perturbedPos, 1.0);
               // Distance-based near-camera fade: prevents hard particle clipping
               float dist = length(mvPos.xyz);
               vOpacity *= smoothstep(5.0, 35.0, dist);
@@ -1847,6 +1893,7 @@
           color: data.color,
           emissive: data.color,
           emissiveIntensity: 0.5,
+          map: surfaceTexture,
           transparent: true,
           opacity: 0.8,
           roughness: 0.5
@@ -1949,6 +1996,7 @@
               transparent: true,
               opacity: 0.45
             });
+            lineMat.name = 'constellationLine';
             const line = new THREE.Line(lineGeo, lineMat);
             group.add(line);
           }
@@ -2233,6 +2281,32 @@
             sunCoronaRay.material.opacity = 0.8 + Math.cos(currentTime * 0.0007) * 0.12;
           }
         }
+
+        // Animate dynamic twinkling and pulsing of nearby stars glow sprites
+        if (obj.userData.type && (obj.userData.type.includes('Star') || obj.userData.type.includes('Dwarf'))) {
+          const glow = obj.getObjectByName('starGlow');
+          if (glow) {
+            const currentTime = performance.now();
+            const pulse = 1.0 + Math.sin(currentTime * 0.002 + obj.userData.id * 1.5) * 0.08;
+            glow.scale.set(obj.userData.radius * 4.5 * pulse, obj.userData.radius * 4.5 * pulse, 1);
+            glow.material.opacity = 0.65 + Math.cos(currentTime * 0.001 + obj.userData.id * 2.1) * 0.15;
+          }
+        }
+
+        // Update custom volumetric shader uTime uniform for nebulae particles
+        if (obj instanceof THREE.Points && obj.material.uniforms && obj.material.uniforms.uTime) {
+          obj.material.uniforms.uTime.value = performance.now() * 0.01;
+        }
+
+        // Shimmer constellation connection lines
+        if (obj.userData.type === 'Constellation') {
+          const currentTime = performance.now();
+          obj.children.forEach(child => {
+            if (child.material && child.material.name === 'constellationLine') {
+              child.material.opacity = 0.35 + Math.sin(currentTime * 0.0018 + obj.userData.id * 1.2) * 0.2;
+            }
+          });
+        }
       });
       
       this.renderer.render(this.scene, this.camera);
@@ -2242,9 +2316,10 @@
       const container = this.container || document.getElementById('space-gallery-3d');
       if (!container) return;
       
-      this.camera.aspect = container.clientWidth / 600;
+      const height = container.clientHeight || 600;
+      this.camera.aspect = container.clientWidth / height;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(container.clientWidth, 600);
+      this.renderer.setSize(container.clientWidth, height);
     },
     
     reset() {
